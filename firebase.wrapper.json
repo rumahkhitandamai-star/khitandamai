@@ -1,0 +1,17 @@
+{
+  "hosting": {
+    "public": "wrapper",
+    "ignore": [
+      "firebase.json",
+      "firebase.wrapper.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "khitandamai",
+  "version": "1.0.0",
+  "description": "Website Layanan Khitan Modern Khitan Damai Subang",
+  "scripts": {
+    "serve": "npx serve public",
+    "serve:asset": "npx serve asset",
+    "test:qc": "npx playwright test qc-test.spec.js",
+    "sync:docs": "node scripts/upload-docs-to-drive.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.0",
+    "playwright": "^1.64.0"
+  }
+}
