@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "rumahkhitandamai",
     "public": "public",
     "ignore": [
       "firebase.json",
