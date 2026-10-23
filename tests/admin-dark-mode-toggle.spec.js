@@ -12,6 +12,49 @@ test('Verify Admin Panel Dark/Light Mode Toggle, Light Default, and Text Readabi
     }
   });
 
+  // Intercept GAS endpoint for reliable instant login & admin data in tests
+  await page.route('**/macros/s/**', async route => {
+    let action = '';
+    try {
+      const urlObj = new URL(route.request().url());
+      action = urlObj.searchParams.get('action') || '';
+    } catch (e) {}
+
+    if (!action && route.request().method() === 'POST') {
+      try {
+        const postData = route.request().postData();
+        if (postData) {
+          const parsed = JSON.parse(postData);
+          action = parsed.action || '';
+        }
+      } catch (e) {}
+    }
+
+    if (action === 'getKunjungan' || action === 'getAdminKunjungan' || action === 'getBookings' || action === 'getAdminBookings' || action === 'getUsers' || action === 'getGaleri' || action === 'getSaran' || action === 'getJumatBerkah') {
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ status: 'success', data: [] })
+      });
+    } else {
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          status: 'success',
+          data: {
+            no: 1,
+            username: 'denluckyman@gmail.com',
+            nama: 'denluckyman@gmail.com',
+            role: 'Super Admin',
+            otorisasi: '',
+            token: 'mock-token-test'
+          }
+        })
+      });
+    }
+  });
+
   // 1. Buka halaman admin pertama kali (Harus default Mode Terang)
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto(filePath + '#/admin', { waitUntil: 'domcontentloaded' });
@@ -60,13 +103,13 @@ test('Verify Admin Panel Dark/Light Mode Toggle, Light Default, and Text Readabi
   // 4. Verifikasi Keterbacaan Teks pada Mode Gelap (Tab Dashboard)
   // Heading dashboard harus putih / terang
   const dashColor = await dashboardHeading.evaluate(el => window.getComputedStyle(el).color);
-  expect(dashColor).toBe('rgb(248, 250, 252)');
+  expect(['rgb(255, 255, 255)', 'rgb(248, 250, 252)']).toContain(dashColor);
 
   // KPI Total Pasien
   const kpiTotal = page.locator('[data-testid="grafik-total-pasien"]');
   await expect(kpiTotal).toBeVisible();
   const kpiColor = await kpiTotal.evaluate(el => window.getComputedStyle(el).color);
-  expect(kpiColor).toBe('rgb(248, 250, 252)');
+  expect(['rgb(255, 255, 255)', 'rgb(248, 250, 252)']).toContain(kpiColor);
 
   // 5. Verifikasi Keterbacaan pada Tab Booking (Desktop & Mobile)
   const bookingTabBtn = page.locator('aside button:has-text("Booking")');

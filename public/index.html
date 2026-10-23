@@ -218,6 +218,7 @@
     html.dark #app.dark,
     html.dark .admin-panel {
       color-scheme: dark;
+      color: #f1f5f9;
     }
 
     /* Background Utama App saat Mode Gelap Aktif di Admin */
@@ -234,61 +235,153 @@
 
     /* Latar Belakang Kartu, Panel Konten, & Box di Mode Gelap */
     html.dark .admin-panel .bg-white,
+    html.dark .admin-panel [class*="bg-white/"],
     html.dark .admin-panel .bg-slate-50,
-    html.dark .admin-panel .bg-slate-50\/50,
-    html.dark .admin-panel .bg-slate-50\/80 {
+    html.dark .admin-panel [class*="bg-slate-50"] {
       background-color: #1e293b !important;
       border-color: #334155 !important;
     }
 
-    html.dark .admin-panel .bg-slate-100 {
+    html.dark .admin-panel .bg-slate-100,
+    html.dark .admin-panel [class*="bg-slate-100"] {
       background-color: #0f172a !important;
       border-color: #334155 !important;
     }
 
     html.dark .admin-panel .bg-slate-200,
-    html.dark .admin-panel .bg-slate-200\/80 {
+    html.dark .admin-panel [class*="bg-slate-200"] {
       background-color: #334155 !important;
-      color: #f1f5f9 !important;
+      color: #ffffff !important;
     }
 
     /* Border / Garis Pembatas di Mode Gelap */
     html.dark .admin-panel [class*="border-slate-100"],
     html.dark .admin-panel [class*="border-slate-200"],
-    html.dark .admin-panel [class*="border-slate-300"] {
+    html.dark .admin-panel [class*="border-slate-300"],
+    html.dark .admin-panel [class*="border-slate-400"] {
       border-color: #334155 !important;
     }
 
-    /* Keterbacaan Teks Heading & Judul di Mode Gelap */
+    /* Keterbacaan Teks Heading & Judul di Mode Gelap (Teks Putih Tajam) */
     html.dark .admin-panel h1,
     html.dark .admin-panel h2,
     html.dark .admin-panel h3,
     html.dark .admin-panel h4,
     html.dark .admin-panel h5,
     html.dark .admin-panel h6,
+    html.dark .admin-panel strong,
+    html.dark .admin-panel b,
+    html.dark .admin-panel .text-black,
     html.dark .admin-panel [class*="text-slate-900"],
     html.dark .admin-panel [class*="text-slate-800"],
     html.dark .admin-panel [class*="text-slate-700"] {
-      color: #f8fafc !important;
+      color: #ffffff !important;
     }
 
-    /* Keterbacaan Teks Sekunder & Paragraf di Mode Gelap */
+    /* Keterbacaan Teks Sekunder, Deskripsi, & Paragraf di Mode Gelap (Slate-200 Sangat Jelas) */
     html.dark .admin-panel [class*="text-slate-600"],
     html.dark .admin-panel [class*="text-slate-500"] {
-      color: #cbd5e1 !important;
+      color: #e2e8f0 !important;
       font-weight: 500 !important;
     }
 
-    /* Keterbacaan Teks Muted / Label Kecil di Mode Gelap */
+    /* Keterbacaan Teks Muted, Subtitle Kecil, & Helper Text di Mode Gelap (Slate-300 Kontras Tinggi) */
     html.dark .admin-panel [class*="text-slate-400"],
     html.dark .admin-panel [class*="text-slate-300"] {
-      color: #94a3b8 !important;
-      font-weight: 500 !important;
+      color: #cbd5e1 !important;
+      font-weight: 600 !important;
+    }
+
+    /* Aksen Tosca / Teal di Mode Gelap (Mint / Cyan Terang Berkilau) */
+    html.dark .admin-panel [class*="text-tosca-950"],
+    html.dark .admin-panel [class*="text-tosca-900"],
+    html.dark .admin-panel [class*="text-tosca-800"],
+    html.dark .admin-panel [class*="text-tosca-700"],
+    html.dark .admin-panel [class*="text-tosca-600"],
+    html.dark .admin-panel [class*="text-tosca-500"],
+    html.dark .admin-panel [class*="text-teal-950"],
+    html.dark .admin-panel [class*="text-teal-900"],
+    html.dark .admin-panel [class*="text-teal-800"],
+    html.dark .admin-panel [class*="text-teal-700"],
+    html.dark .admin-panel [class*="text-teal-600"],
+    html.dark .admin-panel [class*="text-teal-500"] {
+      color: #5eead4 !important;
+      font-weight: 700 !important;
+    }
+
+    /* Aksen Emerald / Hijau di Mode Gelap */
+    html.dark .admin-panel [class*="text-emerald-950"],
+    html.dark .admin-panel [class*="text-emerald-900"],
+    html.dark .admin-panel [class*="text-emerald-800"],
+    html.dark .admin-panel [class*="text-emerald-700"],
+    html.dark .admin-panel [class*="text-emerald-600"],
+    html.dark .admin-panel [class*="text-emerald-500"] {
+      color: #6ee7b7 !important;
+      font-weight: 700 !important;
+    }
+
+    /* Aksen Amber / Kuning / Oranye di Mode Gelap */
+    html.dark .admin-panel [class*="text-amber-950"],
+    html.dark .admin-panel [class*="text-amber-900"],
+    html.dark .admin-panel [class*="text-amber-800"],
+    html.dark .admin-panel [class*="text-amber-700"],
+    html.dark .admin-panel [class*="text-amber-600"],
+    html.dark .admin-panel [class*="text-amber-500"] {
+      color: #fef08a !important;
+      font-weight: 700 !important;
+    }
+
+    /* Aksen Rose / Merah di Mode Gelap */
+    html.dark .admin-panel [class*="text-rose-950"],
+    html.dark .admin-panel [class*="text-rose-900"],
+    html.dark .admin-panel [class*="text-rose-800"],
+    html.dark .admin-panel [class*="text-rose-700"],
+    html.dark .admin-panel [class*="text-rose-600"],
+    html.dark .admin-panel [class*="text-rose-500"],
+    html.dark .admin-panel [class*="text-red-800"],
+    html.dark .admin-panel [class*="text-red-700"],
+    html.dark .admin-panel [class*="text-red-600"],
+    html.dark .admin-panel [class*="text-red-500"] {
+      color: #fda4af !important;
+      font-weight: 700 !important;
+    }
+
+    /* Aksen Sky, Blue, & Indigo di Mode Gelap */
+    html.dark .admin-panel [class*="text-sky-950"],
+    html.dark .admin-panel [class*="text-sky-900"],
+    html.dark .admin-panel [class*="text-sky-800"],
+    html.dark .admin-panel [class*="text-sky-700"],
+    html.dark .admin-panel [class*="text-sky-600"],
+    html.dark .admin-panel [class*="text-sky-500"],
+    html.dark .admin-panel [class*="text-blue-950"],
+    html.dark .admin-panel [class*="text-blue-900"],
+    html.dark .admin-panel [class*="text-blue-800"],
+    html.dark .admin-panel [class*="text-blue-700"],
+    html.dark .admin-panel [class*="text-blue-600"],
+    html.dark .admin-panel [class*="text-blue-500"],
+    html.dark .admin-panel [class*="text-indigo-900"],
+    html.dark .admin-panel [class*="text-indigo-800"],
+    html.dark .admin-panel [class*="text-indigo-700"],
+    html.dark .admin-panel [class*="text-indigo-600"],
+    html.dark .admin-panel [class*="text-indigo-500"] {
+      color: #7dd3fc !important;
+      font-weight: 700 !important;
+    }
+
+    /* Aksen Purple / Ungu di Mode Gelap */
+    html.dark .admin-panel [class*="text-purple-950"],
+    html.dark .admin-panel [class*="text-purple-900"],
+    html.dark .admin-panel [class*="text-purple-800"],
+    html.dark .admin-panel [class*="text-purple-700"],
+    html.dark .admin-panel [class*="text-purple-600"],
+    html.dark .admin-panel [class*="text-purple-500"] {
+      color: #d8b4fe !important;
+      font-weight: 700 !important;
     }
 
     /* Form Label Tajam & Tebal di Mode Gelap */
     html.dark .admin-panel label {
-      color: #f1f5f9 !important;
+      color: #ffffff !important;
       font-weight: 700 !important;
     }
 
@@ -305,7 +398,8 @@
     html.dark .admin-panel select:focus,
     html.dark .admin-panel textarea:focus {
       border-color: #14b8a6 !important;
-      box-shadow: 0 0 0 2px rgba(20, 184, 166, 0.35) !important;
+      box-shadow: 0 0 0 2px rgba(20, 184, 166, 0.4) !important;
+      color: #ffffff !important;
     }
 
     html.dark .admin-panel input::placeholder,
@@ -318,10 +412,19 @@
       color: #ffffff !important;
     }
 
+    /* Kode / Cuplikan Register di Mode Gelap */
+    html.dark .admin-panel code,
+    html.dark .admin-panel pre,
+    html.dark .admin-panel kbd {
+      background-color: #0f172a !important;
+      color: #5eead4 !important;
+      border-color: #334155 !important;
+    }
+
     /* Tabel Data di Mode Gelap */
     html.dark .admin-panel table th {
       background-color: #0f172a !important;
-      color: #f8fafc !important;
+      color: #ffffff !important;
       border-color: #334155 !important;
       font-weight: 800 !important;
     }
@@ -344,122 +447,185 @@
       color: #ffffff !important;
     }
 
-    /* Kartu Mobile & List di Layar HP pada Mode Gelap */
-    @media (max-width: 768px) {
-      html.dark .admin-panel .text-slate-400:not(.admin-dark-text *):not([class*="bg-"]) {
-        color: #94a3b8 !important;
-        font-weight: 700 !important;
-      }
-      html.dark .admin-panel .text-slate-500:not(.admin-dark-text *):not([class*="bg-"]) {
-        color: #cbd5e1 !important;
-        font-weight: 600 !important;
-      }
-      html.dark .admin-panel label {
-        color: #f8fafc !important;
-        font-weight: 700 !important;
-      }
+    /* Sticky Columns Tabel Data di Mode Gelap (misal kolom Nama / Register) */
+    html.dark .admin-panel [class*="sticky"][class*="left-"] {
+      background-color: #162438 !important;
+      color: #5eead4 !important;
+      border-color: #334155 !important;
+    }
+    html.dark .admin-panel th[class*="sticky"][class*="left-"] {
+      background-color: #0f172a !important;
+      color: #2dd4bf !important;
+      border-color: #334155 !important;
     }
 
-    /* Modal Dialog & Fullscreen Modal di Mode Gelap */
+    /* Table tfoot di Mode Gelap */
+    html.dark .admin-panel table tfoot,
+    html.dark .admin-panel table tfoot td {
+      background-color: #0f172a !important;
+      border-color: #334155 !important;
+      color: #ffffff !important;
+      font-weight: 800 !important;
+    }
+
+    /* Badges Status & Pill di Mode Gelap (Kontras Tinggi & Font Tebal Jelas) */
+    html.dark .admin-panel .bg-amber-100,
+    html.dark .admin-panel [class*="bg-amber-100"] {
+      background-color: #78350f !important;
+      color: #fef08a !important;
+      border: 1px solid #d97706 !important;
+      font-weight: 700 !important;
+    }
+    html.dark .admin-panel .bg-emerald-100,
+    html.dark .admin-panel [class*="bg-emerald-100"] {
+      background-color: #064e3b !important;
+      color: #a7f3d0 !important;
+      border: 1px solid #059669 !important;
+      font-weight: 700 !important;
+    }
+    html.dark .admin-panel .bg-rose-100,
+    html.dark .admin-panel [class*="bg-rose-100"] {
+      background-color: #881337 !important;
+      color: #fecdd3 !important;
+      border: 1px solid #e11d48 !important;
+      font-weight: 700 !important;
+    }
+    html.dark .admin-panel .bg-sky-100,
+    html.dark .admin-panel [class*="bg-sky-100"],
+    html.dark .admin-panel .bg-blue-100,
+    html.dark .admin-panel [class*="bg-blue-100"] {
+      background-color: #0c4a6e !important;
+      color: #bae6fd !important;
+      border: 1px solid #0284c7 !important;
+      font-weight: 700 !important;
+    }
+    html.dark .admin-panel .bg-tosca-100,
+    html.dark .admin-panel [class*="bg-tosca-100"],
+    html.dark .admin-panel .bg-teal-100,
+    html.dark .admin-panel [class*="bg-teal-100"] {
+      background-color: #134e4a !important;
+      color: #99f6e4 !important;
+      border: 1px solid #0d9488 !important;
+      font-weight: 700 !important;
+    }
+    html.dark .admin-panel .bg-purple-100,
+    html.dark .admin-panel [class*="bg-purple-100"] {
+      background-color: #3b0764 !important;
+      color: #e9d5ff !important;
+      border: 1px solid #9333ea !important;
+      font-weight: 700 !important;
+    }
+
+    /* Row Tint & Panel Highlight di Mode Gelap */
+    html.dark .admin-panel .bg-sky-50,
+    html.dark .admin-panel [class*="bg-sky-50"],
+    html.dark .admin-panel .bg-blue-50,
+    html.dark .admin-panel [class*="bg-blue-50"] {
+      background-color: rgba(12, 74, 110, 0.45) !important;
+      border-color: #0369a1 !important;
+      color: #7dd3fc !important;
+    }
+    html.dark .admin-panel .bg-amber-50,
+    html.dark .admin-panel [class*="bg-amber-50"] {
+      background-color: rgba(120, 53, 15, 0.45) !important;
+      border-color: #b45309 !important;
+      color: #fef08a !important;
+    }
+    html.dark .admin-panel .bg-rose-50,
+    html.dark .admin-panel [class*="bg-rose-50"] {
+      background-color: rgba(136, 19, 55, 0.45) !important;
+      border-color: #be123c !important;
+      color: #fecdd3 !important;
+    }
+    html.dark .admin-panel .bg-emerald-50,
+    html.dark .admin-panel [class*="bg-emerald-50"] {
+      background-color: rgba(6, 78, 59, 0.45) !important;
+      border-color: #047857 !important;
+      color: #6ee7b7 !important;
+    }
+    html.dark .admin-panel .bg-teal-50,
+    html.dark .admin-panel [class*="bg-teal-50"],
+    html.dark .admin-panel .bg-tosca-50,
+    html.dark .admin-panel [class*="bg-tosca-50"] {
+      background-color: rgba(19, 78, 74, 0.45) !important;
+      border-color: #115e59 !important;
+      color: #5eead4 !important;
+    }
+    html.dark .admin-panel .bg-purple-50,
+    html.dark .admin-panel [class*="bg-purple-50"] {
+      background-color: rgba(59, 7, 100, 0.45) !important;
+      border-color: #7e22ce !important;
+      color: #d8b4fe !important;
+    }
+    html.dark .admin-panel .bg-indigo-50,
+    html.dark .admin-panel [class*="bg-indigo-50"] {
+      background-color: rgba(49, 46, 129, 0.45) !important;
+      border-color: #4338ca !important;
+      color: #a5b4fc !important;
+    }
+
+    /* Tombol Aksi Sekunder & Outline di Mode Gelap */
+    html.dark .admin-panel button.bg-white,
+    html.dark .admin-panel button.bg-slate-100 {
+      background-color: #1e293b !important;
+      color: #ffffff !important;
+      border-color: #475569 !important;
+    }
+    html.dark .admin-panel button.bg-white:hover,
+    html.dark .admin-panel button.bg-slate-100:hover {
+      background-color: #334155 !important;
+      color: #ffffff !important;
+      border-color: #64748b !important;
+    }
+
+    /* Modal Dialog & Pop-up di Mode Gelap */
     html.dark .admin-panel.fixed > div:not(.bg-gradient-to-r):not(.bg-black\/60):not(.bg-black\/70),
     html.dark .admin-panel .bg-white.w-full,
-    html.dark .admin-panel .bg-slate-50.fixed {
+    html.dark .admin-panel .bg-slate-50.fixed,
+    html.dark .admin-panel .kunjungan-compact {
       background-color: #1e293b !important;
       border-color: #334155 !important;
-      color: #f1f5f9 !important;
+      color: #f8fafc !important;
     }
 
     /* Footer Admin di Mode Gelap */
     html.dark footer.admin-panel {
       background-color: #0f172a !important;
       border-color: #334155 !important;
-      color: #94a3b8 !important;
+      color: #cbd5e1 !important;
     }
 
-    /* Table tfoot di Mode Gelap */
-    html.dark .admin-panel table tfoot {
+    /* Pagination Bar di Mode Gelap */
+    html.dark .admin-panel .admin-pagination-bar {
       background-color: #0f172a !important;
       border-color: #334155 !important;
-      color: #f8fafc !important;
+      color: #e2e8f0 !important;
     }
-    html.dark .admin-panel table tfoot td {
-      color: #f8fafc !important;
-      border-color: #334155 !important;
+    html.dark .admin-panel .admin-pagination-bar select,
+    html.dark .admin-panel .admin-pagination-bar button {
+      background-color: #1e293b !important;
+      border-color: #475569 !important;
+      color: #ffffff !important;
     }
-
-    /* Row Tint Booking Jadwal di Mode Gelap */
-    html.dark .admin-panel .bg-sky-50,
-    html.dark .admin-panel [class*="bg-sky-50"] {
-      background-color: rgba(12, 74, 110, 0.4) !important;
-    }
-    html.dark .admin-panel .bg-amber-50,
-    html.dark .admin-panel [class*="bg-amber-50"] {
-      background-color: rgba(120, 53, 15, 0.4) !important;
-    }
-    html.dark .admin-panel .bg-rose-50,
-    html.dark .admin-panel [class*="bg-rose-50"] {
-      background-color: rgba(136, 19, 55, 0.4) !important;
-    }
-    html.dark .admin-panel .bg-emerald-50,
-    html.dark .admin-panel [class*="bg-emerald-50"],
-    html.dark .admin-panel .bg-teal-50,
-    html.dark .admin-panel [class*="bg-teal-50"] {
-      background-color: rgba(6, 78, 59, 0.4) !important;
+    html.dark .admin-panel .admin-pagination-bar button:hover:not(:disabled) {
+      background-color: #334155 !important;
+      color: #ffffff !important;
     }
 
-    /* Badges Status & Pill di Mode Gelap agar Kontras Tinggi */
-    html.dark .admin-panel .bg-amber-100 {
-      background-color: #78350f !important;
-      color: #fef08a !important;
-      border: 1px solid #92400e !important;
-    }
-    html.dark .admin-panel .bg-emerald-100 {
-      background-color: #064e3b !important;
-      color: #a7f3d0 !important;
-      border: 1px solid #065f46 !important;
-    }
-    html.dark .admin-panel .bg-rose-100 {
-      background-color: #881337 !important;
-      color: #fecdd3 !important;
-      border: 1px solid #9f1239 !important;
-    }
-    html.dark .admin-panel .bg-sky-100 {
-      background-color: #0c4a6e !important;
-      color: #bae6fd !important;
-      border: 1px solid #0284c7 !important;
-    }
-    html.dark .admin-panel .bg-tosca-100 {
-      background-color: #134e4a !important;
-      color: #5eead4 !important;
-      border: 1px solid #115e59 !important;
-    }
-    html.dark .admin-panel .bg-purple-100,
-    html.dark .admin-panel .bg-purple-50 {
-      background-color: #3b0764 !important;
-      color: #e9d5ff !important;
-      border: 1px solid #581c87 !important;
-    }
-
-    /* Teks Warna Spesifik agar Tajam di Mode Gelap */
-    html.dark .admin-panel .text-amber-800,
-    html.dark .admin-panel .text-amber-700 {
-      color: #fef08a !important;
-    }
-    html.dark .admin-panel .text-emerald-800,
-    html.dark .admin-panel .text-emerald-700 {
-      color: #6ee7b7 !important;
-    }
-    html.dark .admin-panel .text-rose-800,
-    html.dark .admin-panel .text-rose-700 {
-      color: #fda4af !important;
-    }
-    html.dark .admin-panel .text-tosca-800,
-    html.dark .admin-panel .text-tosca-700 {
-      color: #5eead4 !important;
-    }
-    html.dark .admin-panel .text-purple-700,
-    html.dark .admin-panel .text-purple-800 {
-      color: #d8b4fe !important;
+    /* Mobile Quick Nav & Drawer di Mode Gelap */
+    @media (max-width: 768px) {
+      html.dark .admin-panel [class*="text-slate-400"] {
+        color: #cbd5e1 !important;
+        font-weight: 700 !important;
+      }
+      html.dark .admin-panel [class*="text-slate-500"] {
+        color: #f1f5f9 !important;
+        font-weight: 600 !important;
+      }
+      html.dark .admin-panel label {
+        color: #ffffff !important;
+        font-weight: 700 !important;
+      }
     }
 
     /* Modal Tambah/Edit Kunjungan Kompak (Fullscreen Bebas Scroll Khusus Layar Desktop >= 1024px) */
