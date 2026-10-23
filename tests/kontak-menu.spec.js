@@ -18,13 +18,21 @@ test('Verify Kontak menu on bottom nav: position, logo, address, whatsapp, email
   const navKontakSvg = navKontak.locator('svg');
   await expect(navKontakSvg).toBeVisible();
 
-  // 3. Verifikasi posisi Kontak adalah item paling kanan di bottom nav
+  // 3. Verifikasi posisi Kontak adalah item tepat di sebelah kanan Galeri
   const allNavLinks = page.locator('.safe-bottom-nav a');
   const count = await allNavLinks.count();
   expect(count).toBeGreaterThanOrEqual(4);
 
-  const lastLink = allNavLinks.nth(count - 1);
-  await expect(lastLink).toHaveAttribute('href', '#/kontak');
+  // Cari index tombol Galeri dan Kontak
+  let galeriIdx = -1;
+  let kontakIdx = -1;
+  for (let i = 0; i < count; i++) {
+    const href = await allNavLinks.nth(i).getAttribute('href');
+    if (href === '#/galeri') galeriIdx = i;
+    if (href === '#/kontak') kontakIdx = i;
+  }
+  expect(galeriIdx).toBeGreaterThanOrEqual(0);
+  expect(kontakIdx).toBe(galeriIdx + 1); // Kontak harus tepat di sebelah kanan Galeri
 
   const kontakBox = await navKontak.boundingBox();
   const firstLinkBox = await allNavLinks.first().boundingBox();
@@ -79,4 +87,33 @@ test('Verify Kontak menu on bottom nav: position, logo, address, whatsapp, email
   await page.waitForTimeout(400);
   await expect(heading).toBeVisible();
   await expect(navKontak).toHaveClass(/text-tosca-700/); // Status aktif
+
+  // 12. Verifikasi urutan menu setelah Admin login: Kontak di kanan Galeri, Admin di paling kanan
+  await page.goto(filePath + '#/admin', { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(500);
+  await page.fill('input[placeholder*="admin atau email" i]', 'denluckyman@gmail.com');
+  await page.fill('input[placeholder*="kata sandi" i]', '111111111');
+  const submitLogin = page.locator('button[type="submit"]:has-text("Masuk sebagai Pengelola")');
+  await submitLogin.click();
+  await page.waitForTimeout(800);
+
+  // Kembali ke halaman beranda publik
+  const webPasienBtn = page.locator('a[title*="Web Pasien"], a[href="#/home"]');
+  await webPasienBtn.first().click();
+  await page.waitForTimeout(600);
+
+  const navLinksAfterLogin = page.locator('.safe-bottom-nav a');
+  const loggedInCount = await navLinksAfterLogin.count();
+  const lastLinkAfterLogin = navLinksAfterLogin.nth(loggedInCount - 1);
+  await expect(lastLinkAfterLogin).toHaveAttribute('href', '#/admin'); // Admin di paling kanan
+
+  let galeriIdxLoggedIn = -1;
+  let kontakIdxLoggedIn = -1;
+  for (let i = 0; i < loggedInCount; i++) {
+    const href = await navLinksAfterLogin.nth(i).getAttribute('href');
+    if (href === '#/galeri') galeriIdxLoggedIn = i;
+    if (href === '#/kontak') kontakIdxLoggedIn = i;
+  }
+  expect(galeriIdxLoggedIn).toBeGreaterThanOrEqual(0);
+  expect(kontakIdxLoggedIn).toBe(galeriIdxLoggedIn + 1); // Kontak tetap di sebelah kanan Galeri
 });
