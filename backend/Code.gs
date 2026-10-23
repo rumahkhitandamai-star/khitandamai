@@ -288,6 +288,13 @@ const DEFAULT_RUNNING_TEXT = {
 
 const ALLOWED_RUNNING_TEXT_FONTS = ["Inter", "Poppins", "Montserrat", "Roboto", "Nunito", "Open Sans"];
 
+// Hero Card / Featuring Card Default Text (3 Kelompok: badge/span, title/h2, description/p)
+const DEFAULT_HERO_CARD = {
+  badgeText: "Layanan Khitan Modern & Nyaman",
+  titleText: "Pengalaman Khitan Ceria & Ramah Anak di Subang",
+  descriptionText: "Setiap anak hebat, dan setiap momen berharganya layak dirayakan dengan damai. di Khitan Damai, kami percaya khitan bukan momen yang menakutkan, tapi langkah berani pertama si kecil menuju tumbuh dewasa. Dengan metode modern minim nyeri, Praktisi Khitan berpengalaman, dan suasana yang ramah anak, Ananda bisa khitan sambil senyum."
+};
+
 const SLIDESHOW_FOLDER_ID = "1mWB837id7QPGcU1ZyYcsX3C1_sxnsA40";
 const SLIDESHOW_MAX_IMAGES = 8;
 const SLIDESHOW_MAX_BYTES = 2 * 1024 * 1024; // 2MB
@@ -528,6 +535,7 @@ function readSettings(forceRefresh) {
   const lastRow = sheet.getLastRow();
   const settings = {
     running_text: Object.assign({}, DEFAULT_RUNNING_TEXT),
+    hero_card: Object.assign({}, DEFAULT_HERO_CARD),
     slideshow: DEFAULT_SLIDESHOW.slice(),
     metode: DEFAULT_METODE.slice(),
     program: Object.assign({}, DEFAULT_PROGRAM),
@@ -537,6 +545,7 @@ function readSettings(forceRefresh) {
   if (lastRow > 1) {
     const values = sheet.getRange(2, 1, lastRow - 1, 2).getValues();
     let hasReadRunningText = false;
+    let hasReadHeroCard = false;
     let hasReadSlideshow = false;
     let hasReadMetode = false;
     let hasReadProgram = false;
@@ -549,6 +558,14 @@ function readSettings(forceRefresh) {
           const parsed = JSON.parse(valStr);
           settings.running_text = Object.assign({}, DEFAULT_RUNNING_TEXT, parsed);
           hasReadRunningText = true;
+        } catch (e) {
+          // Abaikan error parse, pakai default
+        }
+      } else if (key === "hero_card" && valStr !== "" && !hasReadHeroCard) {
+        try {
+          const parsed = JSON.parse(valStr);
+          settings.hero_card = sanitizeHeroCard(parsed);
+          hasReadHeroCard = true;
         } catch (e) {
           // Abaikan error parse, pakai default
         }
@@ -646,6 +663,40 @@ function sanitizeRunningText(input) {
     bgColor: bgColor,
     speed: speed,
     visible: visible
+  };
+}
+
+/**
+ * Validasi dan normalisasi konfigurasi Hero Card / Featuring Card Beranda publik
+ * Dibagi menjadi 3 kelompok teks: badge (span), title (h2), dan description (p)
+ */
+function sanitizeHeroCard(input) {
+  const cfg = input || {};
+  let badgeText = String(cfg.badgeText || "").trim();
+  if (!badgeText) {
+    badgeText = DEFAULT_HERO_CARD.badgeText;
+  } else if (badgeText.length > 100) {
+    badgeText = badgeText.substring(0, 100);
+  }
+
+  let titleText = String(cfg.titleText || "").trim();
+  if (!titleText) {
+    titleText = DEFAULT_HERO_CARD.titleText;
+  } else if (titleText.length > 200) {
+    titleText = titleText.substring(0, 200);
+  }
+
+  let descriptionText = String(cfg.descriptionText || "").trim();
+  if (!descriptionText) {
+    descriptionText = DEFAULT_HERO_CARD.descriptionText;
+  } else if (descriptionText.length > 1000) {
+    descriptionText = descriptionText.substring(0, 1000);
+  }
+
+  return {
+    badgeText: badgeText,
+    titleText: titleText,
+    descriptionText: descriptionText
   };
 }
 
@@ -4271,6 +4322,16 @@ function doPost(e) {
         savedSomething = true;
       }
 
+      // Simpan Hero Card jika disertakan
+      const heroCardRaw = data.hero_card || data.heroCard;
+      if (heroCardRaw && typeof heroCardRaw === "object") {
+        const cleanHeroCard = sanitizeHeroCard(heroCardRaw);
+        upsertSettingRow(sheet, "hero_card", JSON.stringify(cleanHeroCard), now);
+        responseData.hero_card = cleanHeroCard;
+        savedMessages.push("hero card");
+        savedSomething = true;
+      }
+
       // Simpan Slideshow jika disertakan
       if (data.slideshow && Array.isArray(data.slideshow)) {
         const cleanSlideshow = sanitizeSlideshow(data.slideshow);
@@ -4330,7 +4391,7 @@ function doPost(e) {
       if (!savedSomething) {
         return createJsonResponse({
           status: "error",
-          message: "Data pengaturan yang valid (running_text, slideshow, metode, program, atau testimoni) wajib disertakan."
+          message: "Data pengaturan yang valid (running_text, hero_card, slideshow, metode, program, atau testimoni) wajib disertakan."
         });
       }
 

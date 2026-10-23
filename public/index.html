@@ -4093,13 +4093,13 @@
         <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-tosca-700 via-tosca-600 to-teal-500 text-white p-5 shadow-lg text-center flex flex-col items-center">
           <div class="relative z-10 space-y-2.5 flex flex-col items-center w-full max-w-sm mx-auto">
             <span class="inline-block text-[11px] font-bold uppercase tracking-wider bg-white/20 backdrop-blur-sm px-2.5 py-1 rounded-full text-white mx-auto">
-              Layanan Khitan Modern & Nyaman
+              {{ heroCardConfig.badgeText || 'Layanan Khitan Modern & Nyaman' }}
             </span>
             <h2 class="text-xl font-extrabold leading-snug">
-              Pengalaman Khitan Ceria & Ramah Anak di Subang
+              {{ heroCardConfig.titleText || 'Pengalaman Khitan Ceria & Ramah Anak di Subang' }}
             </h2>
             <p class="text-xs text-teal-50 leading-relaxed max-w-xs mx-auto">
-              Setiap anak hebat, dan setiap momen berharganya layak dirayakan dengan damai. di Khitan Damai, kami percaya khitan bukan momen yang menakutkan, tapi langkah berani pertama si kecil menuju tumbuh dewasa. Dengan metode modern minim nyeri, Praktisi Khitan berpengalaman, dan suasana yang ramah anak, Ananda bisa khitan sambil senyum.
+              {{ heroCardConfig.descriptionText || 'Setiap anak hebat, dan setiap momen berharganya layak dirayakan dengan damai. di Khitan Damai, kami percaya khitan bukan momen yang menakutkan, tapi langkah berani pertama si kecil menuju tumbuh dewasa. Dengan metode modern minim nyeri, Praktisi Khitan berpengalaman, dan suasana yang ramah anak, Ananda bisa khitan sambil senyum.' }}
             </p>
             <div class="pt-2 flex justify-center items-center w-full">
               <!-- Tombol Daftar Sekarang -->
@@ -9015,6 +9015,147 @@
                   </div>
                 </div>
 
+                <!-- Form Pengaturan Hero Card / Featuring Card Beranda Publik -->
+                <div v-else-if="settingActiveSection === 'herocard'" class="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs space-y-4">
+                  <!-- Header Card & Actions -->
+                  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                    <div class="flex items-center gap-2">
+                      <span class="w-2.5 h-4 bg-tosca-600 rounded-xs"></span>
+                      <div>
+                        <h4 class="text-xs sm:text-sm font-bold text-slate-800">
+                          Pengaturan Hero Card / Featuring Card (Beranda Publik)
+                        </h4>
+                        <p class="text-[11px] text-slate-500">Sesuaikan teks badge (span), judul utama (h2), dan narasi deskripsi (p) pada kartu beranda pasien.</p>
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                      <button 
+                        type="button" 
+                        @click="resetHeroCardDraft"
+                        class="px-2.5 py-1 text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-semibold transition btn-press"
+                        title="Kembalikan draft ke nilai bawaan"
+                      >
+                        ↩️ Reset Default
+                      </button>
+                      <button 
+                        type="button" 
+                        @click="saveHeroCardSettings"
+                        :disabled="isSavingSettings"
+                        :class="hasUnsavedHeroCardChanges ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md hover:from-emerald-700 hover:to-teal-700 animate-pulse' : 'bg-tosca-700 hover:bg-tosca-800 text-white shadow-xs'"
+                        class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 btn-press disabled:opacity-50"
+                      >
+                        <v-icon name="rotate" class="animate-spin text-xs" v-if="isSavingSettings"></v-icon>
+                        <v-icon name="floppy-disk" v-else></v-icon>
+                        <span>Simpan Pengaturan</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Banner Perubahan Hero Card Belum Disimpan -->
+                  <div v-if="hasUnsavedHeroCardChanges" class="p-3 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-800 flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2 min-w-0">
+                      <v-icon name="triangle-exclamation" class="text-base shrink-0 animate-bounce"></v-icon>
+                      <span class="font-medium">Ada perubahan teks Hero Card yang belum disimpan ke database. Klik <b>"Simpan Pengaturan"</b> agar perubahan langsung diterapkan pada beranda pasien.</span>
+                    </div>
+                    <button type="button" @click="saveHeroCardSettings" :disabled="isSavingSettings" class="shrink-0 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-[11px] transition">
+                      Simpan Sekarang
+                    </button>
+                  </div>
+
+                  <!-- Live Preview Langsung -->
+                  <div class="space-y-1.5">
+                    <div class="flex items-center justify-between text-xs">
+                      <span class="font-bold text-slate-700 flex items-center gap-1.5">
+                        <v-icon name="magnifying-glass"></v-icon>
+                        <span>Preview Langsung (Sebelum Disimpan)</span>
+                      </span>
+                      <span class="text-[10px] text-slate-400">Tampilan persis kartu beranda publik yang dilihat pengunjung</span>
+                    </div>
+
+                    <!-- Box Hero Card Preview -->
+                    <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-tosca-700 via-tosca-600 to-teal-500 text-white p-5 shadow-lg text-center flex flex-col items-center">
+                      <div class="relative z-10 space-y-2.5 flex flex-col items-center w-full max-w-sm mx-auto">
+                        <span class="inline-block text-[11px] font-bold uppercase tracking-wider backdrop-blur-sm px-2.5 py-1 rounded-full mx-auto" style="background-color: rgba(255, 255, 255, 0.2) !important; color: #ffffff !important;">
+                          {{ heroCardDraft.badgeText || 'Layanan Khitan Modern & Nyaman' }}
+                        </span>
+                        <h2 class="text-xl font-extrabold leading-snug" style="color: #ffffff !important;">
+                          {{ heroCardDraft.titleText || 'Pengalaman Khitan Ceria & Ramah Anak di Subang' }}
+                        </h2>
+                        <p class="text-xs leading-relaxed max-w-xs mx-auto" style="color: #f0fdfa !important;">
+                          {{ heroCardDraft.descriptionText || 'Setiap anak hebat, dan setiap momen berharganya layak dirayakan dengan damai. di Khitan Damai, kami percaya khitan bukan momen yang menakutkan, tapi langkah berani pertama si kecil menuju tumbuh dewasa. Dengan metode modern minim nyeri, Praktisi Khitan berpengalaman, dan suasana yang ramah anak, Ananda bisa khitan sambil senyum.' }}
+                        </p>
+                        <div class="pt-2 flex justify-center items-center w-full">
+                          <div class="w-full h-[40px] text-xs font-bold px-4 rounded-xl flex items-center justify-center gap-1.5 shadow-sm opacity-90 cursor-default" style="background-color: #fbbf24 !important; color: #0f172a !important;">
+                            <span>Daftar Sekarang (Tombol Publik)</span>
+                            <v-icon name="arrow-right-from-bracket" class="rotate-[-45deg] text-xs"></v-icon>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="absolute -right-8 -bottom-8 w-36 h-36 rounded-full blur-xl pointer-events-none" style="background-color: rgba(255, 255, 255, 0.1) !important;"></div>
+                    </div>
+                  </div>
+
+                  <!-- 3 Kelompok Pengaturan Teks (Span, H2, P) -->
+                  <div class="space-y-4 pt-2">
+                    <!-- Kelompok 1: Span (Badge Atas) -->
+                    <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+                      <div class="flex items-center justify-between">
+                        <label class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <span class="w-5 h-5 rounded-full bg-tosca-100 text-tosca-700 flex items-center justify-center text-[10px] font-extrabold">1</span>
+                          <span>Kelompok Teks Badge (Span Atas)</span>
+                        </label>
+                        <span class="text-[10px] font-mono text-slate-400">{{ (heroCardDraft.badgeText || '').length }}/100</span>
+                      </div>
+                      <p class="text-[11px] text-slate-500">Elemen <code>&lt;span&gt;</code> kecil berlatar transparan di posisi paling atas kartu. Digunakan untuk badge status atau kategori layanan.</p>
+                      <input 
+                        type="text" 
+                        v-model="heroCardDraft.badgeText"
+                        maxlength="100"
+                        placeholder="Contoh: Layanan Khitan Modern & Nyaman"
+                        class="w-full p-2.5 text-xs bg-white border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-tosca-500 transition"
+                      >
+                    </div>
+
+                    <!-- Kelompok 2: H2 (Judul Utama / Tagline) -->
+                    <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+                      <div class="flex items-center justify-between">
+                        <label class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <span class="w-5 h-5 rounded-full bg-tosca-100 text-tosca-700 flex items-center justify-center text-[10px] font-extrabold">2</span>
+                          <span>Kelompok Judul Utama (H2 Class)</span>
+                        </label>
+                        <span class="text-[10px] font-mono text-slate-400">{{ (heroCardDraft.titleText || '').length }}/200</span>
+                      </div>
+                      <p class="text-[11px] text-slate-500">Elemen <code>&lt;h2 class="text-xl font-extrabold"&gt;</code> sebagai tajuk utama/headline kartu. Berisi pesan paling mencolok untuk calon pasien.</p>
+                      <input 
+                        type="text" 
+                        v-model="heroCardDraft.titleText"
+                        maxlength="200"
+                        placeholder="Contoh: Pengalaman Khitan Ceria & Ramah Anak di Subang"
+                        class="w-full p-2.5 text-xs bg-white border border-slate-200 rounded-xl text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-tosca-500 transition"
+                      >
+                    </div>
+
+                    <!-- Kelompok 3: P (Narasi Deskripsi) -->
+                    <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+                      <div class="flex items-center justify-between">
+                        <label class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <span class="w-5 h-5 rounded-full bg-tosca-100 text-tosca-700 flex items-center justify-center text-[10px] font-extrabold">3</span>
+                          <span>Kelompok Narasi & Deskripsi (P Class)</span>
+                        </label>
+                        <span class="text-[10px] font-mono text-slate-400">{{ (heroCardDraft.descriptionText || '').length }}/800</span>
+                      </div>
+                      <p class="text-[11px] text-slate-500">Elemen <code>&lt;p class="text-xs text-teal-50"&gt;</code> paragraf narasi di bawah judul yang menceritakan nilai dan kehangatan pengalaman khitan di klinik.</p>
+                      <textarea 
+                        rows="4" 
+                        v-model="heroCardDraft.descriptionText"
+                        maxlength="800"
+                        placeholder="Tuliskan narasi penjelasan klinik untuk calon pasien..."
+                        class="w-full p-2.5 text-xs bg-white border border-slate-200 rounded-xl text-slate-800 leading-relaxed focus:outline-none focus:ring-2 focus:ring-tosca-500 transition"
+                      ></textarea>
+                    </div>
+                  </div>
+                </div>
+
                 <!-- Pengaturan Foto Slideshow Beranda (Google Drive & Sheet SETTING) -->
                 <div v-else-if="settingActiveSection === 'slideshow'" class="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs space-y-4">
                   <!-- Header Card & Aksi Simpan -->
@@ -11782,6 +11923,11 @@
         speed: 22,
         visible: true
       },
+      hero_card: {
+        badgeText: "Layanan Khitan Modern & Nyaman",
+        titleText: "Pengalaman Khitan Ceria & Ramah Anak di Subang",
+        descriptionText: "Setiap anak hebat, dan setiap momen berharganya layak dirayakan dengan damai. di Khitan Damai, kami percaya khitan bukan momen yang menakutkan, tapi langkah berani pertama si kecil menuju tumbuh dewasa. Dengan metode modern minim nyeri, Praktisi Khitan berpengalaman, dan suasana yang ramah anak, Ananda bisa khitan sambil senyum."
+      },
       slideshow: [
         { fileId: "1D8EGx8zgJm6Iu_VYcO2C6oV9dcVvrYse", src: "https://lh3.googleusercontent.com/d/1D8EGx8zgJm6Iu_VYcO2C6oV9dcVvrYse=w1200", alt: "Booking Praktis - Khitan Damai" },
         { fileId: "18rfxkZz9kZj9ZrUc91Kgc7rNAMnhcbiI", src: "https://lh3.googleusercontent.com/d/18rfxkZz9kZj9ZrUc91Kgc7rNAMnhcbiI=w1200", alt: "Metode Modern - Khitan Damai" },
@@ -12103,6 +12249,22 @@
         const resetRunningTextDraft = () => {
           settingsDraft.value = Object.assign({}, DEFAULT_RUNNING_TEXT);
           showToastNotification('Draft running text dikembalikan ke nilai bawaan.');
+        };
+
+        // Hero Card / Featuring Card Setting (Akses Publik Beranda)
+        const DEFAULT_HERO_CARD = {
+          badgeText: "Layanan Khitan Modern & Nyaman",
+          titleText: "Pengalaman Khitan Ceria & Ramah Anak di Subang",
+          descriptionText: "Setiap anak hebat, dan setiap momen berharganya layak dirayakan dengan damai. di Khitan Damai, kami percaya khitan bukan momen yang menakutkan, tapi langkah berani pertama si kecil menuju tumbuh dewasa. Dengan metode modern minim nyeri, Praktisi Khitan berpengalaman, dan suasana yang ramah anak, Ananda bisa khitan sambil senyum."
+        };
+
+        const heroCardConfig = ref(Object.assign({}, DEFAULT_HERO_CARD));
+        const heroCardDraft = ref(Object.assign({}, DEFAULT_HERO_CARD));
+        const hasLoadedHeroCard = ref(false);
+
+        const resetHeroCardDraft = () => {
+          heroCardDraft.value = Object.assign({}, DEFAULT_HERO_CARD);
+          showToastNotification('Draft Hero Card dikembalikan ke nilai bawaan.');
         };
 
         // ================= SISTEM CACHE SNAPSHOT & SINKRONISASI DATABASE =================
@@ -12800,6 +12962,16 @@
               hasLoadedSettings.value = true;
             }
           }
+          if (settingsData.hero_card) {
+            if (JSON.stringify(heroCardConfig.value) !== JSON.stringify(settingsData.hero_card)) {
+              hasChanges = true;
+            }
+            heroCardConfig.value = Object.assign({}, DEFAULT_HERO_CARD, settingsData.hero_card);
+            if (!hasLoadedHeroCard.value) {
+              heroCardDraft.value = Object.assign({}, heroCardConfig.value);
+              hasLoadedHeroCard.value = true;
+            }
+          }
           if (Array.isArray(settingsData.slideshow)) {
             if (JSON.stringify(slideshowConfig.value) !== JSON.stringify(settingsData.slideshow)) {
               hasChanges = true;
@@ -12855,6 +13027,12 @@
                 settingsDraft.value = Object.assign({}, runningTextConfig.value);
                 hasLoadedSettings.value = true;
               }
+              const mockHero = LOCAL_MOCK_SETTINGS.hero_card || DEFAULT_HERO_CARD;
+              heroCardConfig.value = Object.assign({}, DEFAULT_HERO_CARD, mockHero);
+              if (!hasLoadedHeroCard.value) {
+                heroCardDraft.value = Object.assign({}, heroCardConfig.value);
+                hasLoadedHeroCard.value = true;
+              }
               const mockSlides = (LOCAL_MOCK_SETTINGS.slideshow && LOCAL_MOCK_SETTINGS.slideshow.length > 0)
                 ? LOCAL_MOCK_SETTINGS.slideshow
                 : DEFAULT_SLIDESHOW;
@@ -12889,6 +13067,7 @@
               }
               saveCacheSnapshot('settings', {
                 running_text: runningTextConfig.value,
+                hero_card: heroCardConfig.value,
                 slideshow: slideshowConfig.value,
                 metode: metodeConfig.value,
                 program: programConfig.value,
@@ -12959,6 +13138,7 @@
               runningTextConfig.value = Object.assign({}, settingsDraft.value);
               saveCacheSnapshot('settings', {
                 running_text: runningTextConfig.value,
+                hero_card: heroCardConfig.value,
                 slideshow: slideshowConfig.value,
                 metode: metodeConfig.value,
                 program: programConfig.value,
@@ -13054,6 +13234,121 @@
           });
         };
 
+        const executeSaveHeroCardSettings = async () => {
+          isSavingSettings.value = true;
+          const token = (adminUser.value && adminUser.value.token) ? adminUser.value.token : '';
+          const payload = {
+            action: 'saveSettings',
+            token: token,
+            data: {
+              hero_card: heroCardDraft.value
+            }
+          };
+
+          try {
+            if (USE_MOCK) {
+              await new Promise(resolve => setTimeout(resolve, 400));
+              LOCAL_MOCK_SETTINGS.hero_card = Object.assign({}, heroCardDraft.value);
+              heroCardConfig.value = Object.assign({}, heroCardDraft.value);
+              saveCacheSnapshot('settings', {
+                running_text: runningTextConfig.value,
+                hero_card: heroCardConfig.value,
+                slideshow: slideshowConfig.value,
+                metode: metodeConfig.value,
+                program: programConfig.value,
+                testimoni: testimoniConfig.value
+              });
+              recordSyncEntry({
+                type: 'perubahan',
+                target: 'settings',
+                status: 'success',
+                message: 'Pengaturan Hero Card disimpan ke database (Mode Mock)'
+              });
+              showToastNotification('Pengaturan Hero Card berhasil disimpan (Mode Mock).');
+            } else {
+              const res = await fetch(GAS_ENDPOINT_URL, {
+                method: 'POST',
+                redirect: 'follow',
+                headers: {
+                  'Content-Type': 'text/plain;charset=utf-8'
+                },
+                body: JSON.stringify(payload)
+              });
+              const json = await parseApiResponse(res);
+              if (json.status === 'success') {
+                if (json.data && json.data.hero_card) {
+                  heroCardConfig.value = Object.assign({}, json.data.hero_card);
+                  heroCardDraft.value = Object.assign({}, json.data.hero_card);
+                } else {
+                  heroCardConfig.value = Object.assign({}, heroCardDraft.value);
+                }
+                saveCacheSnapshot('settings', {
+                  running_text: runningTextConfig.value,
+                  hero_card: heroCardConfig.value,
+                  slideshow: slideshowConfig.value,
+                  metode: metodeConfig.value,
+                  program: programConfig.value,
+                  testimoni: testimoniConfig.value
+                });
+                recordSyncEntry({
+                  type: 'perubahan',
+                  target: 'settings',
+                  status: 'success',
+                  message: 'Pengaturan Hero Card berhasil disimpan ke database.'
+                });
+                showToastNotification(json.message || 'Pengaturan Hero Card berhasil disimpan.');
+              } else if (json.code === 'unauthorized') {
+                openAlertDialog({
+                  type: 'warning',
+                  title: 'Sesi Berakhir',
+                  message: json.message || 'Sesi admin berakhir. Silakan login kembali.'
+                });
+                forceRelogin(json.message);
+              } else {
+                openAlertDialog({
+                  type: 'danger',
+                  title: 'Gagal Menyimpan',
+                  message: json.message || 'Gagal menyimpan pengaturan Hero Card ke database.'
+                });
+              }
+            }
+          } catch (err) {
+            console.error('Save Hero Card settings error:', err);
+            openAlertDialog({
+              type: 'danger',
+              title: 'Kesalahan Sistem',
+              message: 'Terjadi kesalahan koneksi saat menyimpan pengaturan Hero Card.'
+            });
+          } finally {
+            isSavingSettings.value = false;
+          }
+        };
+
+        const saveHeroCardSettings = () => {
+          if (isSavingSettings.value) return;
+
+          const title = String(heroCardDraft.value.titleText || '').trim();
+          if (!title) {
+            openAlertDialog({
+              type: 'warning',
+              title: 'Judul Wajib Diisi',
+              message: 'Judul utama (H2) Hero Card tidak boleh kosong.'
+            });
+            return;
+          }
+
+          openConfirmDialog({
+            type: 'info',
+            title: 'Simpan Pengaturan Hero Card?',
+            message: 'Perubahan teks akan langsung diterapkan pada kartu selamat datang beranda seluruh akses publik pasien.',
+            confirmText: 'YA, SIMPAN',
+            cancelText: 'BATAL',
+            onConfirm: () => {
+              executeSaveHeroCardSettings();
+            }
+          });
+        };
+
         // Slideshow Keunggulan Layanan & Pengaturan Foto (Google Drive & SETTINGS)
         const DEFAULT_SLIDESHOW = [
           { fileId: "1D8EGx8zgJm6Iu_VYcO2C6oV9dcVvrYse", src: "https://lh3.googleusercontent.com/d/1D8EGx8zgJm6Iu_VYcO2C6oV9dcVvrYse=w1200", alt: "Booking Praktis - Khitan Damai" },
@@ -13078,6 +13373,10 @@
 
         const hasUnsavedRunningTextChanges = computed(() => {
           return JSON.stringify(settingsDraft.value) !== JSON.stringify(runningTextConfig.value);
+        });
+
+        const hasUnsavedHeroCardChanges = computed(() => {
+          return JSON.stringify(heroCardDraft.value) !== JSON.stringify(heroCardConfig.value);
         });
 
         const hasUnsavedSlideshowChanges = computed(() => {
@@ -13285,6 +13584,7 @@
               slideshowConfig.value = JSON.parse(JSON.stringify(slideshowDraft.value));
               saveCacheSnapshot('settings', {
                 running_text: runningTextConfig.value,
+                hero_card: heroCardConfig.value,
                 slideshow: slideshowConfig.value,
                 metode: metodeConfig.value,
                 program: programConfig.value,
@@ -13680,6 +13980,7 @@
               metodeDraft.value = JSON.parse(JSON.stringify(cleanDraft));
               saveCacheSnapshot('settings', {
                 running_text: runningTextConfig.value,
+                hero_card: heroCardConfig.value,
                 slideshow: slideshowConfig.value,
                 metode: metodeConfig.value,
                 program: programConfig.value,
@@ -13940,6 +14241,7 @@
               programDraft.value = cleanDraft ? JSON.parse(JSON.stringify(cleanDraft)) : null;
               saveCacheSnapshot('settings', {
                 running_text: runningTextConfig.value,
+                hero_card: heroCardConfig.value,
                 slideshow: slideshowConfig.value,
                 metode: metodeConfig.value,
                 program: programConfig.value,
@@ -14037,6 +14339,7 @@
         const unsavedSettingSections = computed(() => {
           const list = [];
           if (hasUnsavedRunningTextChanges.value) list.push('Running Text');
+          if (hasUnsavedHeroCardChanges.value) list.push('Hero Card / Featuring Card');
           if (hasUnsavedSlideshowChanges.value) list.push('Foto Slideshow Beranda');
           if (hasUnsavedMetodeChanges.value) list.push('Foto Metode Beranda');
           if (hasUnsavedProgramChanges.value) list.push('Foto Card Program');
@@ -14050,6 +14353,7 @@
 
         const discardAllSettingDrafts = () => {
           settingsDraft.value = Object.assign({}, runningTextConfig.value);
+          heroCardDraft.value = Object.assign({}, heroCardConfig.value);
           slideshowDraft.value = JSON.parse(JSON.stringify(slideshowConfig.value));
           metodeDraft.value = JSON.parse(JSON.stringify(metodeConfig.value));
           programDraft.value = programConfig.value ? JSON.parse(JSON.stringify(programConfig.value)) : null;
@@ -14272,6 +14576,7 @@
               testimoniDraft.value = JSON.parse(JSON.stringify(cleanDraft));
               saveCacheSnapshot('settings', {
                 running_text: runningTextConfig.value,
+                hero_card: heroCardConfig.value,
                 slideshow: slideshowConfig.value,
                 metode: metodeConfig.value,
                 program: programConfig.value,
@@ -15810,15 +16115,16 @@
 
         // Sub-Menu Navigasi Menu Setting
         const settingSections = [
-          { id: 'profil',       label: 'Profil Klinik',        icon: 'fa-solid fa-hospital' },
-          { id: 'runningtext',  label: 'Running Text',         icon: 'fa-solid fa-bullhorn' },
-          { id: 'slideshow',    label: 'Foto Slideshow',       icon: 'fa-solid fa-images' },
-          { id: 'metode',       label: 'Foto Metode',          icon: 'fa-solid fa-stethoscope' },
-          { id: 'program',      label: 'Foto Card Program',    icon: 'fa-solid fa-gift' },
-          { id: 'testimoni',    label: 'Testimoni Publik',     icon: 'fa-solid fa-star' },
-          { id: 'database',     label: 'Koneksi Database',     icon: 'fa-solid fa-database' },
-          { id: 'sync',         label: 'Sinkronisasi & Cache', icon: 'fa-solid fa-rotate' },
-          { id: 'backup',       label: 'Backup Database',      icon: 'fa-solid fa-floppy-disk' },
+          { id: 'profil',       label: 'Profil Klinik',              icon: 'fa-solid fa-hospital' },
+          { id: 'runningtext',  label: 'Running Text',               icon: 'fa-solid fa-bullhorn' },
+          { id: 'herocard',     label: 'Hero Card / Featuring Card', icon: 'fa-solid fa-id-card' },
+          { id: 'slideshow',    label: 'Foto Slideshow',             icon: 'fa-solid fa-images' },
+          { id: 'metode',       label: 'Foto Metode',                icon: 'fa-solid fa-stethoscope' },
+          { id: 'program',      label: 'Foto Card Program',          icon: 'fa-solid fa-gift' },
+          { id: 'testimoni',    label: 'Testimoni Publik',           icon: 'fa-solid fa-star' },
+          { id: 'database',     label: 'Koneksi Database',           icon: 'fa-solid fa-database' },
+          { id: 'sync',         label: 'Sinkronisasi & Cache',       icon: 'fa-solid fa-rotate' },
+          { id: 'backup',       label: 'Backup Database',            icon: 'fa-solid fa-floppy-disk' },
         ];
 
         const settingActiveSection = ref('profil');
@@ -16333,6 +16639,9 @@
             }
             if (!hasUnsavedRunningTextChanges.value) {
               settingsDraft.value = Object.assign({}, runningTextConfig.value);
+            }
+            if (!hasUnsavedHeroCardChanges.value) {
+              heroCardDraft.value = Object.assign({}, heroCardConfig.value);
             }
             if (!hasUnsavedSlideshowChanges.value) {
               slideshowDraft.value = JSON.parse(JSON.stringify(slideshowConfig.value));
@@ -22184,6 +22493,13 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
                 hasLoadedSettings.value = true;
               }
             }
+            if (cachedSettings.hero_card) {
+              heroCardConfig.value = Object.assign({}, DEFAULT_HERO_CARD, cachedSettings.hero_card);
+              if (!hasLoadedHeroCard.value) {
+                heroCardDraft.value = Object.assign({}, heroCardConfig.value);
+                hasLoadedHeroCard.value = true;
+              }
+            }
             if (Array.isArray(cachedSettings.slideshow)) {
               slideshowConfig.value = JSON.parse(JSON.stringify(cachedSettings.slideshow));
               if (!hasLoadedSlideshow.value) {
@@ -22604,6 +22920,14 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
           resetRunningTextDraft,
           fetchPublicSettings,
           saveRunningTextSettings,
+          // Pengaturan Hero Card / Featuring Card Beranda Publik
+          DEFAULT_HERO_CARD,
+          heroCardConfig,
+          heroCardDraft,
+          hasLoadedHeroCard,
+          hasUnsavedHeroCardChanges,
+          resetHeroCardDraft,
+          saveHeroCardSettings,
           // Pengaturan Foto Slideshow Beranda
           DEFAULT_SLIDESHOW,
           SLIDESHOW_MAX,
