@@ -1935,36 +1935,36 @@ function kunjunganObjectToRow_(item, registerCode) {
   return [
     reg,
     String(item.idBooking || item.id || "").trim().toUpperCase(),
-    toProperCase_(item.namaAnanda || item.namaAnak || ""),
-    toProperCase_(item.tempatLahir || ""),
+    sanitizeSpreadsheetFormula(toProperCase_(item.namaAnanda || item.namaAnak || "")),
+    sanitizeSpreadsheetFormula(toProperCase_(item.tempatLahir || "")),
     normalizeYmd_(item.tanggalLahir || item.tglLahir),
-    String(item.beratBadan || "").trim(),
+    sanitizeSpreadsheetFormula(item.beratBadan),
     normalizeYmd_(item.tanggalKhitan || item.tglKhitan),
-    String(item.jamKhitan || "").trim(),
-    String(item.metodeKhitan || "").trim(),
-    String(item.ukuranCelana || "").trim(),
-    String(item.obat || "").trim(),
-    toProperCase_(item.namaPenanggungJawab || item.namaOrtu || ""),
-    String(item.usiaPenanggungJawab || "").trim(),
-    String(item.pekerjaan || "").trim(),
-    String(item.hubunganKeluarga || "").trim(),
+    sanitizeSpreadsheetFormula(item.jamKhitan),
+    sanitizeSpreadsheetFormula(item.metodeKhitan),
+    sanitizeSpreadsheetFormula(item.ukuranCelana),
+    sanitizeSpreadsheetFormula(item.obat),
+    sanitizeSpreadsheetFormula(toProperCase_(item.namaPenanggungJawab || item.namaOrtu || "")),
+    sanitizeSpreadsheetFormula(item.usiaPenanggungJawab),
+    sanitizeSpreadsheetFormula(item.pekerjaan),
+    sanitizeSpreadsheetFormula(item.hubunganKeluarga),
     phoneCell,
-    String(item.alamat || "").trim(),
-    String(item.provinsi || "").trim(),
-    String(item.kabupaten || "").trim(),
-    String(item.kecamatan || "").trim(),
-    String(item.kelurahan || "").trim(),
-    String(item.ukuranKlamp || "").trim(),
-    String(item.statusBayar || "").trim(),
+    sanitizeSpreadsheetFormula(item.alamat),
+    sanitizeSpreadsheetFormula(item.provinsi),
+    sanitizeSpreadsheetFormula(item.kabupaten),
+    sanitizeSpreadsheetFormula(item.kecamatan),
+    sanitizeSpreadsheetFormula(item.kelurahan),
+    sanitizeSpreadsheetFormula(item.ukuranKlamp),
+    sanitizeSpreadsheetFormula(item.statusBayar),
     String(jumlahBayarNum),
     String(zakatNum),
-    String(item.operator || "0").trim(),
+    sanitizeSpreadsheetFormula(item.operator || "0"),
     String(bmhpNum),
     String(lemNum),
     String(feeNum),
     String(totalNum),
-    String(item.statusWa || "").trim(),
-    String(item.keterangan || "").trim()
+    sanitizeSpreadsheetFormula(item.statusWa),
+    sanitizeSpreadsheetFormula(item.keterangan)
   ];
 }
 
@@ -2182,22 +2182,22 @@ function jumatBerkahObjectToRow_(item, registerCode) {
 
   return [
     reg,
-    toProperCase_(item.namaAnanda || item.namaAnak || ""),
-    toProperCase_(item.tempatLahir || ""),
+    sanitizeSpreadsheetFormula(toProperCase_(item.namaAnanda || item.namaAnak || "")),
+    sanitizeSpreadsheetFormula(toProperCase_(item.tempatLahir || "")),
     normalizeYmd_(item.tanggalLahir || item.tglLahir),
     tglKhitan,
-    toProperCase_(item.namaPenanggungJawab || item.namaOrtu || ""),
-    toProperCase_(item.tempatLahirPenanggungJawab || item.tempatLahirPj || ""),
+    sanitizeSpreadsheetFormula(toProperCase_(item.namaPenanggungJawab || item.namaOrtu || "")),
+    sanitizeSpreadsheetFormula(toProperCase_(item.tempatLahirPenanggungJawab || item.tempatLahirPj || "")),
     tglLahirPj,
-    usiaPj,
-    String(item.pekerjaan || "").trim(),
-    String(item.hubunganKeluarga || "").trim(),
+    sanitizeSpreadsheetFormula(usiaPj),
+    sanitizeSpreadsheetFormula(item.pekerjaan),
+    sanitizeSpreadsheetFormula(item.hubunganKeluarga),
     identitasCell,
-    String(item.alamat || "").trim(),
-    String(item.provinsi || "").trim(),
-    String(item.kabupaten || "").trim(),
-    String(item.kecamatan || "").trim(),
-    String(item.kelurahan || "").trim()
+    sanitizeSpreadsheetFormula(item.alamat),
+    sanitizeSpreadsheetFormula(item.provinsi),
+    sanitizeSpreadsheetFormula(item.kabupaten),
+    sanitizeSpreadsheetFormula(item.kecamatan),
+    sanitizeSpreadsheetFormula(item.kelurahan)
   ];
 }
 
@@ -2655,24 +2655,90 @@ function authenticateUser(username, password) {
   return { success: false, message: "Username atau password salah." };
 }
 
+// ================= FORMULA INJECTION & INPUT SANITIZATION =================
+/**
+ * Sanitasi string input agar kebal terhadap Formula Injection (CSV / Spreadsheet Injection)
+ * Jika string diawali dengan karakter formula Google Sheets (=, +, -, @), beri prefix tanda petik tunggal (')
+ */
+function sanitizeSpreadsheetFormula(val) {
+  if (val === null || val === undefined) return "";
+  const str = String(val).trim();
+  if (!str) return "";
+  if (/^[=+\-@]/.test(str)) {
+    return "'" + str;
+  }
+  return str;
+}
+
+// ================= BRUTE FORCE & RATE LIMITING =================
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_TIME_SECONDS = 900; // 15 Menit
+
+function checkLoginRateLimit(username) {
+  if (!username) return { allowed: true, attempts: 0 };
+  const cache = CacheService.getScriptCache();
+  const key = "bf_login_" + String(username).trim().toLowerCase();
+  const raw = cache.get(key);
+  if (!raw) return { allowed: true, attempts: 0 };
+  const attempts = parseInt(raw, 10) || 0;
+  if (attempts >= MAX_LOGIN_ATTEMPTS) {
+    return { allowed: false, attempts: attempts };
+  }
+  return { allowed: true, attempts: attempts };
+}
+
+function recordFailedLoginAttempt(username) {
+  if (!username) return;
+  const cache = CacheService.getScriptCache();
+  const key = "bf_login_" + String(username).trim().toLowerCase();
+  const raw = cache.get(key);
+  const attempts = (parseInt(raw, 10) || 0) + 1;
+  cache.put(key, String(attempts), LOCKOUT_TIME_SECONDS);
+}
+
+function clearLoginAttempts(username) {
+  if (!username) return;
+  const cache = CacheService.getScriptCache();
+  const key = "bf_login_" + String(username).trim().toLowerCase();
+  cache.remove(key);
+}
+
 // ================= SESSION TOKEN & AUTH SERVICE =================
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000; // 12 Jam
 
 function issueSessionToken(username) {
-  const props = PropertiesService.getScriptProperties();
-  let sessions = {};
+  const lock = LockService.getScriptLock();
+  const hasLock = lock.tryLock(5000);
   try {
-    sessions = JSON.parse(props.getProperty("ADMIN_SESSIONS") || "{}");
-  } catch (e) {
-    sessions = {};
+    const props = PropertiesService.getScriptProperties();
+    let sessions = {};
+    try {
+      sessions = JSON.parse(props.getProperty("ADMIN_SESSIONS") || "{}");
+    } catch (e) {
+      sessions = {};
+    }
+    const token = Utilities.getUuid();
+    const now = Date.now();
+    // Bersihkan sesi kadaluarsa
+    const cleaned = {};
+    const keys = Object.keys(sessions);
+    for (let i = 0; i < keys.length; i++) {
+      const k = keys[i];
+      const item = sessions[k];
+      if (item && item.expiry && item.expiry > now) {
+        cleaned[k] = item;
+      }
+    }
+    // Simpan sesi baru dengan key token (mendukung multi-device untuk satu akun)
+    cleaned[token] = {
+      username: username,
+      expiry: now + SESSION_TTL_MS
+    };
+    props.setProperty("ADMIN_SESSIONS", JSON.stringify(cleaned));
+    return token;
+  } finally {
+    if (hasLock) lock.releaseLock();
   }
-  const token = Utilities.getUuid();
-  sessions[username] = {
-    token: token,
-    expiry: Date.now() + SESSION_TTL_MS
-  };
-  props.setProperty("ADMIN_SESSIONS", JSON.stringify(sessions));
-  return token;
 }
 
 function validateSessionToken(token) {
@@ -2685,23 +2751,21 @@ function validateSessionToken(token) {
     return null;
   }
   const now = Date.now();
-  let matchedUser = null;
-  let hasExpired = false;
-  const usernames = Object.keys(sessions);
-  for (let i = 0; i < usernames.length; i++) {
-    const u = usernames[i];
+  // 1. Cek format baru (key = token)
+  const sessionData = sessions[token];
+  if (sessionData && sessionData.expiry && sessionData.expiry > now) {
+    return sessionData.username || null;
+  }
+  // 2. Fallback cek format lama (key = username, item.token = token)
+  const keys = Object.keys(sessions);
+  for (let i = 0; i < keys.length; i++) {
+    const u = keys[i];
     const s = sessions[u];
-    if (!s || !s.expiry || s.expiry <= now) {
-      delete sessions[u];
-      hasExpired = true;
-    } else if (s.token === token) {
-      matchedUser = u;
+    if (s && s.token === token && s.expiry && s.expiry > now) {
+      return u;
     }
   }
-  if (hasExpired) {
-    props.setProperty("ADMIN_SESSIONS", JSON.stringify(sessions));
-  }
-  return matchedUser;
+  return null;
 }
 
 function unauthorizedResponse() {
@@ -3470,8 +3534,18 @@ function doPost(e) {
       const username = String(data.username || "").trim();
       const password = String(data.password || "").trim();
 
+      // Cek proteksi brute force / rate limiting
+      const rateCheck = checkLoginRateLimit(username);
+      if (rateCheck && !rateCheck.allowed) {
+        return createJsonResponse({
+          status: "error",
+          message: "Terlalu banyak percobaan login yang gagal untuk akun ini. Akun dikunci sementara selama 15 menit demi keamanan."
+        });
+      }
+
       const auth = authenticateUser(username, password);
       if (auth.success) {
+        clearLoginAttempts(username);
         const token = issueSessionToken(auth.user.username);
         auth.user.token = token;
         return createJsonResponse({
@@ -3480,6 +3554,7 @@ function doPost(e) {
           data: auth.user
         });
       } else {
+        recordFailedLoginAttempt(username);
         return createJsonResponse({
           status: "error",
           message: auth.message
@@ -3623,27 +3698,27 @@ function doPost(e) {
       }
       const nomorHpStore = "'" + cleanHp;
 
-      // Update kolom 2 s/d 22 (21 kolom nilai)
+      // Update kolom 2 s/d 22 (21 kolom nilai) dengan sanitasi Formula Injection
       const updatedRowValues = [
-        namaAnanda,
-        String(data.tempatLahir || "").trim(),
+        sanitizeSpreadsheetFormula(namaAnanda),
+        sanitizeSpreadsheetFormula(data.tempatLahir),
         tanggalLahirNormalized,
-        String(data.beratBadan || "").trim(),
+        sanitizeSpreadsheetFormula(data.beratBadan),
         tanggalKhitanNormalized,
-        String(data.jamKhitan || "").trim(),
-        String(data.metodeKhitan || "").trim(),
-        String(data.ukuranCelana || "").trim(),
-        String(data.obat || "").trim(),
-        namaPenanggungJawab,
-        String(data.usiaPenanggungJawab || "").trim(),
-        String(data.pekerjaan || "").trim(),
-        String(data.hubunganKeluarga || "").trim(),
+        sanitizeSpreadsheetFormula(data.jamKhitan),
+        sanitizeSpreadsheetFormula(data.metodeKhitan),
+        sanitizeSpreadsheetFormula(data.ukuranCelana),
+        sanitizeSpreadsheetFormula(data.obat),
+        sanitizeSpreadsheetFormula(namaPenanggungJawab),
+        sanitizeSpreadsheetFormula(data.usiaPenanggungJawab),
+        sanitizeSpreadsheetFormula(data.pekerjaan),
+        sanitizeSpreadsheetFormula(data.hubunganKeluarga),
         nomorHpStore,
-        String(data.alamat || "").trim(),
-        String(data.provinsi || "").trim(),
-        String(data.kabupaten || "").trim(),
-        String(data.kecamatan || "").trim(),
-        String(data.kelurahan || "").trim(),
+        sanitizeSpreadsheetFormula(data.alamat),
+        sanitizeSpreadsheetFormula(data.provinsi),
+        sanitizeSpreadsheetFormula(data.kabupaten),
+        sanitizeSpreadsheetFormula(data.kecamatan),
+        sanitizeSpreadsheetFormula(data.kelurahan),
         existingTimestamp,
         finalStatus
       ];
@@ -4758,28 +4833,28 @@ function doPost(e) {
       const storedNoHp = "'" + (rawPhone.startsWith("+62") ? rawPhone : formattedNoHp);
 
       const newRow = [
-        bookingId,            // 1. ID BOOKING
-        namaAnanda,           // 2. NAMA ANANDA
-        tempatLahir,          // 3. TEMPAT LAHIR
-        tanggalLahir,         // 4. TANGGAL LAHIR
-        beratBadan,           // 5. BERAT BADAN
-        tanggalKhitan,        // 6. TANGGAL KHITAN
-        jamKhitan,            // 7. JAM KHITAN
-        metodeKhitan,         // 8. METODE KHITAN
-        ukuranCelana,         // 9. UKURAN CELANA
-        obat,                 // 10. OBAT
-        namaPenanggungJawab,  // 11. NAMA PENANGGUNG JAWAB
-        usiaPenanggungJawab,  // 12. USIA PENANGGUNG JAWAB
-        pekerjaan,            // 13. PEKERJAAN
-        hubunganKeluarga,     // 14. HUBUNGAN KELUARGA
-        storedNoHp,           // 15. NOMOR HP
-        alamat,               // 16. ALAMAT
-        provinsi,             // 17. PROVINSI
-        kabupaten,            // 18. KABUPATEN
-        kecamatan,            // 19. KECAMATAN
-        kelurahan,            // 20. KELURAHAN
-        timestamp,            // 21. TIMESTAMP
-        status                // 22. STATUS
+        bookingId,                                          // 1. ID BOOKING
+        sanitizeSpreadsheetFormula(namaAnanda),             // 2. NAMA ANANDA
+        sanitizeSpreadsheetFormula(tempatLahir),            // 3. TEMPAT LAHIR
+        tanggalLahir,                                       // 4. TANGGAL LAHIR
+        sanitizeSpreadsheetFormula(beratBadan),             // 5. BERAT BADAN
+        tanggalKhitan,                                      // 6. TANGGAL KHITAN
+        jamKhitan,                                          // 7. JAM KHITAN
+        sanitizeSpreadsheetFormula(metodeKhitan),           // 8. METODE KHITAN
+        sanitizeSpreadsheetFormula(ukuranCelana),           // 9. UKURAN CELANA
+        sanitizeSpreadsheetFormula(obat),                   // 10. OBAT
+        sanitizeSpreadsheetFormula(namaPenanggungJawab),    // 11. NAMA PENANGGUNG JAWAB
+        sanitizeSpreadsheetFormula(usiaPenanggungJawab),    // 12. USIA PENANGGUNG JAWAB
+        sanitizeSpreadsheetFormula(pekerjaan),              // 13. PEKERJAAN
+        sanitizeSpreadsheetFormula(hubunganKeluarga),       // 14. HUBUNGAN KELUARGA
+        storedNoHp,                                         // 15. NOMOR HP
+        sanitizeSpreadsheetFormula(alamat),                 // 16. ALAMAT
+        sanitizeSpreadsheetFormula(provinsi),               // 17. PROVINSI
+        sanitizeSpreadsheetFormula(kabupaten),              // 18. KABUPATEN
+        sanitizeSpreadsheetFormula(kecamatan),              // 19. KECAMATAN
+        sanitizeSpreadsheetFormula(kelurahan),              // 20. KELURAHAN
+        timestamp,                                          // 21. TIMESTAMP
+        status                                              // 22. STATUS
       ];
 
       sheet.appendRow(newRow);
@@ -4907,10 +4982,10 @@ function doPost(e) {
         saranId,
         tanggalWib,
         jamWib,
-        nama,
+        sanitizeSpreadsheetFormula(nama),
         storedNoHp,
-        email,
-        saran
+        sanitizeSpreadsheetFormula(email),
+        sanitizeSpreadsheetFormula(saran)
       ];
 
       sheet.appendRow(newRow);
