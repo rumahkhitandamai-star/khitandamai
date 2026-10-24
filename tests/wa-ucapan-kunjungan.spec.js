@@ -53,7 +53,7 @@ test('Verify WhatsApp Ucapan template, age calculation, dynamic sapaan, and UI m
 
   // Uji Ayah / Kakek / Wali
   for (const text of [ucapanAyah, ucapanKakek, ucapanWali]) {
-    expect(text).toContain('Subang, ');
+    expect(text).toContain('Subang - ');
     expect(text).toContain('🌸 Assalamu’alaikum Warahmatullahi Wabarakatuh 🌸');
     expect(text).toContain('Alhamdulillahi Rabbil ‘Alamiin 🤍');
     expect(text).toContain('Dengan penuh rasa syukur, kami mengucapkan terima kasih sebesar-besarnya kepada Ayah:');
