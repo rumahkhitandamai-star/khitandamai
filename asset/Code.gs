@@ -5678,3 +5678,24 @@ function authorizeDriveAccess() {
     throw err;
   }
 }
+
+/**
+ * Jalankan fungsi ini SEKALI dari Apps Script Editor (toolbar Run)
+ * untuk memberikan izin scope UrlFetchApp (https://www.googleapis.com/auth/script.external_request)
+ * untuk pengiriman notifikasi Telegram otomatis.
+ */
+function authorizeExternalRequests() {
+  try {
+    const res = UrlFetchApp.fetch("https://api.telegram.org", { muteHttpExceptions: true });
+    const successMsg = "SUKSES: Otorisasi UrlFetchApp (External Request) Berhasil! Status HTTP: " + res.getResponseCode();
+    Logger.log("==================================================");
+    Logger.log(successMsg);
+    Logger.log("==================================================");
+    return successMsg;
+  } catch (err) {
+    Logger.log("==================================================");
+    Logger.log("GAGAL OTORISASI EXTERNAL REQUEST: " + err.message);
+    Logger.log("==================================================");
+    throw err;
+  }
+}
