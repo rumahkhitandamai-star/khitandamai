@@ -295,6 +295,233 @@ function testSendTelegramAlert() {
 }
 
 /**
+ * Menyusun template teks WhatsApp Reminder (identik dengan Panel Admin)
+ */
+function buildWaReminderText_(b) {
+  if (!b) return "";
+  const namaOrtu = b.namaPenanggungJawab || b.namaOrtu || "-";
+  const namaAnanda = b.namaAnanda || b.namaAnak || "-";
+  const tglKhitan = (b.tanggalKhitan || b.tglKhitan) ? formatIndonesianDateStr_(b.tanggalKhitan || b.tglKhitan) : "-";
+  const jamKhitan = b.jamKhitan || "-";
+  const sapaan = resolveSapaanWa_(b.hubunganKeluarga);
+
+  const lines = [
+    "Assalamu’alaikum Warahmatullahi Wabarakatuh 🌙",
+    "",
+    "Selamat sore " + sapaan + " 😊",
+    namaOrtu,
+    "",
+    "Kami ingin mengingatkan kembali mengenai jadwal khitan Ananda 👦",
+    namaAnanda,
+    "",
+    "━━━━━━━━━━━━━━━━━━",
+    "📅 Tanggal Khitan : " + tglKhitan,
+    "🕒 Jam Khitan : " + jamKhitan,
+    "━━━━━━━━━━━━━━━━━━",
+    "",
+    "Mohon " + sapaan + " dan Ananda untuk beristirahat yang cukup malam ini 😴",
+    "Usahakan tidur tidak terlalu larut agar kondisi Ananda tetap fit dan nyaman saat proses khitan berlangsung 😊",
+    "",
+    "Semoga proses khitan besok berjalan lancar, diberikan kemudahan, dan selalu dalam lindungan Allah SWT 🤲",
+    "Aamiin Ya Rabbal ‘Alamiin ✨",
+    "",
+    "📝 Persiapan Sebelum Berangkat :",
+    "✅ Mandi seperti biasa",
+    "✅ BAK / BAB terlebih dahulu bila perlu",
+    "✅ Sarapan secukupnya",
+    "✅ Membawa celana longgar atau sarung",
+    "✅ Membawa mainan atau HP agar Ananda lebih rileks 🎮📱",
+    "",
+    "Terima kasih atas perhatian " + sapaan + " 🙏",
+    "",
+    "Hormat Kami,",
+    "🏥 Admin Rumah Khitan Damai"
+  ];
+  return lines.join("\n");
+}
+
+/**
+ * Mengirim pesan notifikasi peringatan jadwal < 12 Jam ke Telegram Admin
+ */
+function sendTelegramReminderNotification_(item, diffHours) {
+  try {
+    const config = getTelegramConfig_();
+    if (!config.botToken || !config.chatId) {
+      Logger.log("Peringatan: Telegram Bot Token atau Chat ID belum dikonfigurasi.");
+      return { success: false, message: "Token atau Chat ID kosong" };
+    }
+
+    const id = item.idBooking || item.register || item.id || "-";
+    const namaAnanda = item.namaAnanda || item.namaAnak || "-";
+    const namaPj = item.namaPenanggungJawab || item.namaOrtu || "-";
+    const hubungan = item.hubunganKeluarga || "Orang Tua / Wali";
+    const sapaan = resolveSapaanWa_(hubungan);
+    const noHp = item.nomorHp || item.noHp || "-";
+    const tglKhitan = (item.tanggalKhitan || item.tglKhitan) ? formatIndonesianDateStr_(item.tanggalKhitan || item.tglKhitan) : "-";
+    const jamKhitan = item.jamKhitan ? ("Pukul " + item.jamKhitan + " WIB") : "Waktu Belum Ditentukan";
+    const sisaJamText = typeof diffHours === "number" ? ("± " + Math.round(diffHours) + " Jam lagi menuju tindakan!") : "Kurang dari 12 Jam!";
+
+    const text = "⏰ <b>PENGINGAT JADWAL KHITAN (&lt; 12 JAM)</b> 🔔\n" +
+      "━━━━━━━━━━━━━━━━━━\n" +
+      "📋 <b>ID / Register:</b> <code>" + escapeTelegramHtml_(id) + "</code>\n" +
+      "👦 <b>Nama Ananda:</b> " + escapeTelegramHtml_(namaAnanda) + "\n" +
+      "👨‍👩‍👦 <b>Penanggung Jawab:</b> " + escapeTelegramHtml_(namaPj) + " (" + escapeTelegramHtml_(sapaan) + ")\n" +
+      "📱 <b>WhatsApp:</b> " + escapeTelegramHtml_(noHp) + "\n" +
+      "📅 <b>Jadwal Khitan:</b> " + escapeTelegramHtml_(tglKhitan) + "\n" +
+      "🕒 <b>Jam Pelaksanaan:</b> " + escapeTelegramHtml_(jamKhitan) + "\n" +
+      "⏳ <b>Sisa Waktu:</b> " + escapeTelegramHtml_(sisaJamText) + "\n" +
+      "━━━━━━━━━━━━━━━━━━\n" +
+      "💡 <i>Harap ingatkan keluarga pasien untuk istirahat malam cukup & persiapan perlengkapan.</i>";
+
+    const cleanPhone = cleanPhoneForWa_(noHp);
+    const waText = buildWaReminderText_(item);
+    const waUrl = "https://api.whatsapp.com/send?phone=" + cleanPhone + "&text=" + encodeURIComponent(waText);
+
+    const payload = {
+      chat_id: config.chatId,
+      text: text,
+      parse_mode: "HTML",
+      disable_web_page_preview: true,
+      reply_markup: {
+        inline_keyboard: [
+          [
+            {
+              text: "🔔 Kirim WhatsApp Reminder",
+              url: waUrl
+            }
+          ]
+        ]
+      }
+    };
+
+    const options = {
+      method: "post",
+      contentType: "application/json",
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    };
+
+    const response = UrlFetchApp.fetch("https://api.telegram.org/bot" + config.botToken + "/sendMessage", options);
+    const responseCode = response.getResponseCode();
+    const responseText = response.getContentText();
+    Logger.log("Telegram reminder response (" + responseCode + "): " + responseText);
+    return { success: responseCode === 200, response: responseText };
+  } catch (err) {
+    Logger.log("sendTelegramReminderNotification_ error: " + err.toString());
+    return { success: false, error: err.toString() };
+  }
+}
+
+/**
+ * Memindai Sheet BOOKING untuk jadwal khitan yang akan berlangsung < 12 Jam ke depan
+ * dan mengirimkan notifikasi Telegram otomatis (dengan proteksi anti-duplikasi).
+ */
+function checkAndSendUpcomingReminders_() {
+  const sheet = getSheet();
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return { checked: 0, sent: 0 };
+
+  const values = sheet.getRange(2, 1, lastRow - 1, HEADERS.length).getValues();
+  const now = new Date();
+  const nowMs = now.getTime();
+  let sentCount = 0;
+  const props = PropertiesService.getScriptProperties();
+
+  for (let i = 0; i < values.length; i++) {
+    const row = values[i];
+    const id = String(row[0] || "").trim();
+    const namaAnanda = String(row[1] || "").trim();
+    let tglKhitanStr = row[5];
+    let jamKhitanStr = String(row[6] || "").trim();
+    const noHp = String(row[14] || "").trim();
+    const status = String(row[21] || "").trim().toLowerCase();
+
+    // Skip jika tidak ada nomor HP atau status Batal/Selesai
+    if (!noHp || status === "batal" || status === "selesai") continue;
+
+    // Normalisasi tanggal khitan (format YYYY-MM-DD)
+    if (tglKhitanStr instanceof Date) {
+      tglKhitanStr = Utilities.formatDate(tglKhitanStr, "Asia/Jakarta", "yyyy-MM-dd");
+    } else {
+      tglKhitanStr = normalizeYmd_(tglKhitanStr);
+    }
+    if (!tglKhitanStr || tglKhitanStr.length < 10) continue;
+
+    // Normalisasi jam khitan (default 08:00 jika kosong)
+    if (!jamKhitanStr || jamKhitanStr === "-") {
+      jamKhitanStr = "08:00";
+    }
+    const jamClean = jamKhitanStr.replace(".", ":");
+    const jamParts = jamClean.match(/(\d{1,2}):(\d{2})/);
+    const hour = jamParts ? parseInt(jamParts[1], 10) : 8;
+    const minute = jamParts ? parseInt(jamParts[2], 10) : 0;
+
+    // Buat target datetime khitan di WIB
+    const tParts = tglKhitanStr.substring(0, 10).split("-");
+    const targetDate = new Date(parseInt(tParts[0], 10), parseInt(tParts[1], 10) - 1, parseInt(tParts[2], 10), hour, minute, 0);
+    const targetMs = targetDate.getTime();
+
+    // Hitung selisih jam
+    const diffHours = (targetMs - nowMs) / (1000 * 60 * 60);
+
+    // Kriteria: Kurang dari 12 jam ke depan (> 0 dan <= 12 jam)
+    if (diffHours > 0 && diffHours <= 12) {
+      const propKey = "remind_sent_" + id;
+      const alreadySent = props.getProperty(propKey);
+
+      if (!alreadySent) {
+        const item = {
+          idBooking: id,
+          namaAnanda: namaAnanda,
+          namaPenanggungJawab: String(row[10] || "").trim(),
+          hubunganKeluarga: String(row[13] || "").trim(),
+          nomorHp: noHp,
+          tanggalKhitan: tglKhitanStr,
+          jamKhitan: jamKhitanStr
+        };
+
+        const res = sendTelegramReminderNotification_(item, diffHours);
+        if (res.success) {
+          props.setProperty(propKey, Utilities.formatDate(now, "Asia/Jakarta", "yyyy-MM-dd HH:mm:ss"));
+          sentCount++;
+          Logger.log("Reminder Telegram terkirim untuk: " + id + " (" + namaAnanda + ")");
+        }
+      }
+    }
+  }
+
+  return { checked: values.length, sent: sentCount };
+}
+
+/**
+ * Handler Time-Driven Trigger Google Apps Script (berjalan setiap 1 jam)
+ */
+function checkUpcomingKhitanReminders() {
+  return checkAndSendUpcomingReminders_();
+}
+
+/**
+ * Fungsi untuk mengaktifkan trigger otomatis setiap 1 jam sekali
+ */
+function setupHourlyReminderTrigger() {
+  try {
+    const triggers = ScriptApp.getProjectTriggers();
+    for (let i = 0; i < triggers.length; i++) {
+      if (triggers[i].getHandlerFunction() === "checkUpcomingKhitanReminders") {
+        return "Trigger time-driven checkUpcomingKhitanReminders sudah aktif sebelumnya.";
+      }
+    }
+    ScriptApp.newTrigger("checkUpcomingKhitanReminders")
+      .timeBased()
+      .everyHours(1)
+      .create();
+    return "Trigger time-driven checkUpcomingKhitanReminders berhasil dipasang (setiap 1 jam).";
+  } catch (err) {
+    return "Catatan setup trigger: " + err.message;
+  }
+}
+
+/**
  * Menyimpan data besar ke CacheService dengan pemecahan chunk aman (batas 100KB per key Apps Script)
  */
 function putChunkedCache(key, data, ttlSeconds) {
@@ -3087,6 +3314,41 @@ function doGet(e) {
       });
     }
 
+    if (action === "testReminderNotification") {
+      const sampleItem = {
+        idBooking: "KD-REMIND01",
+        namaAnanda: "Rayyan Al-Fatih (Uji Coba)",
+        namaPenanggungJawab: "Admin Khitan Damai",
+        hubunganKeluarga: "Ayah",
+        nomorHp: "081222531978",
+        tanggalKhitan: Utilities.formatDate(new Date(Date.now() + 6 * 3600 * 1000), "Asia/Jakarta", "yyyy-MM-dd"),
+        jamKhitan: Utilities.formatDate(new Date(Date.now() + 6 * 3600 * 1000), "Asia/Jakarta", "HH:mm")
+      };
+      const res = sendTelegramReminderNotification_(sampleItem, 6);
+      return createJsonResponse({
+        status: res.success ? "success" : "error",
+        message: "Hasil pengujian notifikasi Telegram Reminder",
+        details: res
+      });
+    }
+
+    if (action === "checkReminders") {
+      const res = checkAndSendUpcomingReminders_();
+      return createJsonResponse({
+        status: "success",
+        message: "Pemeriksaan jadwal khitan < 12 jam selesai",
+        data: res
+      });
+    }
+
+    if (action === "setupReminderTrigger") {
+      const res = setupHourlyReminderTrigger();
+      return createJsonResponse({
+        status: "success",
+        message: res
+      });
+    }
+
     if (action === "checkStatus" || action === "checkBooking") {
       const idQuery = String(params.id || params.idBooking || params.bookingId || params.query || "").trim().toUpperCase();
       const phoneQuery = cleanPhoneNumber(params.phone);
@@ -5230,6 +5492,42 @@ function doPost(e) {
         status: res.success ? "success" : "error",
         message: "Hasil pengiriman notifikasi Telegram",
         details: res
+      });
+    }
+
+    // 4c. Aksi TEST REMINDER NOTIFICATION & CHECK REMINDERS
+    if (action === "testReminderNotification") {
+      const sampleItem = {
+        idBooking: "KD-REMIND01",
+        namaAnanda: "Rayyan Al-Fatih (Uji Coba)",
+        namaPenanggungJawab: "Admin Khitan Damai",
+        hubunganKeluarga: "Ayah",
+        nomorHp: "081222531978",
+        tanggalKhitan: Utilities.formatDate(new Date(Date.now() + 6 * 3600 * 1000), "Asia/Jakarta", "yyyy-MM-dd"),
+        jamKhitan: Utilities.formatDate(new Date(Date.now() + 6 * 3600 * 1000), "Asia/Jakarta", "HH:mm")
+      };
+      const res = sendTelegramReminderNotification_(sampleItem, 6);
+      return createJsonResponse({
+        status: res.success ? "success" : "error",
+        message: "Hasil pengujian notifikasi Telegram Reminder",
+        details: res
+      });
+    }
+
+    if (action === "checkReminders") {
+      const res = checkAndSendUpcomingReminders_();
+      return createJsonResponse({
+        status: "success",
+        message: "Pemeriksaan jadwal khitan < 12 jam selesai",
+        data: res
+      });
+    }
+
+    if (action === "setupReminderTrigger") {
+      const res = setupHourlyReminderTrigger();
+      return createJsonResponse({
+        status: "success",
+        message: res
       });
     }
 

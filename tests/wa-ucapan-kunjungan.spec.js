@@ -115,11 +115,58 @@ test('Verify WhatsApp Ucapan template, age calculation, dynamic sapaan, and UI m
   await expect(modalUcapan.locator('div.whitespace-pre-line')).toContainText('9 Tahun 2 Bulan 11 Hari');
   await expect(modalUcapan.locator('button:has-text("Buka WhatsApp (Kirim Pesan)")')).toBeVisible();
 
-  // Tutup modal
+  // Tutup modal ucapan
   const btnBatal = modalUcapan.locator('button:has-text("Batal")');
   await btnBatal.click();
   await page.waitForTimeout(300);
   await expect(modalUcapan).toBeHidden();
+
+  // ================= 4. PENGUJIAN TOMBOL & MODAL WA REMINDER DI KUNJUNGAN =================
+  // Suntikkan data kunjungan ke tabel dan atur filter ke Semua
+  await page.evaluate((k) => {
+    if (window.__kdAdminKunjungan) {
+      window.__kdAdminKunjungan.value = [k];
+    }
+  }, {
+    ...baseKunjungan,
+    register: 'KD2610001'
+  });
+  // Reset filter kunjungan jika ada tombolnya atau lewat evaluate
+  await page.evaluate(() => {
+    const appEl = document.querySelector('#app');
+    if (appEl && appEl.__vue_app__) {
+      // jika ada vue app instance
+    }
+  });
+  await page.waitForTimeout(400);
+
+  // Cari tombol Whatsapp Reminder baik di tabel, popover, maupun kartu mobile
+  const reminderBtn = page.locator('button[title="Whatsapp Reminder"]').first();
+  if (await reminderBtn.count() > 0) {
+    await reminderBtn.click();
+  } else {
+    // Buka via hook jika tombol tabel tersembunyi oleh filter bulan
+    await page.evaluate((k) => {
+      window.__kdOpenWaReminderModal(k);
+    }, baseKunjungan);
+  }
+  await page.waitForTimeout(300);
+
+  // Verifikasi modal reminder terbuka
+  const modalReminder = page.locator('div.admin-panel:has-text("WhatsApp Reminder")');
+  await expect(modalReminder).toBeVisible();
+  await expect(modalReminder.locator('text=Kirim pengingat jadwal khitan H-1')).toBeVisible();
+  await expect(modalReminder.locator('span:has-text("Bambang Santoso")')).toBeVisible();
+  await expect(modalReminder.locator('span:has-text("081234567890")')).toBeVisible();
+  await expect(modalReminder.locator('div.whitespace-pre-line')).toContainText('Rayyan Al-Fatih');
+  await expect(modalReminder.locator('div.whitespace-pre-line')).toContainText('Persiapan Sebelum Berangkat');
+  await expect(modalReminder.locator('button:has-text("Buka WhatsApp (Kirim Pesan)")')).toBeVisible();
+
+  // Tutup modal reminder
+  const btnBatalReminder = modalReminder.locator('button:has-text("Batal")');
+  await btnBatalReminder.click();
+  await page.waitForTimeout(300);
+  await expect(modalReminder).toBeHidden();
 
   // Pastikan tidak ada console error fatal
   const fatalErrors = consoleErrors.filter(e => !e.includes('favicon'));

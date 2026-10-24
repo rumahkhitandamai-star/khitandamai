@@ -8104,6 +8104,15 @@
                                 >
                                   <v-icon name="whatsapp" class="text-xs"></v-icon>
                                 </button>
+                                <button 
+                                  type="button"
+                                  v-if="item.nomorHp"
+                                  @click="openWaReminderModal(item)"
+                                  class="btn-press p-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition shadow-2xs inline-flex items-center justify-center"
+                                  title="Whatsapp Reminder"
+                                >
+                                  <v-icon name="moon" class="text-xs"></v-icon>
+                                </button>
 
                                 <!-- 3. Tombol Dropdown Menu Aksi Lainnya -->
                                 <div class="relative inline-block text-left">
@@ -8125,12 +8134,21 @@
                                     <div class="py-1">
                                       <button 
                                         type="button" 
-                                        v-if="item.nomorHp"
+                                        v-if="item.nomorHp" 
                                         @click="openWaUcapanModal(item); closeKunjunganActionMenu()"
                                         class="w-full text-left px-3 py-2 hover:bg-emerald-50 hover:text-emerald-800 text-slate-700 flex items-center gap-2.5 transition"
                                       >
                                         <v-icon name="whatsapp" class="text-emerald-600 shrink-0"></v-icon>
                                         <span>Whatsapp Ucapan</span>
+                                      </button>
+                                      <button 
+                                        type="button" 
+                                        v-if="item.nomorHp" 
+                                        @click="openWaReminderModal(item); closeKunjunganActionMenu()"
+                                        class="w-full text-left px-3 py-2 hover:bg-amber-50 hover:text-amber-800 text-slate-700 flex items-center gap-2.5 transition"
+                                      >
+                                        <v-icon name="moon" class="text-amber-600 shrink-0"></v-icon>
+                                        <span>Whatsapp Reminder</span>
                                       </button>
                                       <button 
                                         type="button" 
@@ -8327,7 +8345,16 @@
                             class="btn-press inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow-2xs"
                             title="Whatsapp Ucapan"
                           >
-                            <v-icon name="whatsapp" class="mr-1"></v-icon> Whatsapp Ucapan
+                            <v-icon name="whatsapp" class="mr-1"></v-icon> Ucapan
+                          </button>
+                          <button 
+                            type="button"
+                            v-if="item.nomorHp"
+                            @click="openWaReminderModal(item)"
+                            class="btn-press inline-flex items-center gap-1 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow-2xs"
+                            title="Whatsapp Reminder"
+                          >
+                            <v-icon name="moon" class="mr-1"></v-icon> Reminder
                           </button>
                         </div>
 
@@ -8351,12 +8378,21 @@
                             <div class="py-1">
                               <button 
                                 type="button" 
-                                v-if="item.nomorHp"
+                                v-if="item.nomorHp" 
                                 @click="openWaUcapanModal(item); closeKunjunganActionMenu()"
                                 class="w-full text-left px-3 py-2 hover:bg-emerald-50 hover:text-emerald-800 text-slate-700 flex items-center gap-2.5 transition"
                               >
                                 <v-icon name="whatsapp" class="text-emerald-600 shrink-0"></v-icon>
                                 <span>Whatsapp Ucapan</span>
+                              </button>
+                              <button 
+                                type="button" 
+                                v-if="item.nomorHp" 
+                                @click="openWaReminderModal(item); closeKunjunganActionMenu()"
+                                class="w-full text-left px-3 py-2 hover:bg-amber-50 hover:text-amber-800 text-slate-700 flex items-center gap-2.5 transition"
+                              >
+                                <v-icon name="moon" class="text-amber-600 shrink-0"></v-icon>
+                                <span>Whatsapp Reminder</span>
                               </button>
                               <button 
                                 type="button" 
@@ -22682,6 +22718,10 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
           window.__kdOpenWaUcapanModal = openWaUcapanModal;
           window.__kdCloseWaUcapanModal = closeWaUcapanModal;
           window.__kdSendWaUcapan = sendWaUcapan;
+          window.__kdOpenWaReminderModal = openWaReminderModal;
+          window.__kdCloseWaReminderModal = closeWaReminderModal;
+          window.__kdSendWaReminder = sendWaReminder;
+          window.__kdAdminKunjungan = adminKunjungan;
         }
 
         onMounted(() => {
