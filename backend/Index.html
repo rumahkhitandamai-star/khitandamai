@@ -17565,6 +17565,13 @@
         const activeWaSambutanData = ref(null);
         const activeWaReminderData = ref(null);
 
+        const resolveSapaanWa = (hubungan) => {
+          const h = String(hubungan || '').trim().toLowerCase();
+          if (['ayah', 'kakek', 'wali'].includes(h)) return 'Ayah';
+          if (['ibu', 'nenek'].includes(h)) return 'Bunda';
+          return 'Ayah/Bunda';
+        };
+
         const buildWaSambutanText = (b) => {
           if (!b) return '';
           const namaOrtu = b.namaPenanggungJawab || b.namaOrtu || '-';
@@ -17572,14 +17579,15 @@
           const tglKhitan = formatIndonesianDate(b.tanggalKhitan || b.tglKhitan);
           const jamKhitan = b.jamKhitan || '-';
           const metodeKhitan = b.metodeKhitan || '-';
+          const sapaan = resolveSapaanWa(b.hubunganKeluarga);
 
           const lines = [
             'Assalamu’alaikum Warahmatullahi Wabarakatuh 🌿',
             '',
-            'Yth. Ayah/Bunda',
+            'Yth. ' + sapaan,
             namaOrtu + ' 👨‍👩‍👦',
             '',
-            'Semoga Ayah/Bunda dan keluarga senantiasa diberikan kesehatan, keberkahan, serta kelancaran dalam mempersiapkan khitan Ananda. 🤲✨',
+            'Semoga ' + sapaan + ' dan keluarga senantiasa diberikan kesehatan, keberkahan, serta kelancaran dalam mempersiapkan khitan Ananda. 🤲✨',
             '',
             'Ananda:',
             '👦 ' + namaAnanda,
@@ -17611,11 +17619,12 @@
           const namaAnanda = b.namaAnanda || b.namaAnak || '-';
           const tglKhitan = formatIndonesianDate(b.tanggalKhitan || b.tglKhitan);
           const jamKhitan = b.jamKhitan || '-';
+          const sapaan = resolveSapaanWa(b.hubunganKeluarga);
 
           const lines = [
             'Assalamu’alaikum Warahmatullahi Wabarakatuh 🌙',
             '',
-            'Selamat sore Ayah/Bunda 😊',
+            'Selamat sore ' + sapaan + ' 😊',
             namaOrtu,
             '',
             'Kami ingin mengingatkan kembali mengenai jadwal khitan Ananda 👦',
@@ -17626,7 +17635,7 @@
             '🕒 Jam Khitan : ' + jamKhitan,
             '━━━━━━━━━━━━━━━━━━',
             '',
-            'Mohon Ayah/Bunda dan Ananda untuk beristirahat yang cukup malam ini 😴',
+            'Mohon ' + sapaan + ' dan Ananda untuk beristirahat yang cukup malam ini 😴',
             'Usahakan tidur tidak terlalu larut agar kondisi Ananda tetap fit dan nyaman saat proses khitan berlangsung 😊',
             '',
             'Semoga proses khitan besok berjalan lancar, diberikan kemudahan, dan selalu dalam lindungan Allah SWT 🤲',
@@ -17639,7 +17648,7 @@
             '✅ Membawa celana longgar atau sarung',
             '✅ Membawa mainan atau HP agar Ananda lebih rileks 🎮📱',
             '',
-            'Terima kasih atas perhatian Ayah/Bunda 🙏',
+            'Terima kasih atas perhatian ' + sapaan + ' 🙏',
             '',
             'Hormat Kami,',
             '🏥 Admin Rumah Khitan Damai'
@@ -22469,6 +22478,9 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
           window.__kdStopAutoSync = stopAutoSync;
           window.__kdRunAutoSync = runAutoSync;
           window.__kdClearSyncCache = clearSyncCache;
+          window.__kdResolveSapaanWa = resolveSapaanWa;
+          window.__kdBuildWaSambutanText = buildWaSambutanText;
+          window.__kdBuildWaReminderText = buildWaReminderText;
         }
 
         onMounted(() => {
@@ -22776,6 +22788,7 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
           showWaReminderModal,
           activeWaSambutanData,
           activeWaReminderData,
+          resolveSapaanWa,
           buildWaSambutanText,
           buildWaReminderText,
           openWaSambutanModal,
