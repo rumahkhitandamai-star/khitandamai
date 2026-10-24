@@ -815,7 +815,7 @@ function handleTelegramWebhookUpdate_(update) {
     const isAdmin = String(chatId) === String(config.chatId);
 
     // Keyboard Menu Bawah Cepat
-    const mainKeyboard = {
+    const publicKeyboard = {
       keyboard: [
         [{ text: "📅 Jadwal Mendatang" }, { text: "🔍 Cek Status Booking" }],
         [{ text: "ℹ️ Bantuan & Info" }]
@@ -824,18 +824,57 @@ function handleTelegramWebhookUpdate_(update) {
       one_time_keyboard: false
     };
 
+    const adminKeyboard = {
+      keyboard: [
+        [{ text: "📅 Jadwal Mendatang" }, { text: "🔍 Cek Status Booking" }],
+        [{ text: "⏰ Cek Reminder (< 12 Jam)" }, { text: "ℹ️ Bantuan & Info" }]
+      ],
+      resize_keyboard: true,
+      one_time_keyboard: false
+    };
+
+    const mainKeyboard = isAdmin ? adminKeyboard : publicKeyboard;
+
     const lowerText = rawText.toLowerCase();
 
     // 1. Perintah Start / Bantuan
     if (lowerText === "/start" || lowerText === "/help" || lowerText === "bantuan" || lowerText === "info" || lowerText === "ℹ️ bantuan & info") {
-      const welcomeText = "👋 <b>Halo! Selamat Datang di Bot Resmi Rumah Khitan Damai</b> 🏥✨\n" +
+      let welcomeText = "👋 <b>Halo! Selamat Datang di Bot Resmi Rumah Khitan Damai</b> 🏥✨\n" +
         "<i>\"Aku Berani Khitan — Nyaman, Modern, dan Menyenangkan\"</i>\n\n" +
         "Silakan pilih menu di bawah atau kirim perintah:\n" +
         "📅 <b>/jadwal</b> — Lihat Jadwal Khitan Mendatang (dikelompokkan per Hari/Tanggal)\n" +
-        "🔍 <b>Cek Booking</b> — Cukup ketik <b>ID Booking</b> (contoh: <code>KD-202610-001</code>) atau <b>Nomor WhatsApp</b> yang didaftarkan.\n" +
-        "ℹ️ <b>/help</b> — Menampilkan petunjuk layanan bot ini.\n\n" +
+        "🔍 <b>Cek Booking</b> — Cukup ketik <b>ID Booking</b> (contoh: <code>KD-202610-001</code>) atau <b>Nomor WhatsApp</b> yang didaftarkan.\n";
+      
+      if (isAdmin) {
+        welcomeText += "⏰ <b>/cekreminder</b> — Pindai & kirim pengingat jadwal khitan &lt; 12 jam secara langsung (Khusus Admin)\n";
+      }
+
+      welcomeText += "ℹ️ <b>/help</b> — Menampilkan petunjuk layanan bot ini.\n\n" +
         "📞 <i>Pusat Bantuan WhatsApp: 081222531978</i>";
       sendTelegramMessage_(chatId, welcomeText, mainKeyboard);
+      return HtmlService.createHtmlOutput("OK");
+    }
+
+    // 1b. Perintah Cek Reminder Jadwal < 12 Jam (Khusus Admin)
+    if (lowerText === "/cekreminder" || lowerText === "/scanreminder" || lowerText === "cekreminder" || lowerText === "⏰ cek reminder (< 12 jam)") {
+      if (!isAdmin) {
+        sendTelegramMessage_(chatId, "⛔ <b>Akses Khusus Admin</b>\nPerintah pemindaian pengingat jadwal hanya dapat dijalankan oleh akun pengelola / Admin Khitan Damai.", mainKeyboard);
+        return HtmlService.createHtmlOutput("OK");
+      }
+
+      const scanRes = checkAndSendUpcomingReminders_();
+      const statusNote = (scanRes.sent > 0)
+        ? "✅ <b>" + scanRes.sent + " Notifikasi pengingat</b> berhasil dikirimkan ke chat ini di atas lengkap dengan tombol WhatsApp Reminder."
+        : "ℹ️ <i>Tidak ada jadwal khitan baru yang berjarak &lt; 12 jam saat ini (semua sudah dikirimi reminder atau belum memasuki rentang 12 jam tindakan).</i>";
+
+      const resText = "⏰ <b>HASIL PEMINDAIAN JADWAL KHITAN (&lt; 12 JAM)</b> 🔔\n" +
+        "━━━━━━━━━━━━━━━━━━\n" +
+        "📋 <b>Total Pendaftaran Diperiksa:</b> " + (scanRes.checked || 0) + " baris data\n" +
+        "📨 <b>Notifikasi Reminder Dikirim:</b> " + (scanRes.sent || 0) + " pasien\n" +
+        "━━━━━━━━━━━━━━━━━━\n" +
+        statusNote;
+
+      sendTelegramMessage_(chatId, resText, mainKeyboard);
       return HtmlService.createHtmlOutput("OK");
     }
 
