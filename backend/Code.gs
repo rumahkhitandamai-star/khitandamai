@@ -122,6 +122,74 @@ function formatIndonesianDateStr_(ymdStr) {
 }
 
 /**
+ * Membersihkan nomor HP untuk format link WhatsApp (628xxxx)
+ */
+function cleanPhoneForWa_(phone) {
+  if (!phone) return "";
+  let digits = String(phone).replace(/\D/g, "");
+  if (digits.startsWith("0")) {
+    digits = "62" + digits.slice(1);
+  } else if (digits.startsWith("8")) {
+    digits = "62" + digits;
+  }
+  return digits;
+}
+
+/**
+ * Menentukan sapaan Ayah / Bunda berdasarkan hubungan keluarga
+ */
+function resolveSapaanWa_(hubungan) {
+  const h = String(hubungan || "").toLowerCase().trim();
+  if (h === "ayah" || h === "kakek" || h === "wali") return "Ayah";
+  if (h === "ibu" || h === "nenek") return "Bunda";
+  return "Ayah/Bunda";
+}
+
+/**
+ * Menyusun template teks WhatsApp Sambutan (identik dengan Panel Admin)
+ */
+function buildWaSambutanText_(b) {
+  if (!b) return "";
+  const namaOrtu = b.namaPenanggungJawab || b.namaOrtu || "-";
+  const namaAnanda = b.namaAnanda || b.namaAnak || "-";
+  const tglKhitan = (b.tanggalKhitan || b.tglKhitan) ? formatIndonesianDateStr_(b.tanggalKhitan || b.tglKhitan) : "-";
+  const jamKhitan = b.jamKhitan || "-";
+  const metodeKhitan = b.metodeKhitan || "-";
+  const sapaan = resolveSapaanWa_(b.hubunganKeluarga);
+
+  const lines = [
+    "Assalamu’alaikum Warahmatullahi Wabarakatuh 🌿",
+    "",
+    "Yth. " + sapaan,
+    namaOrtu + " 👨‍👩‍👦",
+    "",
+    "Semoga " + sapaan + " dan keluarga senantiasa diberikan kesehatan, keberkahan, serta kelancaran dalam mempersiapkan khitan Ananda. 🤲✨",
+    "",
+    "Ananda:",
+    "👦 " + namaAnanda,
+    "",
+    "yang insyaAllah akan dilaksanakan pada:",
+    "━━━━━━━━━━━━━━━━━",
+    "📅 Tanggal : " + tglKhitan,
+    "⏰ Jam : " + jamKhitan,
+    "🏥 Metode Khitan : " + metodeKhitan,
+    "━━━━━━━━━━━━━━━━━",
+    "Semoga seluruh proses khitan berjalan dengan lancar, nyaman, aman, dan diberikan kemudahan oleh Allah SWT. 🤲💙",
+    "",
+    "Semoga Ananda menjadi anak yang sehat, sholeh, berbakti kepada orang tua, serta tumbuh menjadi kebanggaan keluarga. 🌟👨‍👩‍👦",
+    "",
+    "Aamiin Yaa Rabbal ‘Alamiin. 🤲✨",
+    "",
+    "Wassalamu’alaikum Warahmatullahi Wabarakatuh 🌷",
+    "",
+    "Hormat Kami,",
+    "🏥 Admin Rumah Khitan Damai",
+    "💙 Khitan Nyaman, Aman, dan Menyenangkan untuk Ananda ✨"
+  ];
+  return lines.join("\n");
+}
+
+/**
  * Mengirimkan pesan notifikasi booking baru ke Telegram Admin
  */
 function sendTelegramBookingNotification_(booking, source) {
@@ -168,6 +236,23 @@ function sendTelegramBookingNotification_(booking, source) {
       parse_mode: "HTML",
       disable_web_page_preview: true
     };
+
+    // Tambahkan tombol interaktif WhatsApp Sambutan jika nomor HP valid
+    const cleanPhone = cleanPhoneForWa_(noHp);
+    if (cleanPhone) {
+      const sambutanText = buildWaSambutanText_(booking);
+      const waUrl = "https://api.whatsapp.com/send?phone=" + cleanPhone + "&text=" + encodeURIComponent(sambutanText);
+      payload.reply_markup = {
+        inline_keyboard: [
+          [
+            {
+              text: "💬 Kirim WhatsApp Sambutan",
+              url: waUrl
+            }
+          ]
+        ]
+      };
+    }
 
     const options = {
       method: "post",
