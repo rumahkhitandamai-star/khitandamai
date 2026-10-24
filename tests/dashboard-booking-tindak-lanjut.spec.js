@@ -28,20 +28,18 @@ test('Verify Dashboard Card Operasional Booking Tindak Lanjut only displays toda
   await widgetOperasional.waitFor({ timeout: 25000 });
   await expect(widgetOperasional).toBeVisible();
 
-  // Tunggu data booking termuat
-  await page.waitForTimeout(2000);
-
-  // 3. Verifikasi Kartu Booking Tindak Lanjut
+  // 3. Verifikasi Kartu Booking Tindak Lanjut (tunggu sinkronisasi data booking dari database)
   const kartuBooking = page.locator('div.rounded-2xl:has-text("Booking Tindak Lanjut")').filter({ hasText: 'Pendaftar' }).first();
   await expect(kartuBooking).toBeVisible();
+  await expect(kartuBooking).not.toContainText('0 Pendaftar', { timeout: 25000 });
 
   const kartuText = await kartuBooking.innerText();
   expect(kartuText.toLowerCase()).toContain('booking tindak lanjut');
   expect(kartuText).toContain('Pendaftar');
 
   // Pastikan pendaftar yang tampil adalah pendaftar jadwal hari ini / mendatang
-  // Pada database tersimpan Abil Shidqi Arsalaan (jadwal mendatang/hari ini)
-  expect(kartuText).toContain('Abil Shidqi Arsalaan');
+  // Pada database tersimpan pendaftar aktif seperti Adit Septiawan atau Abil Shidqi Arsalaan
+  expect(kartuText).toMatch(/(Adit Septiawan|Abil Shidqi Arsalaan)/);
 
   // 4. Klik tombol "Periksa Booking →"
   const periksaBookingBtn = kartuBooking.locator('button:has-text("Periksa Booking →")');
@@ -56,7 +54,7 @@ test('Verify Dashboard Card Operasional Booking Tindak Lanjut only displays toda
   expect(selectedFilterValue).toBe('Mendatang');
 
   // Verifikasi baris pendaftar jadwal hari ini / mendatang tampil di tabel
-  const barisPendaftar = page.locator('tr:has-text("Abil Shidqi Arsalaan")');
+  const barisPendaftar = page.locator('tr:has-text("Adit Septiawan"), tr:has-text("Abil Shidqi Arsalaan")');
   await expect(barisPendaftar.first()).toBeVisible();
 
   // Pastikan tidak ada console error

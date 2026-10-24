@@ -82,7 +82,7 @@ Diferensiasi utama Khitan Damai terletak pada fokusnya terhadap aksesibilitas mo
 
 | Feature ID | Feature Name | Detailed Description | Inputs | Outputs | Validation Rules | Data Structure (Google Sheets) |
 | --- | --- | --- | --- | --- | --- | --- |
-| FR-01 | Booking Engine & Bot Telegram Interaktif | Modul pengiriman data pendaftaran ke database Google Sheets, notifikasi real-time ke akun Telegram Admin (081222531978) via Telegram Bot API dengan tombol interaktif Telegram "💬 Kirim WhatsApp Sambutan", penjadwal otomatis pemeriksaan jadwal khitan < 12 jam dengan tombol "🔔 Kirim WhatsApp Reminder", perintah pemindaian manual instan `/cekreminder` untuk Admin, serta Bot Telegram 2 Arah (`@khitandamai_bot`) untuk Cek Status Booking (via ID Booking / Nomor WhatsApp / perintah `/cek <query>`), filter jadwal cepat (`/hariini` dan `/besok`), serta menampilkan Daftar Jadwal Khitan Mendatang (`/jadwal`) yang dikelompokkan secara terstruktur per Hari/Tanggal (Hari Ini, Besok, Lusa, dst.) lengkap dengan tombol cepat menu Telegram dan proteksi pemecahan teks panjang (>3800 karakter). | Nama Anak, Nama Ortu, No HP, Tgl Khitan, dll | Notifikasi Sukses/Gagal & Pesan Telegram interaktif dengan tombol WhatsApp Sambutan, Reminder, Cek Status, Hasil Pindai `/cekreminder`, Jadwal Hari Ini/Besok, dan Jadwal Mendatang per Hari/Tanggal | No HP harus angka, Semua field wajib diisi | ID, Timestamp, Nama_Anak, Nama_Ortu, No_HP, Tgl_Khitan, Status |
+| FR-01 | Booking Engine & Bot Telegram Interaktif | Modul pengiriman data pendaftaran ke database Google Sheets, notifikasi real-time ke akun Telegram Admin (081222531978) via Telegram Bot API dengan tombol interaktif Telegram "💬 Kirim WhatsApp Sambutan", penjadwal otomatis pemeriksaan jadwal khitan < 12 jam dengan tombol "🔔 Kirim WhatsApp Reminder", perintah pemindaian manual instan `/cekreminder` untuk Admin, serta Bot Telegram 2 Arah (`@khitandamai_bot`) untuk Cek Status Booking (via ID Booking / Nomor WhatsApp / perintah `/cek <query>` dengan prioritas data aktif & pendaftaran jamak), filter jadwal cepat (`/hariini` dan `/besok`), pencarian tanggal spesifik (`/jadwal <tanggal>`), serta menampilkan Daftar Jadwal Khitan Mendatang (`/jadwal`) yang dikelompokkan secara terstruktur per Hari/Tanggal lengkap dengan tombol cepat menu Telegram dan proteksi pemecahan teks panjang (>3800 karakter). | Nama Anak, Nama Ortu, No HP, Tgl Khitan, dll | Notifikasi Sukses/Gagal & Pesan Telegram interaktif dengan tombol WhatsApp Sambutan, Reminder, Cek Status, Hasil Pindai `/cekreminder`, Jadwal Hari Ini/Besok/Tanggal Spesifik, dan Jadwal Mendatang per Hari/Tanggal | No HP harus angka, Semua field wajib diisi | ID, Timestamp, Nama_Anak, Nama_Ortu, No_HP, Tgl_Khitan, Status |
 | FR-02 | Status Checker (Cek Booking) | Fitur pencarian data booking secara real-time yang terintegrasi di dalam Menu Booking (melalui segmented tab switcher "Form Pendaftaran" vs "Cek Status"). Mendukung pencarian instan via ID Booking maupun opsi cadangan Nomor HP dengan privacy masking (`0812****1234`), visualisasi infografis bukti booking resmi, dan cetak/unduh gambar. Menu mandiri "Cek Status" pada sticky bottom nav dihapus untuk menyederhanakan navigasi publik, dengan backward compatibility tautan `#/cek-booking`. | ID Booking atau Nomor HP | Detail Status Booking & Infografis Bukti | ID unik atau minimal 10 digit angka HP | Mengambil data berdasarkan kolom ID / No_HP Sheet BOOKING |
 | FR-03 | Dynamic Gallery | Menampilkan foto-foto kegiatan/fasilitas. | Data dari Array/JSON | Grid Gambar | Format file .jpg/.png | URL_Gambar, Deskripsi |
 | FR-04 | Testimonial List | Menampilkan ulasan dari pelanggan. | Data dari Array/JSON | List Kartu Testimoni | Maksimal 200 karakter per teks | Nama_User, Isi_Testimoni, Rating |
@@ -147,3 +147,19 @@ Diferensiasi utama Khitan Damai terletak pada fokusnya terhadap aksesibilitas mo
 | CMS Khusus | Dashboard admin berbasis web untuk manajemen konten. | Sementara bisa dikelola langsung via Google Sheets. |
 | Push Notifications | Notifikasi langsung ke HP saat status berubah. | Memerlukan Firebase Cloud Messaging (FCM) dan izin browser. |
 | Login User | Sistem akun untuk melihat riwayat khitan keluarga. | Menambah kompleksitas autentikasi pada tahap awal. |
+
+# 9. Panduan Operasional & Integrasi
+
+### 9.1 Panduan Setup Time-Driven Trigger Pengingat Jadwal (< 12 Jam) di Google Apps Script
+Google Apps Script membatasi pembuatan trigger terprogram (`ScriptApp.newTrigger`) dari Web App publik anonim. Oleh karena itu, pengingat otomatis berkala setiap 1 jam dipasang secara manual satu kali melalui antarmuka resmi editor Google Apps Script:
+1. Buka project Google Apps Script target di browser (`script.google.com`).
+2. Pada panel menu sebelah kiri, klik ikon jam/timer (**Pemicu / Triggers**).
+3. Klik tombol **+ Tambahkan Pemicu (+ Add Trigger)** di pojok kanan bawah.
+4. Konfigurasikan pemicu dengan parameter berikut:
+   - **Pilih fungsi yang ingin dijalankan**: `checkUpcomingKhitanReminders`
+   - **Pilih deployment yang ingin dijalankan**: `Head`
+   - **Pilih sumber acara**: `Berdasarkan waktu (Time-driven)`
+   - **Pilih jenis pemicu berbasis waktu**: `Timer jam (Hour timer)`
+   - **Pilih interval jam**: `Setiap jam (Every hour)`
+5. Klik **Simpan (Save)** dan setujui izin otorisasi akun Google penyebar (*deployer*).
+6. Selesai. Google Apps Script akan secara otomatis memanggil fungsi `checkUpcomingKhitanReminders()` setiap 1 jam untuk memindai jadwal khitan < 12 jam dan mengirim notifikasi interaktif ke Telegram Admin.
