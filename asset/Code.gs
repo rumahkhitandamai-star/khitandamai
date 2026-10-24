@@ -74,6 +74,141 @@ const SETTINGS_CACHE_KEY = SERVER_CACHE_KEYS.SETTINGS;
 const SETTINGS_CACHE_TTL = 900; // 15 Menit
 const SERVER_CACHE_DEFAULT_TTL = 600; // 10 Menit
 
+// ==========================================
+// KONFIGURASI NOTIFIKASI TELEGRAM ADMIN
+// ==========================================
+const TELEGRAM_CONFIG = {
+  BOT_TOKEN: "8582652009:AAHoB81ErIc_oN4e6Kr7a3sdx2c7z029bpA",
+  ADMIN_CHAT_ID: "8746493929"
+};
+
+/**
+ * Mengambil konfigurasi Telegram Bot (fallback ke Script Properties jika tersedia)
+ */
+function getTelegramConfig_() {
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const token = (props && props.getProperty("TELEGRAM_BOT_TOKEN")) || TELEGRAM_CONFIG.BOT_TOKEN;
+    const chatId = (props && props.getProperty("TELEGRAM_ADMIN_CHAT_ID")) || TELEGRAM_CONFIG.ADMIN_CHAT_ID;
+    return { botToken: token, chatId: chatId };
+  } catch (e) {
+    return { botToken: TELEGRAM_CONFIG.BOT_TOKEN, chatId: TELEGRAM_CONFIG.ADMIN_CHAT_ID };
+  }
+}
+
+/**
+ * Escape karakter spesial HTML untuk Telegram Parse Mode HTML
+ */
+function escapeTelegramHtml_(str) {
+  if (str === undefined || str === null) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+/**
+ * Format string YYYY-MM-DD menjadi format tanggal Indonesia (misal: 25 Oktober 2026)
+ */
+function formatIndonesianDateStr_(ymdStr) {
+  if (!ymdStr) return "-";
+  const str = String(ymdStr).substring(0, 10);
+  const parts = str.split("-");
+  if (parts.length !== 3) return String(ymdStr);
+  const bulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+  const mIndex = parseInt(parts[1], 10) - 1;
+  const monthName = (mIndex >= 0 && mIndex < 12) ? bulan[mIndex] : parts[1];
+  return parseInt(parts[2], 10) + " " + monthName + " " + parts[0];
+}
+
+/**
+ * Mengirimkan pesan notifikasi booking baru ke Telegram Admin
+ */
+function sendTelegramBookingNotification_(booking, source) {
+  try {
+    const config = getTelegramConfig_();
+    if (!config.botToken || !config.chatId) {
+      Logger.log("Peringatan: Telegram Bot Token atau Chat ID belum dikonfigurasi.");
+      return { success: false, message: "Token atau Chat ID kosong" };
+    }
+
+    const idBooking = booking.idBooking || booking.id || "-";
+    const namaAnanda = booking.namaAnanda || booking.namaAnak || "-";
+    const tglLahirFormatted = booking.tanggalLahir ? formatIndonesianDateStr_(booking.tanggalLahir) : "-";
+    const namaPj = booking.namaPenanggungJawab || booking.namaOrtu || "-";
+    const hubungan = booking.hubunganKeluarga || "Orang Tua / Wali";
+    const noHp = booking.nomorHp || booking.noHp || "-";
+    const tglKhitanFormatted = (booking.tanggalKhitan || booking.tglKhitan) ? formatIndonesianDateStr_(booking.tanggalKhitan || booking.tglKhitan) : "-";
+    const jamKhitan = booking.jamKhitan ? (" • Pukul " + booking.jamKhitan) : "";
+    const metode = booking.metodeKhitan || "-";
+    const wilayahParts = [booking.kelurahan, booking.kecamatan, booking.kabupaten].filter(Boolean);
+    const wilayah = wilayahParts.length > 0 ? wilayahParts.join(", ") : (booking.alamat || "-");
+    const waktu = booking.timestamp || getJakartaTimestamp();
+    const asal = source || "Akses Publik";
+
+    const text = "🔔 <b>NOTIFIKASI BOOKING BARU!</b> 🏥\n" +
+      "━━━━━━━━━━━━━━━━━━\n" +
+      "📋 <b>ID Booking:</b> <code>" + escapeTelegramHtml_(idBooking) + "</code>\n" +
+      "👦 <b>Nama Ananda:</b> " + escapeTelegramHtml_(namaAnanda) + "\n" +
+      "🎂 <b>Tgl Lahir:</b> " + escapeTelegramHtml_(tglLahirFormatted) + "\n" +
+      "👨‍👩‍👦 <b>Penanggung Jawab:</b> " + escapeTelegramHtml_(namaPj) + " (" + escapeTelegramHtml_(hubungan) + ")\n" +
+      "📱 <b>WhatsApp:</b> " + escapeTelegramHtml_(noHp) + "\n" +
+      "📅 <b>Jadwal Khitan:</b> " + escapeTelegramHtml_(tglKhitanFormatted) + escapeTelegramHtml_(jamKhitan) + "\n" +
+      "✨ <b>Metode:</b> " + escapeTelegramHtml_(metode) + "\n" +
+      "📍 <b>Wilayah:</b> " + escapeTelegramHtml_(wilayah) + "\n" +
+      "🌐 <b>Sumber:</b> " + escapeTelegramHtml_(asal) + "\n" +
+      "⏰ <b>Waktu Submit:</b> " + escapeTelegramHtml_(waktu) + " WIB\n" +
+      "━━━━━━━━━━━━━━━━━━\n" +
+      "💡 <i>Segera buka Panel Admin Khitan Damai untuk verifikasi jadwal dan tindak lanjut.</i>";
+
+    const url = "https://api.telegram.org/bot" + config.botToken + "/sendMessage";
+    const payload = {
+      chat_id: config.chatId,
+      text: text,
+      parse_mode: "HTML",
+      disable_web_page_preview: true
+    };
+
+    const options = {
+      method: "post",
+      contentType: "application/json",
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    };
+
+    const response = UrlFetchApp.fetch(url, options);
+    const responseCode = response.getResponseCode();
+    const responseText = response.getContentText();
+    Logger.log("Telegram notification response (" + responseCode + "): " + responseText);
+    return { success: responseCode === 200, response: responseText };
+  } catch (err) {
+    Logger.log("Peringatan sendTelegramBookingNotification_: " + err.toString());
+    return { success: false, error: err.toString() };
+  }
+}
+
+/**
+ * Fungsi utilitas untuk uji coba kirim Telegram dari Apps Script Editor
+ */
+function testSendTelegramAlert() {
+  const sampleBooking = {
+    idBooking: "KD-TEST01",
+    namaAnanda: "Rayyan Al-Fatih (Uji Coba)",
+    tanggalLahir: "2017-08-14",
+    namaPenanggungJawab: "Admin Khitan Damai",
+    hubunganKeluarga: "Ayah",
+    nomorHp: "081222531978",
+    tanggalKhitan: Utilities.formatDate(new Date(), "Asia/Jakarta", "yyyy-MM-dd"),
+    jamKhitan: "09:00",
+    metodeKhitan: "Super Ring Modern",
+    kabupaten: "Subang",
+    kecamatan: "Subang",
+    kelurahan: "Sukamelang",
+    timestamp: getJakartaTimestamp()
+  };
+  return sendTelegramBookingNotification_(sampleBooking, "Uji Coba Editor Apps Script");
+}
+
 /**
  * Menyimpan data besar ke CacheService dengan pemecahan chunk aman (batas 100KB per key Apps Script)
  */
@@ -2843,6 +2978,30 @@ function doGet(e) {
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
     }
 
+    if (action === "testTelegramNotification") {
+      const sampleBooking = {
+        idBooking: "KD-TEST01",
+        namaAnanda: "Rayyan Al-Fatih (Uji Coba)",
+        tanggalLahir: "2017-08-14",
+        namaPenanggungJawab: "Admin Khitan Damai",
+        hubunganKeluarga: "Ayah",
+        nomorHp: "081222531978",
+        tanggalKhitan: Utilities.formatDate(new Date(), "Asia/Jakarta", "yyyy-MM-dd"),
+        jamKhitan: "09:00",
+        metodeKhitan: "Super Ring Modern",
+        kabupaten: "Subang",
+        kecamatan: "Subang",
+        kelurahan: "Sukamelang",
+        timestamp: getJakartaTimestamp()
+      };
+      const res = sendTelegramBookingNotification_(sampleBooking, "Uji Coba GET API");
+      return createJsonResponse({
+        status: res.success ? "success" : "error",
+        message: "Hasil pengiriman notifikasi Telegram",
+        details: res
+      });
+    }
+
     if (action === "checkStatus" || action === "checkBooking") {
       const idQuery = String(params.id || params.idBooking || params.bookingId || params.query || "").trim().toUpperCase();
       const phoneQuery = cleanPhoneNumber(params.phone);
@@ -4954,10 +5113,38 @@ function doPost(e) {
         tglKhitan: tanggalKhitan
       };
 
+      // Kirim notifikasi otomatis ke Telegram Admin (081222531978)
+      sendTelegramBookingNotification_(savedData, payload.token ? "Panel Admin" : "Akses Publik");
+
       return createJsonResponse({
         status: "success",
         message: "Pendaftaran khitan berhasil disimpan ke database.",
         data: savedData
+      });
+    }
+
+    // 4b. Aksi TEST TELEGRAM NOTIFICATION
+    if (action === "testTelegramNotification") {
+      const sampleBooking = {
+        idBooking: "KD-TEST01",
+        namaAnanda: "Rayyan Al-Fatih (Uji Coba)",
+        tanggalLahir: "2017-08-14",
+        namaPenanggungJawab: "Admin Khitan Damai",
+        hubunganKeluarga: "Ayah",
+        nomorHp: "081222531978",
+        tanggalKhitan: Utilities.formatDate(new Date(), "Asia/Jakarta", "yyyy-MM-dd"),
+        jamKhitan: "09:00",
+        metodeKhitan: "Super Ring Modern",
+        kabupaten: "Subang",
+        kecamatan: "Subang",
+        kelurahan: "Sukamelang",
+        timestamp: getJakartaTimestamp()
+      };
+      const res = sendTelegramBookingNotification_(sampleBooking, "Uji Coba POST API");
+      return createJsonResponse({
+        status: res.success ? "success" : "error",
+        message: "Hasil pengiriman notifikasi Telegram",
+        details: res
       });
     }
 
