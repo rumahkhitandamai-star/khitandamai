@@ -3731,6 +3731,74 @@
       </div>
     </div>
 
+    <!-- 5. Modal WhatsApp Ucapan (Panel Admin) -->
+    <div 
+      v-if="showWaUcapanModal" 
+      @click="closeWaUcapanModal" 
+      class="admin-panel fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 transition-opacity duration-200"
+    >
+      <div 
+        class="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]" 
+        @click.stop
+      >
+        <!-- Modal Header -->
+        <div class="bg-gradient-to-r from-emerald-700 to-teal-700 text-white px-5 py-4 flex items-center justify-between shrink-0">
+          <div class="flex items-center gap-2">
+            <span class="text-xl"><v-icon name="whatsapp"></v-icon></span>
+            <div>
+              <h3 class="font-extrabold text-sm sm:text-base">WhatsApp Ucapan</h3>
+              <p class="text-[11px] text-emerald-100">Kirim pesan ucapan selamat & doa khitan ke nomor HP pasien</p>
+            </div>
+          </div>
+          <button 
+            type="button" 
+            @click="closeWaUcapanModal" 
+            class="text-emerald-200 hover:text-white p-1 rounded-lg transition"
+          >
+            <v-icon name="xmark"></v-icon>
+          </button>
+        </div>
+
+        <!-- Modal Body -->
+        <div class="p-4 sm:p-6 overflow-y-auto space-y-3">
+          <div class="flex items-center justify-between bg-emerald-50/70 border border-emerald-200/70 p-3 rounded-2xl text-xs">
+            <div>
+              <span class="text-[10px] text-slate-500 block">Tujuan Pengiriman</span>
+              <span class="font-bold text-slate-900 block">{{ activeWaUcapanData?.namaPenanggungJawab || activeWaUcapanData?.namaOrtu }}</span>
+            </div>
+            <div class="text-right">
+              <span class="text-[10px] text-slate-500 block">Nomor HP (WhatsApp)</span>
+              <span class="font-mono font-bold text-emerald-800 block">{{ activeWaUcapanData?.nomorHp || activeWaUcapanData?.noHp }}</span>
+            </div>
+          </div>
+
+          <label class="block text-xs font-bold text-slate-700">Pratinjau Pesan Template Ucapan:</label>
+          <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs text-slate-800 whitespace-pre-line max-h-80 overflow-y-auto font-sans leading-relaxed select-all">
+            {{ buildWaUcapanText(activeWaUcapanData) }}
+          </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="bg-slate-50 px-5 py-3 border-t border-slate-200 flex items-center justify-end gap-2 shrink-0">
+          <button 
+            type="button" 
+            @click="closeWaUcapanModal" 
+            class="btn-press px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold text-xs transition"
+          >
+            Batal
+          </button>
+          <button 
+            type="button" 
+            @click="sendWaUcapan" 
+            class="btn-press px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-sm transition"
+          >
+            <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+            <span>Buka WhatsApp (Kirim Pesan)</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Modal Tambah Galeri Baru (Panel Admin) -->
     <div 
       v-if="showGalleryAddModal" 
@@ -8027,16 +8095,15 @@
                                 </button>
 
                                 <!-- 2. Pintasan WhatsApp (Jika Ada Nomor HP) -->
-                                <a 
+                                <button 
+                                  type="button"
                                   v-if="item.nomorHp"
-                                  :href="'https://wa.me/' + cleanPhoneForWa(item.nomorHp)"
-                                  target="_blank"
-                                  rel="noopener noreferrer"
+                                  @click="openWaUcapanModal(item)"
                                   class="btn-press p-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition shadow-2xs inline-flex items-center justify-center"
-                                  title="Chat WhatsApp Pasien"
+                                  title="Whatsapp Ucapan"
                                 >
                                   <v-icon name="whatsapp" class="text-xs"></v-icon>
-                                </a>
+                                </button>
 
                                 <!-- 3. Tombol Dropdown Menu Aksi Lainnya -->
                                 <div class="relative inline-block text-left">
@@ -8056,6 +8123,15 @@
                                     class="absolute left-0 mt-1 w-56 bg-white rounded-2xl shadow-xl border border-slate-200 py-1.5 z-50 text-left font-medium text-xs divide-y divide-slate-100"
                                   >
                                     <div class="py-1">
+                                      <button 
+                                        type="button" 
+                                        v-if="item.nomorHp"
+                                        @click="openWaUcapanModal(item); closeKunjunganActionMenu()"
+                                        class="w-full text-left px-3 py-2 hover:bg-emerald-50 hover:text-emerald-800 text-slate-700 flex items-center gap-2.5 transition"
+                                      >
+                                        <v-icon name="whatsapp" class="text-emerald-600 shrink-0"></v-icon>
+                                        <span>Whatsapp Ucapan</span>
+                                      </button>
                                       <button 
                                         type="button" 
                                         @click="openCetakWordKunjungan(item); closeKunjunganActionMenu()"
@@ -8132,11 +8208,10 @@
                             <td v-if="isKunjunganColVisible('nomorHp')" class="p-2 font-mono whitespace-nowrap">
                               <a 
                                 v-if="item.nomorHp" 
-                                :href="'https://wa.me/' + cleanPhoneForWa(item.nomorHp)" 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                class="inline-flex items-center gap-1 text-slate-800 hover:text-emerald-600 font-semibold transition"
-                                title="Chat WhatsApp Pasien"
+                                href="javascript:void(0)"
+                                @click.prevent="openWaUcapanModal(item)" 
+                                class="inline-flex items-center gap-1 text-slate-800 hover:text-emerald-600 font-semibold transition cursor-pointer"
+                                title="Whatsapp Ucapan"
                               >
                                 <v-icon name="whatsapp" class="text-emerald-600 text-xs"></v-icon>
                                 <span>{{ item.nomorHp }}</span>
@@ -8218,11 +8293,10 @@
                           <span class="text-slate-500 block text-xs font-bold uppercase tracking-wider">WhatsApp</span>
                           <a 
                             v-if="item.nomorHp" 
-                            :href="'https://wa.me/' + cleanPhoneForWa(item.nomorHp)" 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            class="font-mono text-emerald-700 hover:underline block truncate flex items-center gap-1 font-bold text-xs sm:text-sm mt-0.5"
-                            title="Chat WhatsApp"
+                            href="javascript:void(0)"
+                            @click.prevent="openWaUcapanModal(item)" 
+                            class="font-mono text-emerald-700 hover:underline block truncate flex items-center gap-1 font-bold text-xs sm:text-sm mt-0.5 cursor-pointer"
+                            title="Whatsapp Ucapan"
                           >
                             <v-icon name="whatsapp" class="text-sm"></v-icon>
                             <span>{{ item.nomorHp }}</span>
@@ -8246,16 +8320,15 @@
                           >
                             <v-icon name="pen-to-square" class="mr-1"></v-icon> Edit
                           </button>
-                          <a 
+                          <button 
+                            type="button"
                             v-if="item.nomorHp"
-                            :href="'https://wa.me/' + cleanPhoneForWa(item.nomorHp)"
-                            target="_blank"
-                            rel="noopener noreferrer"
+                            @click="openWaUcapanModal(item)"
                             class="btn-press inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow-2xs"
-                            title="Chat WhatsApp Pasien"
+                            title="Whatsapp Ucapan"
                           >
-                            <v-icon name="whatsapp" class="mr-1"></v-icon> WA
-                          </a>
+                            <v-icon name="whatsapp" class="mr-1"></v-icon> Whatsapp Ucapan
+                          </button>
                         </div>
 
                         <!-- Tombol Dropdown / Menu Aksi Lainnya Mobile -->
@@ -8276,6 +8349,15 @@
                             class="absolute right-0 bottom-full mb-1 w-56 bg-white rounded-2xl shadow-xl border border-slate-200 py-1.5 z-50 text-left font-medium text-xs divide-y divide-slate-100"
                           >
                             <div class="py-1">
+                              <button 
+                                type="button" 
+                                v-if="item.nomorHp"
+                                @click="openWaUcapanModal(item); closeKunjunganActionMenu()"
+                                class="w-full text-left px-3 py-2 hover:bg-emerald-50 hover:text-emerald-800 text-slate-700 flex items-center gap-2.5 transition"
+                              >
+                                <v-icon name="whatsapp" class="text-emerald-600 shrink-0"></v-icon>
+                                <span>Whatsapp Ucapan</span>
+                              </button>
                               <button 
                                 type="button" 
                                 @click="openCetakWordKunjungan(item); closeKunjunganActionMenu()"
@@ -16679,6 +16761,8 @@
               closeWaSambutanModal();
             } else if (showWaReminderModal.value) {
               closeWaReminderModal();
+            } else if (showWaUcapanModal.value) {
+              closeWaUcapanModal();
             } else if (showGalleryAddModal.value) {
               closeGalleryAddModal();
             } else if (showGalleryEditModal.value) {
@@ -17559,11 +17643,13 @@
           }
         };
 
-        // ================= WHATSAPP SAMBUTAN & REMINDER =================
+        // ================= WHATSAPP SAMBUTAN, REMINDER & UCAPAN =================
         const showWaSambutanModal = ref(false);
         const showWaReminderModal = ref(false);
+        const showWaUcapanModal = ref(false);
         const activeWaSambutanData = ref(null);
         const activeWaReminderData = ref(null);
+        const activeWaUcapanData = ref(null);
 
         const resolveSapaanWa = (hubungan) => {
           const h = String(hubungan || '').trim().toLowerCase();
@@ -17690,6 +17776,116 @@
           const b = activeWaReminderData.value;
           const phone = cleanPhoneForWa(b.nomorHp || b.noHp);
           const text = buildWaReminderText(b);
+          const url = 'https://wa.me/' + phone + '?text=' + encodeURIComponent(text);
+          window.open(url, '_blank', 'noopener,noreferrer');
+        };
+
+        const formatUsiaUcapan = (tglLahirStr, tglKhitanStr) => {
+          if (!tglLahirStr) return '-';
+          const parseAnyDate = (s) => {
+            if (!s) return null;
+            if (s instanceof Date && !isNaN(s.getTime())) return s;
+            const str = String(s).trim();
+            let m = str.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+            if (m) return new Date(parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10));
+            m = str.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
+            if (m) return new Date(parseInt(m[3], 10), parseInt(m[2], 10) - 1, parseInt(m[1], 10));
+            const d = new Date(str);
+            return isNaN(d.getTime()) ? null : d;
+          };
+
+          const d1 = parseAnyDate(tglLahirStr);
+          const d2 = tglKhitanStr ? parseAnyDate(tglKhitanStr) : new Date();
+          if (!d1 || !d2 || d2 < d1) return '-';
+
+          let y1 = d1.getFullYear(), m1 = d1.getMonth(), day1 = d1.getDate();
+          let y2 = d2.getFullYear(), m2 = d2.getMonth(), day2 = d2.getDate();
+
+          let days = day2 - day1;
+          let months = m2 - m1;
+          let years = y2 - y1;
+
+          if (days < 0) {
+            months--;
+            const prevMonthLastDay = new Date(y2, m2, 0).getDate();
+            days += prevMonthLastDay;
+          }
+
+          if (months < 0) {
+            years--;
+            months += 12;
+          }
+
+          if (years < 0) return '-';
+          return years + ' Tahun ' + months + ' Bulan ' + days + ' Hari';
+        };
+
+        const buildWaUcapanText = (k) => {
+          if (!k) return '';
+          const namaPj = k.namaPenanggungJawab || k.namaOrtu || '-';
+          const namaAnanda = k.namaAnanda || k.namaAnak || '-';
+          const tglKhitan = formatIndonesianDate(k.tanggalKhitan || k.tglKhitan);
+          const sapaan = resolveSapaanWa(k.hubunganKeluarga);
+          const usiaText = formatUsiaUcapan(k.tanggalLahir, k.tanggalKhitan || k.tglKhitan);
+
+          const lines = [
+            'Subang, ' + tglKhitan,
+            '🌸 Assalamu’alaikum Warahmatullahi Wabarakatuh 🌸',
+            'Alhamdulillahi Rabbil ‘Alamiin 🤍',
+            'Dengan penuh rasa syukur, kami mengucapkan terima kasih sebesar-besarnya kepada ' + sapaan + ':',
+            '👨‍👩‍👦 ' + namaPj,
+            'yang telah mempercayakan proses khitan Ananda kepada Rumah Khitan Damai 🏥✨',
+            'Semoga proses khitan yang telah dijalani berjalan lancar dan membawa keberkahan untuk Ananda 🌿',
+            '━━━━━━━━━━━━━━━━━━',
+            '👦 DATA ANANDA',
+            '🧒 Nama : ' + namaAnanda,
+            '🎂 Usia : ' + usiaText,
+            '📅 Tanggal Khitan : ' + tglKhitan,
+            '━━━━━━━━━━━━━━━━━━',
+            '🤲 Doa terbaik kami untuk Ananda:',
+            '✨ Menjadi anak yang sholeh',
+            '✨ Taat kepada Allah SWT',
+            '✨ Berbakti kepada kedua orang tua',
+            '✨ Berguna bagi agama, nusa, dan bangsa',
+            '✨ Dimudahkan meraih cita-cita',
+            '✨ Diberikan kesehatan, rezeki yang luas, dan penuh keberkahan',
+            'Semoga Ananda ' + namaAnanda + ' segera pulih, sehat kembali, serta selalu berada dalam lindungan Allah SWT 🤍',
+            'Aamiin Ya Rabbal ‘Alamiin 🤲',
+            'Terima kasih atas kepercayaan ' + sapaan + ' kepada kami 🌸',
+            '━━━━━━━━━━━━━━━━━━',
+            '🏥 Rumah Khitan Damai',
+            '✨ Khitan Modern & Ramah Anak ✨',
+            '🔹 Khitan Damai',
+            '🔹 Aku Berani Khitan',
+            '🔹 Khitan Nusantara',
+            '🔹 Praktisi Sunat Purwasuka',
+            '🔹 Thermocauter Jahit',
+            '🔹 Thermocauter Lem',
+            '🔹 Khitan Bayi',
+            '🔹 Khitan Anak Gemuk',
+            '🔹 Khitan Perbaikan',
+            '━━━━━━━━━━━━━━━━━━',
+            '💐 Hormat Kami,',
+            'Admin Rumah Khitan Damai 🤍'
+          ];
+          return lines.join('\n');
+        };
+
+        const openWaUcapanModal = (item) => {
+          activeWaUcapanData.value = item;
+          showWaUcapanModal.value = true;
+        };
+
+        const closeWaUcapanModal = () => {
+          showWaUcapanModal.value = false;
+          activeWaUcapanData.value = null;
+        };
+
+        const sendWaUcapan = () => {
+          if (!activeWaUcapanData.value) return;
+          const k = activeWaUcapanData.value;
+          const phone = cleanPhoneForWa(k.nomorHp || k.noHp);
+          const text = buildWaUcapanText(k);
           const url = 'https://wa.me/' + phone + '?text=' + encodeURIComponent(text);
           window.open(url, '_blank', 'noopener,noreferrer');
         };
@@ -22481,6 +22677,11 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
           window.__kdResolveSapaanWa = resolveSapaanWa;
           window.__kdBuildWaSambutanText = buildWaSambutanText;
           window.__kdBuildWaReminderText = buildWaReminderText;
+          window.__kdFormatUsiaUcapan = formatUsiaUcapan;
+          window.__kdBuildWaUcapanText = buildWaUcapanText;
+          window.__kdOpenWaUcapanModal = openWaUcapanModal;
+          window.__kdCloseWaUcapanModal = closeWaUcapanModal;
+          window.__kdSendWaUcapan = sendWaUcapan;
         }
 
         onMounted(() => {
@@ -22786,17 +22987,24 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
           executeAdminCekBooking,
           showWaSambutanModal,
           showWaReminderModal,
+          showWaUcapanModal,
           activeWaSambutanData,
           activeWaReminderData,
+          activeWaUcapanData,
           resolveSapaanWa,
           buildWaSambutanText,
           buildWaReminderText,
+          formatUsiaUcapan,
+          buildWaUcapanText,
           openWaSambutanModal,
           closeWaSambutanModal,
           openWaReminderModal,
           closeWaReminderModal,
+          openWaUcapanModal,
+          closeWaUcapanModal,
           sendWaSambutan,
           sendWaReminder,
+          sendWaUcapan,
           lastSyncTime,
           lastKunjunganSyncTime,
           // History & Cache Kredensial
