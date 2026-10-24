@@ -104,7 +104,7 @@ test('Verify WhatsApp Sambutan & Reminder dynamic greeting based on Hubungan Kel
   // Verifikasi Ayah / Wali pada Reminder
   for (const text of [reminderAyah, reminderKakek]) {
     expect(text).toContain('Selamat sore Ayah 😊');
-    expect(text).toContain('Mohon Ayah dan Ananda untuk beristirahat yang cukup malam ini');
+    expect(text).toContain('Mohon Ayah, Bunda serta Ananda untuk beristirahat yang cukup malam ini');
     expect(text).toContain('Terima kasih atas perhatian Ayah 🙏');
     expect(text).not.toContain('Ayah/Bunda');
   }
@@ -112,14 +112,14 @@ test('Verify WhatsApp Sambutan & Reminder dynamic greeting based on Hubungan Kel
   // Verifikasi Ibu / Nenek pada Reminder
   for (const text of [reminderIbu, reminderNenek]) {
     expect(text).toContain('Selamat sore Bunda 😊');
-    expect(text).toContain('Mohon Bunda dan Ananda untuk beristirahat yang cukup malam ini');
+    expect(text).toContain('Mohon Ayah, Bunda serta Ananda untuk beristirahat yang cukup malam ini');
     expect(text).toContain('Terima kasih atas perhatian Bunda 🙏');
     expect(text).not.toContain('Ayah/Bunda');
   }
 
   // Verifikasi Fallback pada Reminder
   expect(reminderFallback).toContain('Selamat sore Ayah/Bunda 😊');
-  expect(reminderFallback).toContain('Mohon Ayah/Bunda dan Ananda untuk beristirahat yang cukup malam ini');
+  expect(reminderFallback).toContain('Mohon Ayah, Bunda serta Ananda untuk beristirahat yang cukup malam ini');
   expect(reminderFallback).toContain('Terima kasih atas perhatian Ayah/Bunda 🙏');
 
   // Pastikan tidak ada console error fatal

@@ -319,7 +319,7 @@ function buildWaReminderText_(b) {
     "🕒 Jam Khitan : " + jamKhitan,
     "━━━━━━━━━━━━━━━━━━",
     "",
-    "Mohon " + sapaan + " dan Ananda untuk beristirahat yang cukup malam ini 😴",
+    "Mohon Ayah, Bunda serta Ananda untuk beristirahat yang cukup malam ini 😴",
     "Usahakan tidur tidak terlalu larut agar kondisi Ananda tetap fit dan nyaman saat proses khitan berlangsung 😊",
     "",
     "Semoga proses khitan besok berjalan lancar, diberikan kemudahan, dan selalu dalam lindungan Allah SWT 🤲",
