@@ -531,31 +531,58 @@ function setupHourlyReminderTrigger() {
 }
 
 /**
- * Mengirim pesan umum ke Telegram Bot
+ * Mengirim pesan umum ke Telegram Bot (dilengkapi pemecah pesan otomatis jika panjang > 3800 karakter)
  */
 function sendTelegramMessage_(chatId, text, replyMarkup) {
   try {
     const config = getTelegramConfig_();
     if (!config.botToken) return { success: false, message: "Token bot belum dikonfigurasi" };
-    const payload = {
-      chat_id: chatId,
-      text: text,
-      parse_mode: "HTML",
-      disable_web_page_preview: true
-    };
-    if (replyMarkup) {
-      payload.reply_markup = replyMarkup;
+
+    const MAX_LEN = 3800; // Batas aman di bawah limit Telegram 4096 karakter
+    const str = String(text || "");
+    const chunks = [];
+
+    if (str.length <= MAX_LEN) {
+      chunks.push(str);
+    } else {
+      const lines = str.split("\n");
+      let currentChunk = "";
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if ((currentChunk + "\n" + line).length > MAX_LEN) {
+          if (currentChunk) chunks.push(currentChunk);
+          currentChunk = line;
+        } else {
+          currentChunk = currentChunk ? (currentChunk + "\n" + line) : line;
+        }
+      }
+      if (currentChunk) chunks.push(currentChunk);
     }
-    const options = {
-      method: "post",
-      contentType: "application/json",
-      payload: JSON.stringify(payload),
-      muteHttpExceptions: true
-    };
-    const response = UrlFetchApp.fetch("https://api.telegram.org/bot" + config.botToken + "/sendMessage", options);
-    const code = response.getResponseCode();
-    const resText = response.getContentText();
-    return { success: code === 200, response: resText };
+
+    let lastResult = { success: true };
+    for (let c = 0; c < chunks.length; c++) {
+      const payload = {
+        chat_id: chatId,
+        text: chunks[c],
+        parse_mode: "HTML",
+        disable_web_page_preview: true
+      };
+      // Sertakan replyMarkup pada potongan pesan terakhir
+      if (c === chunks.length - 1 && replyMarkup) {
+        payload.reply_markup = replyMarkup;
+      }
+      const options = {
+        method: "post",
+        contentType: "application/json",
+        payload: JSON.stringify(payload),
+        muteHttpExceptions: true
+      };
+      const response = UrlFetchApp.fetch("https://api.telegram.org/bot" + config.botToken + "/sendMessage", options);
+      const code = response.getResponseCode();
+      const resText = response.getContentText();
+      lastResult = { success: code === 200, response: resText };
+    }
+    return lastResult;
   } catch (err) {
     Logger.log("sendTelegramMessage_ error: " + err.toString());
     return { success: false, error: err.toString() };
@@ -564,14 +591,19 @@ function sendTelegramMessage_(chatId, text, replyMarkup) {
 
 /**
  * Mengambil daftar booking mendatang dan mengelompokkannya per Hari/Tanggal
+ * Parameter filterType: "upcoming" (default), "today", atau "tomorrow"
  */
-function getUpcomingBookingsGroupedByDate_() {
+function getUpcomingBookingsGroupedByDate_(filterType) {
   const sheet = getSheet();
   const lastRow = sheet.getLastRow();
-  if (lastRow <= 1) return { dates: [], grouped: {}, totalPasien: 0 };
+  const currentFilter = filterType || "upcoming";
+  if (lastRow <= 1) return { dates: [], grouped: {}, totalPasien: 0, filterType: currentFilter };
 
   const values = sheet.getRange(2, 1, lastRow - 1, HEADERS.length).getValues();
-  const todayYmd = Utilities.formatDate(new Date(), "Asia/Jakarta", "yyyy-MM-dd");
+  const now = new Date();
+  const todayYmd = Utilities.formatDate(now, "Asia/Jakarta", "yyyy-MM-dd");
+  const tomorrowObj = new Date(now.getTime() + 24 * 3600 * 1000);
+  const tomorrowYmd = Utilities.formatDate(tomorrowObj, "Asia/Jakarta", "yyyy-MM-dd");
 
   const list = [];
   for (let i = 0; i < values.length; i++) {
@@ -591,8 +623,15 @@ function getUpcomingBookingsGroupedByDate_() {
     }
     if (!tglKhitanStr || tglKhitanStr.length < 10) continue;
 
-    // Filter tanggal khitan >= hari ini
-    if (tglKhitanStr < todayYmd) continue;
+    // Filter tanggal khitan sesuai filterType
+    if (currentFilter === "today") {
+      if (tglKhitanStr !== todayYmd) continue;
+    } else if (currentFilter === "tomorrow") {
+      if (tglKhitanStr !== tomorrowYmd) continue;
+    } else {
+      // Default upcoming: jadwal >= hari ini
+      if (tglKhitanStr < todayYmd) continue;
+    }
 
     if (!jamKhitanStr || jamKhitanStr === "-") {
       jamKhitanStr = "08:00";
@@ -634,7 +673,7 @@ function getUpcomingBookingsGroupedByDate_() {
   }
 
   const dates = Object.keys(grouped).sort();
-  return { dates: dates, grouped: grouped, totalPasien: list.length };
+  return { dates: dates, grouped: grouped, totalPasien: list.length, filterType: currentFilter };
 }
 
 /**
@@ -644,14 +683,28 @@ function formatUpcomingScheduleMessage_(data, isAdmin) {
   const dates = data.dates || [];
   const grouped = data.grouped || {};
   const totalPasien = data.totalPasien || 0;
+  const filterType = data.filterType || "upcoming";
 
   if (dates.length === 0 || totalPasien === 0) {
+    if (filterType === "today") {
+      return "ℹ️ <b>Tidak ada jadwal khitan hari ini.</b>\nSemua pendaftaran hari ini telah berstatus selesai/batal atau belum ada jadwal tindakan yang terdaftar untuk hari ini.";
+    }
+    if (filterType === "tomorrow") {
+      return "ℹ️ <b>Tidak ada jadwal khitan esok hari.</b>\nBelum ada jadwal pendaftaran khitan yang terdaftar untuk besok.";
+    }
     return "ℹ️ <b>Tidak ada jadwal khitan mendatang saat ini.</b>\nSemua pendaftaran telah berstatus selesai/batal atau belum ada jadwal baru yang terdaftar.";
   }
 
   const todayYmd = Utilities.formatDate(new Date(), "Asia/Jakarta", "yyyy-MM-dd");
 
-  let text = "📅 <b>DAFTAR JADWAL KHITAN MENDATANG</b> 🏥\n" +
+  let titleHeader = "📅 <b>DAFTAR JADWAL KHITAN MENDATANG</b> 🏥";
+  if (filterType === "today") {
+    titleHeader = "📅 <b>JADWAL KHITAN HARI INI</b> 🏥";
+  } else if (filterType === "tomorrow") {
+    titleHeader = "⚡ <b>JADWAL KHITAN BESOK</b> 🏥";
+  }
+
+  let text = titleHeader + "\n" +
     "━━━━━━━━━━━━━━━━━━\n" +
     "📊 <b>Total Terjadwal:</b> " + totalPasien + " Pasien\n" +
     "🗓️ <b>Jumlah Hari:</b> " + dates.length + " Hari Pelaksanaan\n" +
@@ -701,7 +754,7 @@ function formatUpcomingScheduleMessage_(data, isAdmin) {
   }
 
   text += "━━━━━━━━━━━━━━━━━━\n" +
-    "💡 <i>Ketik ID Booking (misal: <code>KD-202610-001</code>) untuk rincian data lengkap.</i>";
+    "💡 <i>Ketik ID Booking (misal: <code>KD-202610-001</code> atau <code>6UZA6KM</code>) untuk rincian data lengkap.</i>";
 
   return text;
 }
@@ -805,12 +858,11 @@ function handleTelegramWebhookUpdate_(update) {
     if (!update) return HtmlService.createHtmlOutput("OK");
 
     const msg = update.message || update.edited_message;
-    if (!msg || !msg.text) {
+    if (!msg) {
       return HtmlService.createHtmlOutput("OK");
     }
 
     const chatId = String(msg.chat.id);
-    const rawText = String(msg.text).trim();
     const config = getTelegramConfig_();
     const isAdmin = String(chatId) === String(config.chatId);
 
@@ -818,6 +870,7 @@ function handleTelegramWebhookUpdate_(update) {
     const publicKeyboard = {
       keyboard: [
         [{ text: "📅 Jadwal Mendatang" }, { text: "🔍 Cek Status Booking" }],
+        [{ text: "📅 Hari Ini" }, { text: "⚡ Jadwal Besok" }],
         [{ text: "ℹ️ Bantuan & Info" }]
       ],
       resize_keyboard: true,
@@ -827,6 +880,7 @@ function handleTelegramWebhookUpdate_(update) {
     const adminKeyboard = {
       keyboard: [
         [{ text: "📅 Jadwal Mendatang" }, { text: "🔍 Cek Status Booking" }],
+        [{ text: "📅 Hari Ini" }, { text: "⚡ Jadwal Besok" }],
         [{ text: "⏰ Cek Reminder (< 12 Jam)" }, { text: "ℹ️ Bantuan & Info" }]
       ],
       resize_keyboard: true,
@@ -835,15 +889,31 @@ function handleTelegramWebhookUpdate_(update) {
 
     const mainKeyboard = isAdmin ? adminKeyboard : publicKeyboard;
 
+    // Respon jika pesan bukan teks (misal: stiker, gambar, audio, lokasi)
+    if (!msg.text) {
+      const mediaReply = "Halo! Terima kasih telah menghubungi Bot Resmi Rumah Khitan Damai 😊\n\n" +
+        "Bot saat ini melayani input berupa teks.\n" +
+        "Silakan sentuh menu di bawah atau kirimkan:\n" +
+        "• <b>/jadwal</b> — Daftar Jadwal Khitan Mendatang\n" +
+        "• <b>/hariini</b> — Jadwal Khitan Hari Ini\n" +
+        "• <b>/besok</b> — Jadwal Khitan Besok\n" +
+        "• Atau ketik <b>ID Booking / No. WhatsApp</b> untuk cek status pendaftaran.";
+      sendTelegramMessage_(chatId, mediaReply, mainKeyboard);
+      return HtmlService.createHtmlOutput("OK");
+    }
+
+    const rawText = String(msg.text).trim();
     const lowerText = rawText.toLowerCase();
 
     // 1. Perintah Start / Bantuan
     if (lowerText === "/start" || lowerText === "/help" || lowerText === "bantuan" || lowerText === "info" || lowerText === "ℹ️ bantuan & info") {
       let welcomeText = "👋 <b>Halo! Selamat Datang di Bot Resmi Rumah Khitan Damai</b> 🏥✨\n" +
         "<i>\"Aku Berani Khitan — Nyaman, Modern, dan Menyenangkan\"</i>\n\n" +
-        "Silakan pilih menu di bawah atau kirim perintah:\n" +
-        "📅 <b>/jadwal</b> — Lihat Jadwal Khitan Mendatang (dikelompokkan per Hari/Tanggal)\n" +
-        "🔍 <b>Cek Booking</b> — Cukup ketik <b>ID Booking</b> (contoh: <code>KD-202610-001</code>) atau <b>Nomor WhatsApp</b> yang didaftarkan.\n";
+        "Silakan pilih menu di bawah atau ketik perintah:\n" +
+        "📅 <b>/jadwal</b> — Lihat Jadwal Khitan Mendatang (per Hari/Tanggal)\n" +
+        "📅 <b>/hariini</b> — Lihat Jadwal Khitan Khusus Hari Ini\n" +
+        "⚡ <b>/besok</b> — Lihat Jadwal Khitan Khusus Besok\n" +
+        "🔍 <b>Cek Booking</b> — Cukup ketik <b>ID Booking</b> (contoh: <code>KD-202610-001</code> atau <code>6UZA6KM</code>) atau <b>Nomor WhatsApp</b> yang didaftarkan.\n";
       
       if (isAdmin) {
         welcomeText += "⏰ <b>/cekreminder</b> — Pindai & kirim pengingat jadwal khitan &lt; 12 jam secara langsung (Khusus Admin)\n";
@@ -878,29 +948,52 @@ function handleTelegramWebhookUpdate_(update) {
       return HtmlService.createHtmlOutput("OK");
     }
 
-    // 2. Perintah Jadwal Mendatang (Dikelompokkan per Hari/Tanggal)
+    // 2a. Perintah Jadwal Mendatang (Dikelompokkan per Hari/Tanggal)
     if (lowerText === "/jadwal" || lowerText === "/upcoming" || lowerText === "jadwal" || lowerText === "📅 jadwal mendatang") {
-      const upcomingData = getUpcomingBookingsGroupedByDate_();
+      const upcomingData = getUpcomingBookingsGroupedByDate_("upcoming");
       const scheduleText = formatUpcomingScheduleMessage_(upcomingData, isAdmin);
       sendTelegramMessage_(chatId, scheduleText, mainKeyboard);
       return HtmlService.createHtmlOutput("OK");
     }
 
-    // 3. Tombol "🔍 Cek Status Booking"
+    // 2b. Perintah Jadwal Hari Ini
+    if (lowerText === "/hariini" || lowerText === "/today" || lowerText === "hari ini" || lowerText === "📅 hari ini") {
+      const todayData = getUpcomingBookingsGroupedByDate_("today");
+      const scheduleText = formatUpcomingScheduleMessage_(todayData, isAdmin);
+      sendTelegramMessage_(chatId, scheduleText, mainKeyboard);
+      return HtmlService.createHtmlOutput("OK");
+    }
+
+    // 2c. Perintah Jadwal Besok
+    if (lowerText === "/besok" || lowerText === "/tomorrow" || lowerText === "besok" || lowerText === "⚡ jadwal besok") {
+      const tomorrowData = getUpcomingBookingsGroupedByDate_("tomorrow");
+      const scheduleText = formatUpcomingScheduleMessage_(tomorrowData, isAdmin);
+      sendTelegramMessage_(chatId, scheduleText, mainKeyboard);
+      return HtmlService.createHtmlOutput("OK");
+    }
+
+    // 3. Tombol "🔍 Cek Status Booking" (Panduan)
     if (lowerText === "🔍 cek status booking" || lowerText === "/cek") {
       const askText = "🔍 <b>Pencarian Status Booking Khitan</b>\n\n" +
-        "Silakan ketikkan <b>ID Booking</b> (contoh: <code>KD-202610-001</code>) atau <b>Nomor WhatsApp</b> yang didaftarkan.\n\n" +
+        "Silakan ketikkan <b>ID Booking</b> (contoh: <code>KD-202610-001</code> atau <code>6UZA6KM</code>) atau <b>Nomor WhatsApp</b> yang didaftarkan.\n\n" +
         "Bot akan segera mencari data pendaftaran Anda.";
       sendTelegramMessage_(chatId, askText, mainKeyboard);
       return HtmlService.createHtmlOutput("OK");
     }
 
-    // 4. Deteksi Pencarian (ID Booking atau Nomor HP)
-    const isIdBooking = /^KD[-\d]/i.test(rawText) || lowerText.startsWith("kd-") || lowerText.startsWith("kd");
-    const isPhoneNumber = /^(\+?62|08)\d{7,13}$/.test(rawText.replace(/[-\s]/g, "")) || /^\d{10,13}$/.test(rawText.replace(/[-\s]/g, ""));
+    // 4. Deteksi Pencarian (Bisa langsung ketik ID / No HP, atau diawali /cek <query> / /status <query>)
+    let searchQuery = rawText;
+    if (lowerText.startsWith("/cek ") || lowerText.startsWith("/status ")) {
+      searchQuery = rawText.substring(rawText.indexOf(" ") + 1).trim();
+    }
 
-    if (isIdBooking || isPhoneNumber) {
-      const booking = findBookingForTelegram_(rawText);
+    const cleanDigits = cleanPhoneNumber(searchQuery);
+    const isPhoneNumber = cleanDigits.length >= 8 && cleanDigits.length <= 15;
+    // ID booking bisa diawali KD, atau kode alphanumeric 4-20 karakter tanpa spasi dan bukan perintah garis miring
+    const isIdBooking = /^[A-Za-z0-9\-_]{4,20}$/.test(searchQuery) && !searchQuery.startsWith("/");
+
+    if (isPhoneNumber || isIdBooking) {
+      const booking = findBookingForTelegram_(searchQuery);
       if (booking) {
         const detailText = formatBookingDetailTelegram_(booking, isAdmin);
         let inlineButtons = null;
@@ -925,8 +1018,8 @@ function handleTelegramWebhookUpdate_(update) {
         sendTelegramMessage_(chatId, detailText, inlineButtons || mainKeyboard);
       } else {
         const notFoundText = "⚠️ <b>Data Booking Tidak Ditemukan</b>\n\n" +
-          "Pendaftaran dengan kata kunci: <code>" + escapeTelegramHtml_(rawText) + "</code> tidak ditemukan di database.\n" +
-          "Mohon pastikan ID Booking (misal: <code>KD-202610-001</code>) atau nomor WhatsApp yang dimasukkan sudah sesuai.";
+          "Pendaftaran dengan kata kunci: <code>" + escapeTelegramHtml_(searchQuery) + "</code> tidak ditemukan di database.\n" +
+          "Mohon pastikan ID Booking (misal: <code>KD-202610-001</code> atau <code>6UZA6KM</code>) atau nomor WhatsApp yang dimasukkan sudah sesuai.";
         sendTelegramMessage_(chatId, notFoundText, mainKeyboard);
       }
       return HtmlService.createHtmlOutput("OK");
@@ -934,8 +1027,10 @@ function handleTelegramWebhookUpdate_(update) {
 
     // 5. Fallback respon jika teks tidak dikenali
     const fallbackText = "Halo! Bot Khitan Damai siap melayani Anda 😊\n\n" +
-      "Silakan ketik:\n" +
-      "• <b>/jadwal</b> untuk melihat jadwal khitan mendatang\n" +
+      "Silakan pilih menu di bawah atau ketik:\n" +
+      "• <b>/jadwal</b> — Melihat seluruh jadwal khitan mendatang\n" +
+      "• <b>/hariini</b> — Melihat jadwal khitan hari ini\n" +
+      "• <b>/besok</b> — Melihat jadwal khitan besok\n" +
       "• <b>ID Booking</b> atau <b>Nomor WhatsApp</b> untuk cek status pendaftaran.";
     sendTelegramMessage_(chatId, fallbackText, mainKeyboard);
     return HtmlService.createHtmlOutput("OK");
@@ -3794,7 +3889,8 @@ function doGet(e) {
     }
 
     if (action === "getUpcomingSchedule") {
-      const data = getUpcomingBookingsGroupedByDate_();
+      const scheduleFilter = (params && params.filter) ? params.filter : (payload && payload.filter ? payload.filter : "upcoming");
+      const data = getUpcomingBookingsGroupedByDate_(scheduleFilter);
       const formatted = formatUpcomingScheduleMessage_(data, (params ? params.isAdmin === "true" : (payload ? payload.isAdmin === true : false)));
       return createJsonResponse({
         status: "success",
@@ -6002,7 +6098,8 @@ function doPost(e) {
     }
 
     if (action === "getUpcomingSchedule") {
-      const data = getUpcomingBookingsGroupedByDate_();
+      const scheduleFilter = (params && params.filter) ? params.filter : (payload && payload.filter ? payload.filter : "upcoming");
+      const data = getUpcomingBookingsGroupedByDate_(scheduleFilter);
       const formatted = formatUpcomingScheduleMessage_(data, (params ? params.isAdmin === "true" : (payload ? payload.isAdmin === true : false)));
       return createJsonResponse({
         status: "success",
