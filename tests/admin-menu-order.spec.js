@@ -1,7 +1,7 @@
 const { test, expect } = require('@playwright/test');
 const path = require('path');
 
-test('Verify Admin Panel Menu Order is Dashboard, Booking, Kunjungan, Galeri, Saran, Jumat Berkah, Users, Setting', async ({ page }) => {
+test('Verify Admin Panel Menu Order is Dashboard, Booking, Kunjungan, Galeri, Saran, Jumat Berkah, Setting and Users Sub-Menu', async ({ page }) => {
   const filePath = 'file://' + path.resolve(__dirname, '../asset/Index.html').replace(/\\/g, '/');
 
   // Monitor console errors
@@ -36,12 +36,11 @@ test('Verify Admin Panel Menu Order is Dashboard, Booking, Kunjungan, Galeri, Sa
     'Galeri',
     'Saran',
     'Jumat Berkah',
-    'Users',
     'Setting'
   ];
 
   const desktopCount = await desktopSidebarButtons.count();
-  expect(desktopCount).toBe(8);
+  expect(desktopCount).toBe(7);
 
   for (let i = 0; i < expectedLabels.length; i++) {
     const text = await desktopSidebarButtons.nth(i).innerText();
@@ -55,7 +54,7 @@ test('Verify Admin Panel Menu Order is Dashboard, Booking, Kunjungan, Galeri, Sa
   // Verifikasi Urutan Menu pada Mobile Horizontal Quick Tabs (Pill Tabs)
   const mobilePillButtons = page.locator('.admin-panel .md\\:hidden.overflow-x-auto button');
   const pillCount = await mobilePillButtons.count();
-  expect(pillCount).toBe(8);
+  expect(pillCount).toBe(7);
 
   for (let i = 0; i < expectedLabels.length; i++) {
     const text = await mobilePillButtons.nth(i).innerText();
@@ -71,7 +70,7 @@ test('Verify Admin Panel Menu Order is Dashboard, Booking, Kunjungan, Galeri, Sa
 
   const drawerMenuButtons = page.locator('.animate-bounce-short nav button span.block.truncate.font-bold');
   const drawerCount = await drawerMenuButtons.count();
-  expect(drawerCount).toBe(8);
+  expect(drawerCount).toBe(7);
 
   for (let i = 0; i < expectedLabels.length; i++) {
     const text = await drawerMenuButtons.nth(i).innerText();
@@ -109,6 +108,23 @@ test('Verify Admin Panel Menu Order is Dashboard, Booking, Kunjungan, Galeri, Sa
   // Heading Jumat Berkah harus tampil
   const jumatHeading = page.locator('h3:has-text("Program Khitan Jumat Berkah")');
   await expect(jumatHeading).toBeVisible();
+
+  // 6. Verifikasi Sub-Menu Users & Hak Akses berada di dalam Menu Setting
+  await menuBtn.click();
+  await page.waitForTimeout(400);
+  const settingDrawerBtn = drawerMenuButtons.nth(6); // Setting index 6
+  await settingDrawerBtn.click();
+  await page.waitForTimeout(500);
+
+  // Sub-menu Users & Hak Akses harus ada dalam chips tab Setting
+  const usersSubMenuChip = page.locator('button:has-text("Users & Hak Akses"):visible').first();
+  await expect(usersSubMenuChip).toBeVisible();
+  await usersSubMenuChip.click();
+  await page.waitForTimeout(500);
+
+  // Heading Users & Hak Akses harus tampil di dalam Setting
+  const usersHeading = page.locator('h3:has-text("Manajemen Pengguna & Hak Akses")');
+  await expect(usersHeading).toBeVisible();
 
   // Tidak boleh ada error kritis di konsol browser
   expect(consoleErrors.filter(e => !e.includes('favicon') && !e.includes('Chart is not defined'))).toHaveLength(0);

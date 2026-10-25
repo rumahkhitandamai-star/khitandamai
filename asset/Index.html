@@ -8464,8 +8464,105 @@
                 </div>
               </div>
 
-              <!-- ================= TAB: USERS ================= -->
-              <div v-else-if="adminActiveTab === 'users'" class="space-y-5">
+              <!-- ================= TAB: SETTING ================= -->
+              <div v-else-if="adminActiveTab === 'setting'" class="space-y-4 sm:space-y-5">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/70 pb-3">
+                  <div>
+                    <h3 class="text-base sm:text-lg font-extrabold text-slate-800 flex items-center gap-2">
+                      <v-icon name="gear"></v-icon>
+                      <span>Pengaturan — {{ currentSettingSection.label }}</span>
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-0.5">Konfigurasi {{ currentSettingSection.label.toLowerCase() }} sistem klinik Khitan Damai.</p>
+                  </div>
+                </div>
+
+                <!-- Navigasi Sub-Menu Horizontal (Chips Tabs) -->
+                <div class="flex items-center gap-2 overflow-x-auto no-scrollbar py-1.5 bg-white p-2 rounded-2xl border border-slate-200/90 shadow-xs">
+                  <button
+                    v-for="sec in settingSections"
+                    :key="'chip-' + sec.id"
+                    type="button"
+                    @click="setSettingSection(sec.id)"
+                    :class="settingActiveSection === sec.id ? 'bg-tosca-700 text-white font-extrabold shadow-xs' : 'bg-slate-100 text-slate-800 font-bold hover:bg-slate-200'"
+                    class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm whitespace-nowrap transition shrink-0"
+                  >
+                    <v-icon :name="sec.icon"></v-icon>
+                    <span>{{ sec.label }}</span>
+                  </button>
+                </div>
+
+                <!-- Form Pengaturan Klinik -->
+                <div v-if="settingActiveSection === 'profil'" class="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs space-y-4">
+                  <h4 class="text-xs sm:text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <span class="w-2.5 h-4 bg-tosca-700 rounded-xs"></span>
+                    Informasi Profil Klinik
+                  </h4>
+
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <label class="block font-semibold text-slate-700 mb-1">Nama Klinik</label>
+                      <input type="text" value="Khitan Damai Subang" readonly class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-bold">
+                    </div>
+                    <div>
+                      <label class="block font-semibold text-slate-700 mb-1">Slogan</label>
+                      <input type="text" value="Aku Berani Khitan" readonly class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-medium">
+                    </div>
+                    <div>
+                      <label class="block font-semibold text-slate-700 mb-1">Nomor WhatsApp Pelayanan</label>
+                      <input type="text" value="081222531978" readonly class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-mono font-bold">
+                    </div>
+                    <div>
+                      <label class="block font-semibold text-slate-700 mb-1">Tautan Google Maps</label>
+                      <input type="text" value="https://maps.app.goo.gl/8f5TYF52MVDXAg1s6" readonly class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-mono text-[11px]">
+                    </div>
+                    <div class="sm:col-span-2">
+                      <label class="block font-semibold text-slate-700 mb-1">Alamat Lengkap</label>
+                      <textarea readonly rows="2" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800">Perum Bumi Abdi Praja Blok D2 No.13 RT. 061 RW.016, Kelurahan Sukamelang, Kabupaten Subang - Jawa Barat</textarea>
+                    </div>
+                  </div>
+
+                  <!-- Preferensi Tema Tampilan Panel Admin (Mode Gelap / Terang) -->
+                  <div class="border-t border-slate-200/80 pt-4 space-y-3">
+                    <h5 class="text-xs sm:text-sm font-bold text-slate-800 flex items-center gap-2">
+                      <v-icon :name="adminTheme === 'dark' ? 'sun' : 'moon'" class="text-amber-500"></v-icon>
+                      <span>Preferensi Tema Tampilan Panel Admin</span>
+                    </h5>
+                    <p class="text-[11px] text-slate-500">Pilih mode tampilan panel admin. Setelan bawaan adalah Mode Terang. Preferensi yang dipilih akan otomatis tersimpan di perangkat ini.</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                      <button 
+                        type="button" 
+                        @click="setAdminTheme('light')" 
+                        :class="adminTheme === 'light' ? 'ring-2 ring-tosca-600 bg-tosca-50/50 border-tosca-500 text-tosca-900 font-bold' : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white font-medium'"
+                        class="p-3.5 rounded-2xl border flex items-center gap-3 transition text-left cursor-pointer"
+                      >
+                        <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-lg font-bold shrink-0">
+                          <v-icon name="sun"></v-icon>
+                        </div>
+                        <div>
+                          <div class="text-xs sm:text-sm">Mode Terang (Bawaan)</div>
+                          <div class="text-[11px] text-slate-500">Latar bersih, segar, dan standar klinis</div>
+                        </div>
+                      </button>
+                      <button 
+                        type="button" 
+                        @click="setAdminTheme('dark')" 
+                        :class="adminTheme === 'dark' ? 'ring-2 ring-tosca-500 bg-slate-800 border-tosca-500 text-white font-bold' : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white font-medium'"
+                        class="p-3.5 rounded-2xl border flex items-center gap-3 transition text-left cursor-pointer"
+                      >
+                        <div class="w-10 h-10 rounded-xl bg-slate-900 text-amber-300 flex items-center justify-center text-lg font-bold shrink-0 border border-slate-700">
+                          <v-icon name="moon"></v-icon>
+                        </div>
+                        <div>
+                          <div class="text-xs sm:text-sm">Mode Gelap</div>
+                          <div class="text-[11px] text-slate-400">Kontras tinggi, redup, nyaman di malam hari</div>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+              <!-- Sub-Menu Pengaturan: Users & Hak Akses -->
+              <div v-else-if="settingActiveSection === 'users'" class="space-y-5">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/70 pb-3">
                   <div>
                     <h3 class="text-base sm:text-lg font-extrabold text-slate-800 flex items-center gap-2">
@@ -8783,104 +8880,8 @@
                 </div>
               </div>
 
-              <!-- ================= TAB: SETTING ================= -->
-              <div v-else-if="adminActiveTab === 'setting'" class="space-y-4 sm:space-y-5">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/70 pb-3">
-                  <div>
-                    <h3 class="text-base sm:text-lg font-extrabold text-slate-800 flex items-center gap-2">
-                      <v-icon name="gear"></v-icon>
-                      <span>Pengaturan — {{ currentSettingSection.label }}</span>
-                    </h3>
-                    <p class="text-xs text-slate-500 mt-0.5">Konfigurasi {{ currentSettingSection.label.toLowerCase() }} sistem klinik Khitan Damai.</p>
-                  </div>
-                </div>
 
-                <!-- Navigasi Sub-Menu Horizontal (Chips Tabs) -->
-                <div class="flex items-center gap-2 overflow-x-auto no-scrollbar py-1.5 bg-white p-2 rounded-2xl border border-slate-200/90 shadow-xs">
-                  <button
-                    v-for="sec in settingSections"
-                    :key="'chip-' + sec.id"
-                    type="button"
-                    @click="setSettingSection(sec.id)"
-                    :class="settingActiveSection === sec.id ? 'bg-tosca-700 text-white font-extrabold shadow-xs' : 'bg-slate-100 text-slate-800 font-bold hover:bg-slate-200'"
-                    class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm whitespace-nowrap transition shrink-0"
-                  >
-                    <v-icon :name="sec.icon"></v-icon>
-                    <span>{{ sec.label }}</span>
-                  </button>
-                </div>
-
-                <!-- Form Pengaturan Klinik -->
-                <div v-if="settingActiveSection === 'profil'" class="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs space-y-4">
-                  <h4 class="text-xs sm:text-sm font-bold text-slate-800 flex items-center gap-2">
-                    <span class="w-2.5 h-4 bg-tosca-700 rounded-xs"></span>
-                    Informasi Profil Klinik
-                  </h4>
-
-                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                    <div>
-                      <label class="block font-semibold text-slate-700 mb-1">Nama Klinik</label>
-                      <input type="text" value="Khitan Damai Subang" readonly class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-bold">
-                    </div>
-                    <div>
-                      <label class="block font-semibold text-slate-700 mb-1">Slogan</label>
-                      <input type="text" value="Aku Berani Khitan" readonly class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-medium">
-                    </div>
-                    <div>
-                      <label class="block font-semibold text-slate-700 mb-1">Nomor WhatsApp Pelayanan</label>
-                      <input type="text" value="081222531978" readonly class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-mono font-bold">
-                    </div>
-                    <div>
-                      <label class="block font-semibold text-slate-700 mb-1">Tautan Google Maps</label>
-                      <input type="text" value="https://maps.app.goo.gl/8f5TYF52MVDXAg1s6" readonly class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-mono text-[11px]">
-                    </div>
-                    <div class="sm:col-span-2">
-                      <label class="block font-semibold text-slate-700 mb-1">Alamat Lengkap</label>
-                      <textarea readonly rows="2" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800">Perum Bumi Abdi Praja Blok D2 No.13 RT. 061 RW.016, Kelurahan Sukamelang, Kabupaten Subang - Jawa Barat</textarea>
-                    </div>
-                  </div>
-
-                  <!-- Preferensi Tema Tampilan Panel Admin (Mode Gelap / Terang) -->
-                  <div class="border-t border-slate-200/80 pt-4 space-y-3">
-                    <h5 class="text-xs sm:text-sm font-bold text-slate-800 flex items-center gap-2">
-                      <v-icon :name="adminTheme === 'dark' ? 'sun' : 'moon'" class="text-amber-500"></v-icon>
-                      <span>Preferensi Tema Tampilan Panel Admin</span>
-                    </h5>
-                    <p class="text-[11px] text-slate-500">Pilih mode tampilan panel admin. Setelan bawaan adalah Mode Terang. Preferensi yang dipilih akan otomatis tersimpan di perangkat ini.</p>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                      <button 
-                        type="button" 
-                        @click="setAdminTheme('light')" 
-                        :class="adminTheme === 'light' ? 'ring-2 ring-tosca-600 bg-tosca-50/50 border-tosca-500 text-tosca-900 font-bold' : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white font-medium'"
-                        class="p-3.5 rounded-2xl border flex items-center gap-3 transition text-left cursor-pointer"
-                      >
-                        <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-lg font-bold shrink-0">
-                          <v-icon name="sun"></v-icon>
-                        </div>
-                        <div>
-                          <div class="text-xs sm:text-sm">Mode Terang (Bawaan)</div>
-                          <div class="text-[11px] text-slate-500">Latar bersih, segar, dan standar klinis</div>
-                        </div>
-                      </button>
-                      <button 
-                        type="button" 
-                        @click="setAdminTheme('dark')" 
-                        :class="adminTheme === 'dark' ? 'ring-2 ring-tosca-500 bg-slate-800 border-tosca-500 text-white font-bold' : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white font-medium'"
-                        class="p-3.5 rounded-2xl border flex items-center gap-3 transition text-left cursor-pointer"
-                      >
-                        <div class="w-10 h-10 rounded-xl bg-slate-900 text-amber-300 flex items-center justify-center text-lg font-bold shrink-0 border border-slate-700">
-                          <v-icon name="moon"></v-icon>
-                        </div>
-                        <div>
-                          <div class="text-xs sm:text-sm">Mode Gelap</div>
-                          <div class="text-[11px] text-slate-400">Kontras tinggi, redup, nyaman di malam hari</div>
-                        </div>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Form Pengaturan Running Text Halaman Publik -->
+                                <!-- Form Pengaturan Running Text Halaman Publik -->
                 <div v-else-if="settingActiveSection === 'runningtext'" class="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs space-y-4">
                   <!-- Header Card & Actions -->
                   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
@@ -14460,6 +14461,7 @@
         // ================= DETEKSI & KELOLA PERUBAHAN TAB SETTING =================
         const unsavedSettingSections = computed(() => {
           const list = [];
+          if (hasUnsavedUserChanges.value) list.push('Users & Hak Akses');
           if (hasUnsavedRunningTextChanges.value) list.push('Running Text');
           if (hasUnsavedHeroCardChanges.value) list.push('Hero Card / Featuring Card');
           if (hasUnsavedSlideshowChanges.value) list.push('Foto Slideshow Beranda');
@@ -14474,6 +14476,9 @@
         });
 
         const discardAllSettingDrafts = () => {
+          if (hasUnsavedUserChanges.value) {
+            discardUserChanges();
+          }
           settingsDraft.value = Object.assign({}, runningTextConfig.value);
           heroCardDraft.value = Object.assign({}, heroCardConfig.value);
           slideshowDraft.value = JSON.parse(JSON.stringify(slideshowConfig.value));
@@ -16234,15 +16239,15 @@
           { id: 'galeri', label: 'Galeri', icon: 'fa-solid fa-images', desc: 'Dokumentasi Fasilitas' },
           { id: 'saran', label: 'Saran', icon: 'fa-solid fa-comment-dots', desc: 'Kritik & Testimoni' },
           { id: 'jumatberkah', label: 'Jumat Berkah', icon: 'fa-solid fa-gift', desc: 'Program Sosial Khitan' },
-          { id: 'users', label: 'Users', icon: 'fa-solid fa-users', desc: 'Pengguna & Hak Akses' },
           { id: 'setting', label: 'Setting', icon: 'fa-solid fa-gear', desc: 'Pengaturan Sistem' }
         ];
 
-        const ALL_ADMIN_MENU_IDS = ['dashboard', 'booking', 'kunjungan', 'galeri', 'saran', 'jumatberkah', 'users', 'setting'];
+        const ALL_ADMIN_MENU_IDS = ['dashboard', 'booking', 'kunjungan', 'galeri', 'saran', 'jumatberkah', 'setting'];
 
         // Sub-Menu Navigasi Menu Setting
         const settingSections = [
           { id: 'profil',       label: 'Profil Klinik',              icon: 'fa-solid fa-hospital' },
+          { id: 'users',        label: 'Users & Hak Akses',          icon: 'fa-solid fa-users' },
           { id: 'runningtext',  label: 'Running Text',               icon: 'fa-solid fa-bullhorn' },
           { id: 'herocard',     label: 'Hero Card / Featuring Card', icon: 'fa-solid fa-id-card' },
           { id: 'slideshow',    label: 'Foto Slideshow',             icon: 'fa-solid fa-images' },
@@ -16274,6 +16279,9 @@
           isMobileAdminSidebarOpen.value = false;
           if (sectionId === 'backup') {
             fetchDatabaseBackups('auto');
+          }
+          if (sectionId === 'users' && !adminUsers.value.length && !isLoadingUsers.value) {
+            fetchAdminUsers();
           }
         };
 
@@ -16357,12 +16365,21 @@
           if (tabId === 'saran' && !adminSaran.value.length && !isLoadingSaran.value) {
             fetchAdminSaran();
           }
-          if (tabId === 'setting' && settingActiveSection.value === 'backup') {
-            fetchDatabaseBackups('auto');
+          if (tabId === 'setting') {
+            if (settingActiveSection.value === 'backup') {
+              fetchDatabaseBackups('auto');
+            }
+            if (settingActiveSection.value === 'users' && !adminUsers.value.length && !isLoadingUsers.value) {
+              fetchAdminUsers();
+            }
           }
         };
 
         const setAdminTab = (tabId) => {
+          if (tabId === 'users') {
+            setSettingSection('users');
+            return;
+          }
           if (isMenuHidden(tabId)) {
             const firstVisible = visibleAdminSidebarMenus.value[0];
             tabId = firstVisible ? firstVisible.id : 'dashboard';
@@ -16759,7 +16776,14 @@
 
         // Sinkronkan draft running text, slideshow, metode & program saat tab Setting dibuka HANYA jika belum ada perubahan draft
         watch(adminActiveTab, (newTab) => {
+          if (newTab === 'users') {
+            adminActiveTab.value = 'setting';
+            settingActiveSection.value = 'users';
+          }
           if (newTab === 'setting') {
+            if (settingActiveSection.value === 'users' && !adminUsers.value.length && !isLoadingUsers.value) {
+              fetchAdminUsers();
+            }
             isSettingMenuExpanded.value = true;
             if (settingActiveSection.value === 'backup') {
               fetchDatabaseBackups('auto');
@@ -22471,7 +22495,11 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
                 if (adminActiveTab.value === 'dashboard' && !isLoadingKunjungan.value) {
                   fetchAdminKunjungan();
                 }
-                if (adminActiveTab.value === 'users' && !adminUsers.value.length && !isLoadingUsers.value) {
+                if (adminActiveTab.value === 'users') {
+                  adminActiveTab.value = 'setting';
+                  settingActiveSection.value = 'users';
+                }
+                if (adminActiveTab.value === 'setting' && settingActiveSection.value === 'users' && !adminUsers.value.length && !isLoadingUsers.value) {
                   fetchAdminUsers();
                 }
                 if (adminActiveTab.value === 'kunjungan' && !adminKunjungan.value.length && !isLoadingKunjungan.value) {

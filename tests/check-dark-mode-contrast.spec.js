@@ -102,7 +102,7 @@ test('Inspect all text contrast across all admin tabs and modals in dark mode', 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForTimeout(400);
 
-  const mobileTabs = ['dashboard', 'booking', 'kunjungan', 'galeri', 'saran', 'jumatberkah', 'users', 'setting'];
+  const mobileTabs = ['dashboard', 'booking', 'kunjungan', 'galeri', 'saran', 'jumatberkah', 'setting'];
   for (const tabId of mobileTabs) {
     const pill = page.locator(`.md\\:hidden button:has-text("${tabId}")`).first();
     if (await pill.isVisible()) {
@@ -112,5 +112,15 @@ test('Inspect all text contrast across all admin tabs and modals in dark mode', 
     const issues = await inspectTextContrast(`Mobile ${tabId}`);
     console.log(`Mobile Tab ${tabId.toUpperCase()}: ${issues.length} low contrast elements.`);
     expect(issues.length).toBe(0);
+  }
+
+  // Also check Setting Sub-menu Users contrast
+  const usersSubChip = page.locator('button:has-text("Users & Hak Akses"):visible').first();
+  if (await usersSubChip.isVisible()) {
+    await usersSubChip.click();
+    await page.waitForTimeout(400);
+    const usersIssues = await inspectTextContrast('Mobile Setting Sub-menu Users');
+    console.log(`Mobile Setting Sub-menu Users: ${usersIssues.length} low contrast elements.`);
+    expect(usersIssues.length).toBe(0);
   }
 });
