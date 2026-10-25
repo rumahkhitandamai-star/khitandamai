@@ -102,7 +102,7 @@ test('Inspect all text contrast across all admin tabs and modals in dark mode', 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForTimeout(400);
 
-  const mobileTabs = ['dashboard', 'booking', 'kunjungan', 'galeri', 'saran', 'jumatberkah', 'setting'];
+  const mobileTabs = ['setting', 'dashboard', 'booking', 'kunjungan', 'galeri', 'jumatberkah', 'saran'];
   for (const tabId of mobileTabs) {
     const pill = page.locator(`.md\\:hidden button:has-text("${tabId}")`).first();
     if (await pill.isVisible()) {

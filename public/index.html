@@ -8845,6 +8845,10 @@
                   </h4>
                   <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
                     <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80">
+                      <span class="font-bold text-slate-700 block"><v-icon name="gear" class="mr-1 text-tosca-700"></v-icon> Setting</span>
+                      <span class="text-[10px] text-purple-700 font-semibold">SUPER ADMIN</span>
+                    </div>
+                    <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80">
                       <span class="font-bold text-slate-700 block"><v-icon name="chart-column" class="mr-1 text-tosca-700"></v-icon> Dashboard</span>
                       <span class="text-[10px] text-emerald-700 font-semibold">ALL / FULL</span>
                     </div>
@@ -8861,20 +8865,12 @@
                       <span class="text-[10px] text-emerald-700 font-semibold">EDITOR / FULL</span>
                     </div>
                     <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80">
-                      <span class="font-bold text-slate-700 block"><v-icon name="comment-dots" class="mr-1 text-tosca-700"></v-icon> Saran</span>
-                      <span class="text-[10px] text-emerald-700 font-semibold">EDITOR / READ</span>
-                    </div>
-                    <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80">
                       <span class="font-bold text-slate-700 block"><v-icon name="gift" class="mr-1 text-tosca-700"></v-icon> Jumat Berkah</span>
                       <span class="text-[10px] text-emerald-700 font-semibold">EDITOR / FULL</span>
                     </div>
                     <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80">
-                      <span class="font-bold text-slate-700 block"><v-icon name="users" class="mr-1 text-tosca-700"></v-icon> Users</span>
-                      <span class="text-[10px] text-purple-700 font-semibold">SUPER ADMIN</span>
-                    </div>
-                    <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80">
-                      <span class="font-bold text-slate-700 block"><v-icon name="gear" class="mr-1 text-tosca-700"></v-icon> Setting</span>
-                      <span class="text-[10px] text-purple-700 font-semibold">SUPER ADMIN</span>
+                      <span class="font-bold text-slate-700 block"><v-icon name="comment-dots" class="mr-1 text-tosca-700"></v-icon> Saran</span>
+                      <span class="text-[10px] text-emerald-700 font-semibold">EDITOR / READ</span>
                     </div>
                   </div>
                 </div>
@@ -16233,16 +16229,16 @@
         };
 
         const adminSidebarMenus = [
+          { id: 'setting', label: 'Setting', icon: 'fa-solid fa-gear', desc: 'Pengaturan Sistem' },
           { id: 'dashboard', label: 'Dashboard', icon: 'fa-solid fa-chart-column', desc: 'Grafik Kunjungan & Pendapatan' },
           { id: 'booking', label: 'Booking', icon: 'fa-solid fa-clipboard-list', desc: 'Pendaftaran Pasien' },
           { id: 'kunjungan', label: 'Kunjungan', icon: 'fa-solid fa-hospital', desc: 'Jadwal Tindakan & Kontrol' },
           { id: 'galeri', label: 'Galeri', icon: 'fa-solid fa-images', desc: 'Dokumentasi Fasilitas' },
-          { id: 'saran', label: 'Saran', icon: 'fa-solid fa-comment-dots', desc: 'Kritik & Testimoni' },
           { id: 'jumatberkah', label: 'Jumat Berkah', icon: 'fa-solid fa-gift', desc: 'Program Sosial Khitan' },
-          { id: 'setting', label: 'Setting', icon: 'fa-solid fa-gear', desc: 'Pengaturan Sistem' }
+          { id: 'saran', label: 'Saran', icon: 'fa-solid fa-comment-dots', desc: 'Kritik & Testimoni' }
         ];
 
-        const ALL_ADMIN_MENU_IDS = ['dashboard', 'booking', 'kunjungan', 'galeri', 'saran', 'jumatberkah', 'setting'];
+        const ALL_ADMIN_MENU_IDS = ['setting', 'dashboard', 'booking', 'kunjungan', 'galeri', 'jumatberkah', 'saran'];
 
         // Sub-Menu Navigasi Menu Setting
         const settingSections = [

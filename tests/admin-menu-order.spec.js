@@ -1,7 +1,7 @@
 const { test, expect } = require('@playwright/test');
 const path = require('path');
 
-test('Verify Admin Panel Menu Order is Dashboard, Booking, Kunjungan, Galeri, Saran, Jumat Berkah, Setting and Users Sub-Menu', async ({ page }) => {
+test('Verify Admin Panel Menu Order is Setting, Dashboard, Booking, Kunjungan, Galeri, Jumat Berkah, Saran', async ({ page }) => {
   const filePath = 'file://' + path.resolve(__dirname, '../asset/Index.html').replace(/\\/g, '/');
 
   // Monitor console errors
@@ -30,13 +30,13 @@ test('Verify Admin Panel Menu Order is Dashboard, Booking, Kunjungan, Galeri, Sa
   // 2. Verifikasi Urutan Menu pada Sidebar Desktop
   const desktopSidebarButtons = page.locator('aside nav button span.block.truncate.leading-tight');
   const expectedLabels = [
+    'Setting',
     'Dashboard',
     'Booking',
     'Kunjungan',
     'Galeri',
-    'Saran',
     'Jumat Berkah',
-    'Setting'
+    'Saran'
   ];
 
   const desktopCount = await desktopSidebarButtons.count();
@@ -77,9 +77,9 @@ test('Verify Admin Panel Menu Order is Dashboard, Booking, Kunjungan, Galeri, Sa
     expect(text.trim()).toBe(expectedLabels[i]);
   }
 
-  // 5. Verifikasi Navigasi Berfungsi untuk Menu Baru (Galeri, Saran, Jumat Berkah)
-  // Klik menu Galeri di drawer
-  const galeriDrawerBtn = drawerMenuButtons.nth(3); // Galeri index 3
+  // 5. Verifikasi Navigasi Berfungsi untuk Menu Baru (Galeri, Jumat Berkah, Saran)
+  // Klik menu Galeri di drawer (index 4)
+  const galeriDrawerBtn = drawerMenuButtons.nth(4);
   await galeriDrawerBtn.click();
   await page.waitForTimeout(500);
 
@@ -87,21 +87,10 @@ test('Verify Admin Panel Menu Order is Dashboard, Booking, Kunjungan, Galeri, Sa
   const galeriHeading = page.locator('h3:has-text("Dokumentasi & Galeri Kegiatan")');
   await expect(galeriHeading).toBeVisible();
 
-  // Buka kembali drawer dan klik Saran
+  // Buka kembali drawer dan klik Jumat Berkah (index 5)
   await menuBtn.click();
   await page.waitForTimeout(400);
-  const saranDrawerBtn = drawerMenuButtons.nth(4); // Saran index 4
-  await saranDrawerBtn.click();
-  await page.waitForTimeout(500);
-
-  // Heading Saran harus tampil
-  const saranHeading = page.locator('h3:has-text("Data Masukan & Kritik")');
-  await expect(saranHeading).toBeVisible();
-
-  // Buka kembali drawer dan klik Jumat Berkah
-  await menuBtn.click();
-  await page.waitForTimeout(400);
-  const jumatDrawerBtn = drawerMenuButtons.nth(5); // Jumat Berkah index 5
+  const jumatDrawerBtn = drawerMenuButtons.nth(5);
   await jumatDrawerBtn.click();
   await page.waitForTimeout(500);
 
@@ -109,10 +98,21 @@ test('Verify Admin Panel Menu Order is Dashboard, Booking, Kunjungan, Galeri, Sa
   const jumatHeading = page.locator('h3:has-text("Program Khitan Jumat Berkah")');
   await expect(jumatHeading).toBeVisible();
 
-  // 6. Verifikasi Sub-Menu Users & Hak Akses berada di dalam Menu Setting
+  // Buka kembali drawer dan klik Saran (index 6)
   await menuBtn.click();
   await page.waitForTimeout(400);
-  const settingDrawerBtn = drawerMenuButtons.nth(6); // Setting index 6
+  const saranDrawerBtn = drawerMenuButtons.nth(6);
+  await saranDrawerBtn.click();
+  await page.waitForTimeout(500);
+
+  // Heading Saran harus tampil
+  const saranHeading = page.locator('h3:has-text("Data Masukan & Kritik")');
+  await expect(saranHeading).toBeVisible();
+
+  // 6. Verifikasi Menu Setting (index 0) dan Sub-Menu Users & Hak Akses di dalamnya
+  await menuBtn.click();
+  await page.waitForTimeout(400);
+  const settingDrawerBtn = drawerMenuButtons.nth(0);
   await settingDrawerBtn.click();
   await page.waitForTimeout(500);
 
