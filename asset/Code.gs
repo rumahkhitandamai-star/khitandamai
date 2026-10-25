@@ -518,6 +518,11 @@ function checkAndSendUpcomingReminders_() {
  * Handler Time-Driven Trigger Google Apps Script (berjalan setiap 1 jam)
  */
 function checkUpcomingKhitanReminders() {
+  try {
+    maybeRunMonthlyBackup_();
+  } catch (backupErr) {
+    Logger.log("Peringatan: Gagal memproses backup bulanan otomatis: " + backupErr.toString());
+  }
   return checkAndSendUpcomingReminders_();
 }
 
@@ -1006,7 +1011,8 @@ function handleTelegramWebhookUpdate_(update) {
         "🔍 <b>Cek Booking</b> — Cukup ketik <b>ID Booking</b> (contoh: <code>KD-202610-001</code> atau <code>6UZA6KM</code>) atau <b>Nomor WhatsApp</b> yang didaftarkan.\n";
       
       if (isAdmin) {
-        welcomeText += "⏰ <b>/cekreminder</b> — Pindai & kirim pengingat jadwal khitan &lt; 12 jam secara langsung (Khusus Admin)\n";
+        welcomeText += "⏰ <b>/cekreminder</b> — Pindai & kirim pengingat jadwal khitan &lt; 12 jam secara langsung (Khusus Admin)\n" +
+          "💾 <b>/backup</b> — Mulai pencadangan seluruh sheet database ke Google Drive secara instan (Khusus Admin)\n";
       }
 
       welcomeText += "ℹ️ <b>/help</b> — Menampilkan petunjuk layanan bot ini.\n\n" +
@@ -1035,6 +1041,23 @@ function handleTelegramWebhookUpdate_(update) {
         statusNote;
 
       sendTelegramMessage_(chatId, resText, mainKeyboard);
+      return HtmlService.createHtmlOutput("OK");
+    }
+
+    // 1c. Perintah Backup Database Manual (Khusus Admin)
+    if (lowerText === "/backup" || lowerText === "backup" || lowerText === "backup database" || lowerText === "💾 backup database") {
+      if (!isAdmin) {
+        sendTelegramMessage_(chatId, "⛔ <b>Akses Khusus Admin</b>\nPerintah backup database hanya dapat dijalankan oleh akun pengelola / Admin Khitan Damai.", mainKeyboard);
+        return HtmlService.createHtmlOutput("OK");
+      }
+
+      sendTelegramMessage_(chatId, "⏳ <i>Sedang memproses backup seluruh sheet database ke Google Drive...</i>", mainKeyboard);
+      try {
+        const bRes = executeDatabaseBackup_();
+        sendTelegramBackupNotification_(bRes, false);
+      } catch (errBackup) {
+        sendTelegramMessage_(chatId, "❌ <b>Gagal Memproses Backup Database:</b>\n" + escapeTelegramHtml_(errBackup.toString()), mainKeyboard);
+      }
       return HtmlService.createHtmlOutput("OK");
     }
 
@@ -2199,6 +2222,116 @@ function executeDatabaseBackup_() {
     folderUrl: "https://drive.google.com/drive/folders/" + BACKUP_FOLDER_ID,
     size: backupFile.getSize()
   };
+}
+
+/**
+ * Helper untuk format ukuran byte ke teks KB / MB
+ */
+function formatBackupSizeText_(bytes) {
+  const num = Number(bytes) || 0;
+  if (num <= 0) return "0 KB";
+  const kb = num / 1024;
+  if (kb < 1024) return kb.toFixed(1) + " KB";
+  return (kb / 1024).toFixed(2) + " MB";
+}
+
+/**
+ * Mengirim notifikasi hasil backup database ke Telegram Admin
+ */
+function sendTelegramBackupNotification_(backupResult, isAutomatic) {
+  try {
+    const config = getTelegramConfig_();
+    if (!config.botToken || !config.chatId) {
+      Logger.log("sendTelegramBackupNotification_: Bot token atau Chat ID belum disetel.");
+      return { success: false, message: "Konfigurasi bot token atau chatId belum ada." };
+    }
+
+    const titlePrefix = isAutomatic 
+      ? "🤖 <b>PERINGATAN &amp; BACKUP OTOMATIS BULANAN</b> 💾" 
+      : "💾 <b>BACKUP DATABASE GOOGLE DRIVE</b> ✨";
+    const subNote = isAutomatic 
+      ? "<i>Pencadangan rutin otomatis seluruh sheet setiap tanggal 01 jam 08:00 WIB berhasil diselesaikan. File cadangan telah tersimpan aman di Google Drive.</i>" 
+      : "<i>Pencadangan database (Full Spreadsheet) berhasil diproses via Panel Admin / Perintah Bot.</i>";
+
+    const msgText = titlePrefix + "\n" +
+      "━━━━━━━━━━━━━━━━━━\n" +
+      "📅 <b>Waktu Proses:</b> " + escapeTelegramHtml_(backupResult.timestamp || "-") + " WIB\n" +
+      "📋 <b>Cakupan Data:</b> Seluruh Sheet (Full Spreadsheet)\n" +
+      "📁 <b>Nama File:</b> <code>" + escapeTelegramHtml_(backupResult.fileName || "-") + "</code>\n" +
+      "📊 <b>Ukuran:</b> " + formatBackupSizeText_(backupResult.size) + "\n" +
+      "📁 <b>Folder Tujuan:</b> Folder Backup Google Drive\n" +
+      "━━━━━━━━━━━━━━━━━━\n" +
+      subNote;
+
+    const inlineKeyboard = {
+      inline_keyboard: [
+        [
+          { text: "📄 Buka File Backup", url: backupResult.fileUrl || "https://drive.google.com" },
+          { text: "📁 Buka Folder Drive", url: backupResult.folderUrl || ("https://drive.google.com/drive/folders/" + BACKUP_FOLDER_ID) }
+        ]
+      ]
+    };
+
+    return sendTelegramMessage_(config.chatId, msgText, inlineKeyboard);
+  } catch (err) {
+    Logger.log("sendTelegramBackupNotification_ error: " + err.toString());
+    return { success: false, error: err.toString() };
+  }
+}
+
+/**
+ * Pemeriksaan dan eksekusi backup bulanan otomatis setiap tanggal 01 (jam >= 08:00 WIB).
+ * Dipanggil berkala oleh trigger time-driven 1 jam sekali (checkUpcomingKhitanReminders).
+ * Menggunakan Script Properties 'AUTO_BACKUP_MONTH' (format YYYY-MM) untuk dedup per bulan.
+ */
+function maybeRunMonthlyBackup_(force) {
+  const now = new Date();
+  const currentMonthKey = Utilities.formatDate(now, "Asia/Jakarta", "yyyy-MM");
+  const dayStr = Utilities.formatDate(now, "Asia/Jakarta", "dd");
+  const hourStr = Utilities.formatDate(now, "Asia/Jakarta", "HH");
+  const dayNum = parseInt(dayStr, 10);
+  const hourNum = parseInt(hourStr, 10);
+
+  const props = PropertiesService.getScriptProperties();
+  const lastBackedMonth = props ? (props.getProperty("AUTO_BACKUP_MONTH") || "") : "";
+
+  if (!force) {
+    // Hanya berjalan jika sudah masuk jam 08:00 WIB ke atas
+    if (hourNum < 8) {
+      return { skipped: true, reason: "Belum masuk jam 08:00 WIB (jam saat ini: " + hourStr + ")" };
+    }
+    // Syarat tanggal 01 (atau backfill jika tanggal >= 1 tapi bulan ini belum pernah dibackup)
+    if (dayNum !== 1 && lastBackedMonth === currentMonthKey) {
+      return { skipped: true, reason: "Bukan tanggal 01 dan backup bulan ini sudah tercatat." };
+    }
+    // Jika bulan ini sudah dibackup, jangan ulangi (deduplikasi)
+    if (lastBackedMonth === currentMonthKey) {
+      return { skipped: true, reason: "Backup bulanan untuk " + currentMonthKey + " sudah pernah dijalankan." };
+    }
+  }
+
+  Logger.log("Memulai eksekusi backup database otomatis bulanan untuk periode: " + currentMonthKey);
+  const backupResult = executeDatabaseBackup_();
+
+  // Simpan penanda bahwa bulan ini sudah berhasil dibackup
+  if (props) {
+    props.setProperty("AUTO_BACKUP_MONTH", currentMonthKey);
+    props.setProperty("AUTO_BACKUP_LAST_RUN", Utilities.formatDate(now, "Asia/Jakarta", "yyyy-MM-dd HH:mm:ss"));
+    props.setProperty("AUTO_BACKUP_LAST_FILE", backupResult.fileName);
+  }
+
+  // Kirim notifikasi Telegram ke Admin
+  sendTelegramBackupNotification_(backupResult, true);
+
+  Logger.log("Backup bulanan berhasil dibuat dan dikirim ke Telegram: " + backupResult.fileName);
+  return { success: true, data: backupResult };
+}
+
+/**
+ * Fungsi pembantu manual untuk menguji backup bulanan kapan saja dari Editor Apps Script
+ */
+function testMonthlyBackupNow() {
+  return maybeRunMonthlyBackup_(true);
 }
 
 /**
@@ -5646,6 +5779,12 @@ function doPost(e) {
       try {
         const backupResult = executeDatabaseBackup_();
         const backupList = listDatabaseBackups_();
+
+        try {
+          sendTelegramBackupNotification_(backupResult, false);
+        } catch (tgErr) {
+          Logger.log("Peringatan: Gagal mengirim notifikasi backup web ke Telegram: " + tgErr.toString());
+        }
 
         return createJsonResponse({
           status: "success",

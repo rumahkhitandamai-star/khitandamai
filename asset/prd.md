@@ -163,3 +163,20 @@ Google Apps Script membatasi pembuatan trigger terprogram (`ScriptApp.newTrigger
    - **Pilih interval jam**: `Setiap jam (Every hour)`
 5. Klik **Simpan (Save)** dan setujui izin otorisasi akun Google penyebar (*deployer*).
 6. Selesai. Google Apps Script akan secara otomatis memanggil fungsi `checkUpcomingKhitanReminders()` setiap 1 jam untuk memindai jadwal khitan < 12 jam dan mengirim notifikasi interaktif ke Telegram Admin.
+
+### 9.2 Sistem Peringatan & Backup Otomatis Seluruh Sheet (Tanggal 01 Pukul 08:00 WIB)
+Sistem memiliki mekanisme pencadangan basis data Spreadsheet utama secara berkala setiap tanggal 01 awal bulan pukul 08:00 WIB tanpa memerlukan intervensi manual:
+1. **Pemicu (Trigger)**: Menggunakan pemicu waktu 1 jam sekali (`checkUpcomingKhitanReminders` pada §9.1) yang secara otomatis memanggil fungsi `maybeRunMonthlyBackup_()`.
+2. **Kriteria Eksekusi**:
+   - Tanggal berjalan = `01` dan Jam >= `08:00 WIB`.
+   - Menggunakan `Script Properties` dengan kunci `AUTO_BACKUP_MONTH` (format `YYYY-MM`) untuk deduplikasi agar backup hanya berjalan 1 kali dalam sebulan.
+   - Apabila terjadi kendala server tepat pada tanggal 01, sistem memiliki mekanisme *backfill* otomatis pada hari berikutnya jika data bulan berjalan belum sempat dicadangkan.
+3. **Cakupan & Logika**:
+   - Menjalankan logika yang identik dengan penekanan tombol **"Mulai Backup Sekarang"** di Sub-menu *Backup Database* Menu *Setting* Panel Admin (`executeDatabaseBackup_()`).
+   - Membuat salinan *Full Spreadsheet* (`BOOKING`, `USERS`, `KUNJUNGAN`, `SETTINGS`, `GALERI`, dll.) ke folder Google Drive tujuan (`BACKUP_FOLDER_ID`) dengan format penamaan file `YYYY-MM-DD_KhitanDamai`.
+4. **Notifikasi Bot Telegram**:
+   - Setelah salinan berhasil dibuat, bot secara otomatis mengirim notifikasi rincian backup (Nama file, Ukuran file, Waktu proses) ke akun Telegram Admin (`TELEGRAM_ADMIN_CHAT_ID`).
+   - Notifikasi dilengkapi tombol *Inline Keyboard*: **"📄 Buka File Backup"** dan **"📁 Buka Folder Drive"**.
+5. **Perintah Bot Telegram & Pengujian**:
+   - Admin dapat menjalankan backup sewaktu-waktu langsung dari Bot Telegram dengan mengetik perintah `/backup`.
+   - Pengembang / Admin dapat menguji fungsi ini kapan saja melalui editor Google Apps Script dengan menjalankan fungsi `testMonthlyBackupNow()`.
