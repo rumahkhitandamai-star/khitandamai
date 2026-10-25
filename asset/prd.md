@@ -180,3 +180,17 @@ Sistem memiliki mekanisme pencadangan basis data Spreadsheet utama secara berkal
 5. **Perintah Bot Telegram & Pengujian**:
    - Admin dapat menjalankan backup sewaktu-waktu langsung dari Bot Telegram dengan mengetik perintah `/backup`.
    - Pengembang / Admin dapat menguji fungsi ini kapan saja melalui editor Google Apps Script dengan menjalankan fungsi `testMonthlyBackupNow()`.
+
+### 9.3 Sistem Kuota Jam Khitan & Peringatan Kapasitas Pasien
+1. **Aturan Kuota Default**:
+   - Setiap slot waktu tindakan khitan (misal: 05:00 WIB, 05:20 WIB, dst.) memiliki batasan kuota default **3 pasien / slot** per tanggal khitan.
+   - Pendaftaran berstatus `Pending`, `Confirmed`, dan `Selesai` mengurangi kuota slot, sedangkan pendaftaran berstatus `Batal` / `Dibatalkan` mengembalikan kuota.
+2. **Manajemen Kuota Super Admin**:
+   - Diatur melalui menu **Admin > Setting > Kuota Jam Khitan** (`kuota_jam` di sheet `SETTINGS`).
+   - Super Admin dapat mengubah batasan kapasitas menjadi 1 s/d 50 pasien per slot secara langsung dari antarmuka web.
+3. **Peringatan & Proteksi di Form Publik**:
+   - Pilihan jam di dropdown otomatis menampilkan sisa kapasitas (misal: `05:00 WIB (sisa 2 kuota)`).
+   - Slot jam yang hampir penuh (sisa 1) menampilkan banner peringatan oranye agar pemesan segera menyelesaikan formulir.
+   - Slot jam yang telah mencapai batas kuota (3/3) berstatus *disabled* dengan label `PENUH (3/3)` sehingga tidak dapat dipilih.
+   - Apabila seluruh slot jam pada suatu tanggal telah penuh, muncul peringatan merah bahwa tanggal tersebut sudah tidak menerima pendaftaran baru.
+   - Server Apps Script (`createBooking`) melakukan validasi ulang saat submit. Jika kuota penuh, server mengembalikan kode `QUOTA_PENUH` dan klien menampilkan modal peringatan ramah.

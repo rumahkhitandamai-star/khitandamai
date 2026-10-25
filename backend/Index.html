@@ -5051,21 +5051,78 @@
                 >
               </div>
 
-              <!-- JAM KHITAN (Dropdown dari Sheet REFERENSI) -->
+              <!-- JAM KHITAN (Dropdown dari Sheet REFERENSI dengan Kuota per Slot) -->
               <div>
-                <label class="block text-xs font-semibold text-slate-700 mb-1">
-                  JAM KHITAN <span class="text-rose-500">*</span>
-                </label>
+                <div class="flex items-center justify-between gap-2 mb-1">
+                  <label class="block text-xs font-semibold text-slate-700">
+                    JAM KHITAN <span class="text-rose-500">*</span>
+                  </label>
+                  <span v-if="isLoadingKuotaJam" class="text-[10px] text-tosca-700 font-semibold flex items-center gap-1">
+                    <svg class="animate-spin h-3 w-3 text-tosca-600" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                    </svg>
+                    Mengecek kuota...
+                  </span>
+                  <span v-else-if="formBooking.tanggalKhitan" class="text-[10px] text-slate-500">
+                    Maks. {{ kuotaPerSlotConfig }} pasien / slot
+                  </span>
+                </div>
+
+                <!-- Info jika tanggal belum dipilih -->
+                <div v-if="!formBooking.tanggalKhitan" class="p-2.5 rounded-xl bg-slate-50 border border-dashed border-slate-300 text-[11px] text-slate-500 flex items-center gap-2">
+                  <v-icon name="circle-info" class="text-slate-400 text-xs shrink-0"></v-icon>
+                  <span>Pilih <b>Tanggal Khitan</b> terlebih dahulu untuk melihat ketersediaan kuota jam.</span>
+                </div>
+
+                <!-- Alert jika seluruh slot pada tanggal terpilih sudah penuh -->
+                <div v-else-if="kuotaSummaryData?.semuaPenuh" class="p-3 rounded-xl bg-rose-50 border border-rose-300 text-[11px] text-rose-800 space-y-1 mb-2">
+                  <div class="font-bold flex items-center gap-1.5">
+                    <v-icon name="triangle-exclamation" class="text-rose-600 text-xs"></v-icon>
+                    Semua Kuota Jam Khitan Penuh
+                  </div>
+                  <p class="leading-relaxed">
+                    Mohon maaf, seluruh kuota tindakan khitan pada tanggal <b>{{ formatIndonesianDate(formBooking.tanggalKhitan) }}</b> sudah terisi penuh (3 pasien/jam). Silakan pilih tanggal khitan yang lain.
+                  </p>
+                </div>
+
+                <!-- Select Slot Jam -->
                 <select 
+                  v-else
                   v-model="formBooking.jamKhitan"
                   required
-                  class="w-full text-xs px-3 py-2.5 rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-tosca-600 focus:border-tosca-600 transition"
+                  :disabled="isLoadingKuotaJam"
+                  class="w-full text-xs px-3 py-2.5 rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-tosca-600 focus:border-tosca-600 transition disabled:bg-slate-100 disabled:cursor-not-allowed"
                 >
                   <option value="" disabled>-- Pilih Jam Khitan --</option>
-                  <option v-for="jam in (referensiOptionsCache?.jamKhitan || [])" :key="jam" :value="jam">
-                    {{ jam }}
+                  <option 
+                    v-for="opt in formattedJamKhitanOptions" 
+                    :key="opt.jam" 
+                    :value="opt.jam"
+                    :disabled="opt.isPenuh"
+                    :class="opt.isPenuh ? 'text-slate-400 bg-slate-50' : (opt.isHampirPenuh ? 'text-amber-700 font-semibold' : 'text-slate-800')"
+                  >
+                    {{ opt.label }}
                   </option>
                 </select>
+
+                <!-- Peringatan slot hampir penuh (sisa 1) -->
+                <div 
+                  v-if="selectedJamSlotInfo && selectedJamSlotInfo.sisa === 1 && !selectedJamSlotInfo.penuh"
+                  class="mt-1.5 p-2 rounded-lg bg-amber-50 border border-amber-300 text-[11px] text-amber-800 flex items-center gap-1.5"
+                >
+                  <v-icon name="clock" class="text-amber-600 text-xs shrink-0"></v-icon>
+                  <span>⚠️ <b>Sisa 1 kuota lagi</b> untuk jam {{ formBooking.jamKhitan }}. Segera selesaikan pendaftaran.</span>
+                </div>
+
+                <!-- Peringatan jika jam terpilih mendadak penuh -->
+                <div 
+                  v-else-if="selectedJamSlotInfo && selectedJamSlotInfo.penuh"
+                  class="mt-1.5 p-2 rounded-lg bg-rose-50 border border-rose-300 text-[11px] text-rose-800 flex items-center gap-1.5"
+                >
+                  <v-icon name="circle-xmark" class="text-rose-600 text-xs shrink-0"></v-icon>
+                  <span>Jam {{ formBooking.jamKhitan }} sudah <b>penuh ({{ selectedJamSlotInfo.terpakai }}/{{ selectedJamSlotInfo.kuota }})</b>. Silakan pilih jam lain.</span>
+                </div>
               </div>
 
               <!-- METODE KHITAN (Dropdown dari Sheet REFERENSI) -->
@@ -8841,7 +8898,99 @@
               </div>
 
 
-                                <!-- Form Pengaturan Running Text Halaman Publik -->
+                                <!-- Form Pengaturan Kuota Jam Khitan (Akses Publik) -->
+                <div v-else-if="settingActiveSection === 'kuota'" class="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs space-y-4">
+                  <!-- Header Card & Actions -->
+                  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                    <div class="flex items-center gap-2">
+                      <span class="w-2.5 h-4 bg-amber-500 rounded-xs"></span>
+                      <div>
+                        <h4 class="text-xs sm:text-sm font-bold text-slate-800">
+                          Pengaturan Kuota Jam Khitan (Formulir Publik)
+                        </h4>
+                        <p class="text-[11px] text-slate-400">Atur batasan maksimal pendaftar khitan untuk setiap slot jam.</p>
+                      </div>
+                    </div>
+
+                    <div class="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        @click="resetKuotaJamDraft"
+                        :disabled="isSavingKuotaJam"
+                        class="btn-press px-3 py-1.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs font-semibold transition disabled:opacity-50"
+                        title="Kembalikan ke nilai tersimpan"
+                      >
+                        Reset
+                      </button>
+                      <button
+                        type="button"
+                        @click="saveKuotaJamSettings"
+                        :disabled="isSavingKuotaJam"
+                        class="btn-press px-4 py-1.5 rounded-xl bg-tosca-700 hover:bg-tosca-800 disabled:bg-slate-400 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
+                      >
+                        <svg v-if="isSavingKuotaJam" class="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
+                          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                        </svg>
+                        <v-icon name="floppy-disk" v-else class="text-xs"></v-icon>
+                        <span>{{ isSavingKuotaJam ? 'Menyimpan...' : 'Simpan Kuota' }}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Input Kuota Per Slot -->
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-1.5">
+                      <label class="block text-xs font-bold text-slate-700">
+                        KUOTA PASIEN PER SLOT JAM <span class="text-rose-500">*</span>
+                      </label>
+                      <div class="flex items-center">
+                        <input
+                          v-model.number="kuotaJamDraft"
+                          type="number"
+                          min="1"
+                          max="50"
+                          step="1"
+                          required
+                          class="w-full text-xs font-bold px-3 py-2.5 rounded-l-xl border border-r-0 border-slate-300 focus:outline-none focus:ring-2 focus:ring-tosca-600 focus:border-tosca-600 transition"
+                        >
+                        <span class="bg-slate-100 text-slate-600 text-xs font-bold px-3.5 py-2.5 rounded-r-xl border border-slate-300 select-none">
+                          Pasien / Slot
+                        </span>
+                      </div>
+                      <p class="text-[11px] text-slate-500">
+                        Default: <b>3 pasien per slot jam</b> (rentang 1 - 50 pasien).
+                      </p>
+                    </div>
+
+                    <!-- Ringkasan Aturan -->
+                    <div class="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-1 text-xs text-slate-600">
+                      <div class="font-bold text-slate-800 flex items-center gap-1.5">
+                        <v-icon name="circle-info" class="text-tosca-700"></v-icon>
+                        Cara Kerja Kuota
+                      </div>
+                      <ul class="list-disc list-inside text-[11px] space-y-0.5 text-slate-600">
+                        <li>Dihitung per <b>slot jam</b> (mis. 05:00 WIB, 05:20 WIB, dsb) pada tanggal yang sama.</li>
+                        <li>Status <b>Pending</b>, <b>Confirmed</b>, dan <b>Selesai</b> mengurangi kuota.</li>
+                        <li>Status <b>Batal / Dibatalkan</b> mengembalikan kuota slot.</li>
+                        <li>Slot penuh otomatis di-disable pada dropdown pendaftaran publik.</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  <!-- Banner Live Status -->
+                  <div class="p-3 bg-teal-50 border border-teal-200 rounded-2xl flex items-center justify-between text-xs">
+                    <div class="flex items-center gap-2">
+                      <span class="w-2.5 h-2.5 rounded-full bg-teal-600 animate-pulse"></span>
+                      <span class="text-teal-900 font-semibold">
+                        Pengaturan aktif saat ini: <b>{{ kuotaPerSlotConfig }} pasien / slot jam</b>
+                      </span>
+                    </div>
+                    <span class="text-[11px] text-teal-700">Tersimpan di Sheet SETTINGS</span>
+                  </div>
+                </div>
+
+                <!-- Form Pengaturan Running Text Halaman Publik -->
                 <div v-else-if="settingActiveSection === 'runningtext'" class="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs space-y-4">
                   <!-- Header Card & Actions -->
                   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
@@ -11993,6 +12142,7 @@
     };
 
     const LOCAL_MOCK_SETTINGS = {
+      kuota_jam: 3,
       running_text: {
         text: "Selamat Datang di Khitan Damai Subang! Layanan Khitan Modern Ramah Anak dengan Bius Nyaman. Konsultasi & Booking Jadwal Sekarang Juga!",
         font: "Inter",
@@ -12312,6 +12462,18 @@
         const fontFamilyStyle = (fontId) => {
           const matched = runningTextFontOptions.find(f => f.id === fontId);
           return matched ? matched.stack : "'Inter', sans-serif";
+        };
+
+        // Kuota Jam Khitan Setting (Akses Publik Form Booking)
+        const DEFAULT_KUOTA_JAM = 3;
+        const kuotaPerSlotConfig = ref(DEFAULT_KUOTA_JAM);
+        const kuotaJamDraft = ref(DEFAULT_KUOTA_JAM);
+        const isSavingKuotaJam = ref(false);
+        const hasLoadedKuotaJam = ref(false);
+
+        const resetKuotaJamDraft = () => {
+          kuotaJamDraft.value = kuotaPerSlotConfig.value || DEFAULT_KUOTA_JAM;
+          showToastNotification('Draft Kuota Jam dikembalikan ke nilai tersimpan.');
         };
 
         const runningTextConfig = ref(Object.assign({}, DEFAULT_RUNNING_TEXT));
@@ -13085,7 +13247,7 @@
               hasLoadedProgram.value = true;
             }
           }
-          if (Array.isArray(settingsData.testimoni)) {
+          if (settingsData.testimoni) {
             if (JSON.stringify(testimoniConfig.value) !== JSON.stringify(settingsData.testimoni)) {
               hasChanges = true;
             }
@@ -13093,6 +13255,18 @@
             if (!hasLoadedTestimoni.value) {
               testimoniDraft.value = JSON.parse(JSON.stringify(testimoniConfig.value));
               hasLoadedTestimoni.value = true;
+            }
+          }
+          if (settingsData.kuota_jam !== undefined && settingsData.kuota_jam !== null) {
+            const parsedK = parseInt(settingsData.kuota_jam, 10);
+            const validK = (!isNaN(parsedK) && parsedK >= 1 && parsedK <= 50) ? parsedK : DEFAULT_KUOTA_JAM;
+            if (kuotaPerSlotConfig.value !== validK) {
+              hasChanges = true;
+            }
+            kuotaPerSlotConfig.value = validK;
+            if (!hasLoadedKuotaJam.value) {
+              kuotaJamDraft.value = validK;
+              hasLoadedKuotaJam.value = true;
             }
           }
           return hasChanges;
@@ -13200,6 +13374,81 @@
             });
           } finally {
             isLoadingSettings.value = false;
+          }
+        };
+
+        const saveKuotaJamSettings = async () => {
+          let val = parseInt(kuotaJamDraft.value, 10);
+          if (isNaN(val) || val < 1 || val > 50) {
+            openAlertDialog({
+              type: 'warning',
+              title: 'Nilai Kuota Tidak Valid',
+              message: 'Kuota per slot jam harus berupa angka antara 1 sampai 50 pasien.'
+            });
+            return;
+          }
+
+          isSavingKuotaJam.value = true;
+          const token = (adminUser.value && adminUser.value.token) ? adminUser.value.token : '';
+          const payload = {
+            action: 'saveSettings',
+            token: token,
+            data: {
+              kuota_jam: val
+            }
+          };
+
+          try {
+            if (USE_MOCK) {
+              await new Promise(resolve => setTimeout(resolve, 400));
+              LOCAL_MOCK_SETTINGS.kuota_jam = val;
+              kuotaPerSlotConfig.value = val;
+              kuotaJamDraft.value = val;
+              showToastNotification('Pengaturan kuota jam berhasil disimpan (Mode Mock: ' + val + ' pasien/slot).');
+            } else {
+              const res = await fetch(GAS_ENDPOINT_URL, {
+                method: 'POST',
+                redirect: 'follow',
+                headers: {
+                  'Content-Type': 'text/plain;charset=utf-8'
+                },
+                body: JSON.stringify(payload)
+              });
+              const json = await parseApiResponse(res);
+              if (json && json.status === 'success') {
+                const savedVal = (json.data && json.data.kuota_jam !== undefined) ? json.data.kuota_jam : val;
+                kuotaPerSlotConfig.value = savedVal;
+                kuotaJamDraft.value = savedVal;
+                recordSyncEntry({
+                  type: 'perubahan',
+                  target: 'settings',
+                  status: 'success',
+                  message: 'Pengaturan kuota jam khitan (' + savedVal + '/slot) berhasil disimpan.'
+                });
+                showToastNotification(json.message || ('Kuota jam khitan berhasil diperbarui menjadi ' + savedVal + ' pasien/slot.'));
+                // Refresh kuota summary jika form booking sedang aktif
+                if (formBooking.value.tanggalKhitan) {
+                  fetchKuotaJam(formBooking.value.tanggalKhitan);
+                }
+              } else if (json && json.code === 'unauthorized') {
+                openAlertDialog({
+                  type: 'warning',
+                  title: 'Sesi Kedaluwarsa',
+                  message: 'Sesi login telah berakhir. Silakan login kembali.'
+                });
+              } else {
+                throw new Error((json && json.message) || 'Gagal menyimpan pengaturan kuota jam.');
+              }
+            }
+          } catch (err) {
+            console.error('Save kuota jam error:', err);
+            openAlertDialog({
+              type: 'error',
+              title: 'Gagal Menyimpan Kuota',
+              message: err.message || 'Terjadi kesalahan saat menyimpan kuota jam khitan.'
+            });
+          } finally {
+            isSavingKuotaJam.value = false;
           }
         };
 
@@ -15232,11 +15481,132 @@
           return id;
         };
 
+        // Kuota Jam Khitan State & Helper
+        const kuotaSummaryData = ref(null);
+        const isLoadingKuotaJam = ref(false);
+
+        const fetchKuotaJam = async (tanggal) => {
+          if (!tanggal) {
+            kuotaSummaryData.value = null;
+            return null;
+          }
+          isLoadingKuotaJam.value = true;
+          try {
+            if (USE_MOCK) {
+              await new Promise(r => setTimeout(r, 150));
+              const kuota = kuotaPerSlotConfig.value || DEFAULT_KUOTA_JAM;
+              const refData = referensiOptionsCache.value || LOCAL_MOCK_REFERENSI;
+              const allSlots = (refData && refData.jamKhitan) || [];
+              const slotsMap = {};
+              allSlots.forEach(s => {
+                slotsMap[s] = { terpakai: 0, kuota: kuota, sisa: kuota, penuh: false };
+              });
+              LOCAL_MOCK_DATABASE.forEach(b => {
+                const bTgl = b.tanggalKhitan || b.tglKhitan;
+                if (bTgl === tanggal && b.jamKhitan && slotsMap[b.jamKhitan]) {
+                  const st = String(b.status || '').toLowerCase();
+                  if (st !== 'batal' && st !== 'dibatalkan') {
+                    slotsMap[b.jamKhitan].terpakai += 1;
+                  }
+                }
+              });
+              let fullCount = 0;
+              Object.keys(slotsMap).forEach(k => {
+                const item = slotsMap[k];
+                item.sisa = Math.max(0, item.kuota - item.terpakai);
+                item.penuh = item.terpakai >= item.kuota;
+                if (item.penuh) fullCount++;
+              });
+              const summary = {
+                tanggal: tanggal,
+                kuotaPerSlot: kuota,
+                slots: slotsMap,
+                totalSlots: allSlots.length,
+                semuaPenuh: allSlots.length > 0 && fullCount >= allSlots.length
+              };
+              kuotaSummaryData.value = summary;
+              return summary;
+            } else {
+              const res = await fetch(GAS_ENDPOINT_URL + '?action=getKuotaJam&tanggal=' + encodeURIComponent(tanggal) + '&t=' + Date.now(), {
+                method: 'GET',
+                redirect: 'follow'
+              });
+              const json = await parseApiResponse(res);
+              if (json && json.status === 'success' && json.data) {
+                kuotaSummaryData.value = json.data;
+                if (json.data.kuotaPerSlot) {
+                  kuotaPerSlotConfig.value = json.data.kuotaPerSlot;
+                }
+                return json.data;
+              }
+            }
+          } catch (err) {
+            console.error('Gagal mengambil kuota jam khitan:', err);
+          } finally {
+            isLoadingKuotaJam.value = false;
+          }
+          return null;
+        };
+
+        // Watcher perubahan Tanggal Khitan untuk auto-fetch kuota dan reset jam jika slot tidak valid
+        watch(() => formBooking.value.tanggalKhitan, (newTgl) => {
+          formBooking.value.jamKhitan = '';
+          if (newTgl) {
+            fetchKuotaJam(newTgl);
+          } else {
+            kuotaSummaryData.value = null;
+          }
+        });
+
+        // Opsi jam khitan terformat dengan status kuota per slot
+        const formattedJamKhitanOptions = computed(() => {
+          const rawSlots = (referensiOptionsCache.value && referensiOptionsCache.value.jamKhitan) || [];
+          const summary = kuotaSummaryData.value;
+          const kuota = (summary && summary.kuotaPerSlot) || kuotaPerSlotConfig.value || DEFAULT_KUOTA_JAM;
+
+          return rawSlots.map(jam => {
+            const slot = summary && summary.slots && summary.slots[jam];
+            const terpakai = slot ? slot.terpakai : 0;
+            const slotKuota = slot ? slot.kuota : kuota;
+            const sisa = slot ? slot.sisa : Math.max(0, slotKuota - terpakai);
+            const isPenuh = slot ? slot.penuh : (terpakai >= slotKuota);
+            const isHampirPenuh = !isPenuh && sisa === 1;
+
+            let label = jam;
+            if (isPenuh) {
+              label = jam + ' — PENUH (' + terpakai + '/' + slotKuota + ')';
+            } else if (sisa < slotKuota) {
+              label = jam + ' (sisa ' + sisa + ' kuota)';
+            } else {
+              label = jam + ' (kuota ' + sisa + ')';
+            }
+
+            return {
+              jam,
+              label,
+              terpakai,
+              kuota: slotKuota,
+              sisa,
+              isPenuh,
+              isHampirPenuh
+            };
+          });
+        });
+
+        const selectedJamSlotInfo = computed(() => {
+          const jam = formBooking.value.jamKhitan;
+          if (!jam) return null;
+          return formattedJamKhitanOptions.value.find(o => o.jam === jam) || null;
+        });
+
         // Inisialisasi formulir booking saat route booking dibuka
         const initFormBooking = async () => {
           if (!showBookingReceipt.value) {
             loadReferensi();
             fetchBookingId();
+            if (formBooking.value.tanggalKhitan) {
+              fetchKuotaJam(formBooking.value.tanggalKhitan);
+            }
           }
         };
 
@@ -15254,9 +15624,12 @@
 
         const isStep2Valid = computed(() => {
           const f = formBooking.value;
+          const slot = selectedJamSlotInfo.value;
+          const isSlotAvailable = !slot || !slot.isPenuh;
           return !!(
             f.tanggalKhitan &&
             f.jamKhitan &&
+            isSlotAvailable &&
             f.metodeKhitan &&
             f.ukuranCelana &&
             f.obat
@@ -15376,6 +15749,19 @@
           try {
             if (USE_MOCK) {
               await new Promise(resolve => setTimeout(resolve, 800));
+              // Cek kuota slot di mode mock
+              const kuota = kuotaPerSlotConfig.value || DEFAULT_KUOTA_JAM;
+              const slotBookings = LOCAL_MOCK_DATABASE.filter(b => {
+                const bTgl = b.tanggalKhitan || b.tglKhitan;
+                const st = String(b.status || '').toLowerCase();
+                return bTgl === payloadData.tanggalKhitan && b.jamKhitan === payloadData.jamKhitan && st !== 'batal' && st !== 'dibatalkan';
+              });
+              if (slotBookings.length >= kuota) {
+                const e = new Error('Maaf, kuota khitan untuk jam ' + payloadData.jamKhitan + ' pada tanggal ' + formatIndonesianDate(payloadData.tanggalKhitan) + ' sudah penuh (' + slotBookings.length + '/' + kuota + ' pasien). Silakan pilih jam atau tanggal lain.');
+                e.code = 'QUOTA_PENUH';
+                e.friendly = true;
+                throw e;
+              }
               LOCAL_MOCK_DATABASE.unshift(payloadData);
               lastBookingData.value = { ...payloadData };
             } else {
@@ -15390,6 +15776,7 @@
               const json = await parseApiResponse(res);
               if (json && json.status && json.status !== 'success') {
                 const e = new Error(json.message || 'Pendaftaran gagal disimpan ke server. Silakan coba lagi.');
+                e.code = json.code;
                 e.friendly = true;
                 throw e;
               }
@@ -15407,12 +15794,28 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
           } catch (err) {
             console.error('Booking error:', err);
-            openAlertDialog({
-              type: 'error',
-              title: 'Pengiriman Gagal',
-              message: err.message || 'Maaf, terjadi kesalahan saat mengirim pendaftaran. Silakan coba lagi.',
-              okText: 'Tutup'
-            });
+            const isQuotaError = err.code === 'QUOTA_PENUH' || (err.message && err.message.toLowerCase().includes('sudah penuh'));
+            if (isQuotaError) {
+              openAlertDialog({
+                type: 'warning',
+                title: 'Jam Khitan Sudah Penuh',
+                message: err.message || 'Slot jam yang Anda pilih baru saja terisi penuh. Silakan pilih jam atau tanggal lain.',
+                okText: 'Pilih Jam Lain'
+              });
+              // Kembalikan ke halaman 2 dan refresh kuota
+              bookingStep.value = 2;
+              formBooking.value.jamKhitan = '';
+              if (formBooking.value.tanggalKhitan) {
+                fetchKuotaJam(formBooking.value.tanggalKhitan);
+              }
+            } else {
+              openAlertDialog({
+                type: 'error',
+                title: 'Pengiriman Gagal',
+                message: err.message || 'Maaf, terjadi kesalahan saat mengirim pendaftaran. Silakan coba lagi.',
+                okText: 'Tutup'
+              });
+            }
           } finally {
             isLoadingBooking.value = false;
           }
@@ -16208,6 +16611,7 @@
         const settingSections = [
           { id: 'profil',       label: 'Profil Klinik',              icon: 'fa-solid fa-hospital' },
           { id: 'users',        label: 'Users & Hak Akses',          icon: 'fa-solid fa-users' },
+          { id: 'kuota',        label: 'Kuota Jam Khitan',           icon: 'fa-solid fa-clock-rotate-left' },
           { id: 'runningtext',  label: 'Running Text',               icon: 'fa-solid fa-bullhorn' },
           { id: 'herocard',     label: 'Hero Card / Featuring Card', icon: 'fa-solid fa-id-card' },
           { id: 'slideshow',    label: 'Foto Slideshow',             icon: 'fa-solid fa-images' },
@@ -22978,6 +23382,17 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
           isStep2Valid,
           isStep3Valid,
           isStep4Valid,
+          // Kuota Jam Khitan
+          kuotaPerSlotConfig,
+          kuotaJamDraft,
+          isSavingKuotaJam,
+          resetKuotaJamDraft,
+          saveKuotaJamSettings,
+          kuotaSummaryData,
+          isLoadingKuotaJam,
+          fetchKuotaJam,
+          formattedJamKhitanOptions,
+          selectedJamSlotInfo,
           canGoToStep,
           goToStep,
           nextBookingStep,
