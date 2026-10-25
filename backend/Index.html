@@ -7901,7 +7901,7 @@
                             class="w-full text-xs font-semibold pl-3 pr-8 py-2 bg-slate-50 hover:bg-white border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-tosca-600 focus:border-tosca-600 focus:outline-none transition appearance-none cursor-pointer shadow-2xs text-slate-800"
                           >
                             <option 
-                              v-for="yr in ['Semua', '2026', '2025', '2024']" 
+                              v-for="yr in kunjunganYearOptions" 
                               :key="'yr-' + yr" 
                               :value="yr"
                             >
@@ -12492,7 +12492,11 @@
 
         function saveCacheSnapshot(target, data, customTrigger = 'perubahan') {
           try {
-            const jsonStr = JSON.stringify(data);
+            let sanitizedData = data;
+            if (target === 'users' && Array.isArray(data)) {
+              sanitizedData = data.map(u => ({ ...u, password: '***' }));
+            }
+            const jsonStr = JSON.stringify(sanitizedData);
             const sizeBytes = Math.round(jsonStr.length * 2); // Ukuran memori string UTF-16
             const count = Array.isArray(data) ? data.length : (data && typeof data === 'object' ? Object.keys(data).length : 1);
             const now = new Date();
@@ -12502,7 +12506,7 @@
               date: now.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' }),
               sizeBytes: sizeBytes,
               count: count,
-              data: JSON.parse(jsonStr)
+              data: sanitizedData
             };
             localStorage.setItem('kd_cache_' + target, JSON.stringify(payload));
 
@@ -15419,6 +15423,11 @@
                 body: JSON.stringify(payload)
               });
               const json = await parseApiResponse(res);
+              if (json && json.status && json.status !== 'success') {
+                const e = new Error(json.message || 'Pendaftaran gagal disimpan ke server. Silakan coba lagi.');
+                e.friendly = true;
+                throw e;
+              }
               lastBookingData.value = json.data || payloadData;
             }
 
@@ -19246,6 +19255,11 @@
           { value: '12', label: 'Desember' }
         ];
 
+        const kunjunganYearOptions = computed(() => {
+          const cy = new Date().getFullYear();
+          return ['Semua', String(cy), String(cy - 1), String(cy - 2)];
+        });
+
         const countKunjunganByBayar = (statusVal) => {
           if (!adminKunjungan.value || adminKunjungan.value.length === 0) return 0;
           if (statusVal === 'Semua') return adminKunjungan.value.length;
@@ -19618,8 +19632,11 @@
             }
 
             if (json.status === 'success' && Array.isArray(json.data)) {
-              adminKunjungan.value = json.data.slice().sort((a, b) => (b.register || '').localeCompare(a.register || ''));
-              saveCacheSnapshot('kunjungan', adminKunjungan.value);
+              const sortedKunjungan = json.data.slice().sort((a, b) => (b.register || '').localeCompare(a.register || ''));
+              if (JSON.stringify(adminKunjungan.value) !== JSON.stringify(sortedKunjungan)) {
+                adminKunjungan.value = sortedKunjungan;
+              }
+              saveCacheSnapshot('kunjungan', sortedKunjungan);
               lastKunjunganSyncTime.value = nowFormatted;
               lastSyncTime.value = nowFormatted;
               recordSyncEntry({
@@ -21671,7 +21688,15 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
           nextTick(() => renderDashboardCharts());
         });
 
+        let chartRetryTimer = null;
+        let chartRetryCount = 0;
+
         const destroyDashboardCharts = () => {
+          if (chartRetryTimer) {
+            clearTimeout(chartRetryTimer);
+            chartRetryTimer = null;
+          }
+          chartRetryCount = 0;
           try {
             if (kunjunganTahunChart) {
               kunjunganTahunChart.destroy();
@@ -21717,16 +21742,21 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
         };
 
         const renderDashboardCharts = () => {
-          if (typeof Chart === 'undefined') {
-            setTimeout(renderDashboardCharts, 120);
-            return;
-          }
-
           const canvasKunjungan = document.getElementById('chart-kunjungan-tahun');
           const canvasPendapatan = document.getElementById('chart-pendapatan-tahun');
           const canvasClustered = document.getElementById('chart-clustered-bulanan');
 
           if (!canvasKunjungan && !canvasPendapatan && !canvasClustered) {
+            chartRetryCount = 0;
+            return;
+          }
+
+          if (typeof Chart === 'undefined') {
+            if (chartRetryCount < 40) {
+              chartRetryCount++;
+              if (chartRetryTimer) clearTimeout(chartRetryTimer);
+              chartRetryTimer = setTimeout(renderDashboardCharts, 120);
+            }
             return;
           }
 
@@ -22556,20 +22586,28 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
 
                   // 1. Bookings
                   if (Array.isArray(json.data.bookings)) {
-                    adminBookings.value = json.data.bookings;
+                    if (JSON.stringify(adminBookings.value) !== JSON.stringify(json.data.bookings)) {
+                      adminBookings.value = json.data.bookings;
+                    }
                     saveCacheSnapshot('bookings', json.data.bookings, trigger);
                   }
 
                   // 2. Kunjungan
                   if (Array.isArray(json.data.kunjungan)) {
-                    adminKunjungan.value = json.data.kunjungan.slice().sort((a, b) => (b.register || '').localeCompare(a.register || ''));
-                    saveCacheSnapshot('kunjungan', adminKunjungan.value, trigger);
+                    const sortedKunjungan = json.data.kunjungan.slice().sort((a, b) => (b.register || '').localeCompare(a.register || ''));
+                    if (JSON.stringify(adminKunjungan.value) !== JSON.stringify(sortedKunjungan)) {
+                      adminKunjungan.value = sortedKunjungan;
+                    }
+                    saveCacheSnapshot('kunjungan', sortedKunjungan, trigger);
                   }
 
                   // 2b. Jumat Berkah
                   if (Array.isArray(json.data.jumatBerkah)) {
-                    adminJumatBerkah.value = json.data.jumatBerkah.slice().sort((a, b) => (b.register || '').localeCompare(a.register || ''));
-                    saveCacheSnapshot('jumatberkah', adminJumatBerkah.value, trigger);
+                    const sortedJumat = json.data.jumatBerkah.slice().sort((a, b) => (b.register || '').localeCompare(a.register || ''));
+                    if (JSON.stringify(adminJumatBerkah.value) !== JSON.stringify(sortedJumat)) {
+                      adminJumatBerkah.value = sortedJumat;
+                    }
+                    saveCacheSnapshot('jumatberkah', sortedJumat, trigger);
                   }
 
                   // 3. Users
@@ -22722,6 +22760,8 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
           window.__kdCloseWaReminderModal = closeWaReminderModal;
           window.__kdSendWaReminder = sendWaReminder;
           window.__kdAdminKunjungan = adminKunjungan;
+          window.__kdFormBooking = formBooking;
+          window.__kdSubmitBooking = submitBooking;
         }
 
         onMounted(() => {
@@ -23300,6 +23340,7 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
           kunjunganStatusBayarFilter,
           kunjunganMonthFilter,
           kunjunganYearFilter,
+          kunjunganYearOptions,
           kunjunganMonthOptions,
           countKunjunganByBayar,
           countKunjunganByMonth,
@@ -23482,7 +23523,7 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
     }
 
     // Registrasi Komponen Global Vektor Ikon
-    app.component('v-icon', {
+    const VIconComponent = {
       props: {
         name: { type: String, default: '' },
         icon: { type: String, default: '' }
@@ -23514,9 +23555,10 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
           <path :d="iconData.d" />
         </svg>
       `
-    });
-    app.component('app-icon', app.component('v-icon'));
-    app.component('svg-icon', app.component('v-icon'));
+    };
+    app.component('v-icon', VIconComponent);
+    app.component('app-icon', VIconComponent);
+    app.component('svg-icon', VIconComponent);
 
     // Registrasi Komponen Global Dropdown Menampilkan Baris Data (Paginasi Global)
     app.component('admin-per-page-select', {

@@ -97,6 +97,18 @@ function getTelegramConfig_() {
 }
 
 /**
+ * Mengambil token rahasia webhook Telegram dari Script Properties (jika dikonfigurasi)
+ */
+function getTelegramHookSecret_() {
+  try {
+    const props = PropertiesService.getScriptProperties();
+    return (props && props.getProperty("TELEGRAM_HOOK_SECRET")) || "";
+  } catch (e) {
+    return "";
+  }
+}
+
+/**
  * Format string jam pelaksanaan agar rapi dan tidak dobel WIB
  */
 function formatJamDisplay_(jamStr) {
@@ -1143,8 +1155,16 @@ function setTelegramWebhookUrl_(customUrl) {
     if (!config.botToken) {
       return { success: false, message: "Telegram Bot Token belum dikonfigurasi." };
     }
-    const targetUrl = customUrl || "https://script.google.com/macros/s/AKfycbwauluf8oZX58tJl14StNtwzknkB5jY8jI4Gofk_ssmhgXrBw7V-aNjYtYdPu-6yZs/exec";
-    const endpoint = "https://api.telegram.org/bot" + config.botToken + "/setWebhook?url=" + encodeURIComponent(targetUrl);
+    const secret = getTelegramHookSecret_();
+    let defaultUrl = "https://script.google.com/macros/s/AKfycbwauluf8oZX58tJl14StNtwzknkB5jY8jI4Gofk_ssmhgXrBw7V-aNjYtYdPu-6yZs/exec";
+    if (secret && !defaultUrl.includes("hook=")) {
+      defaultUrl += "?hook=" + encodeURIComponent(secret);
+    }
+    const targetUrl = customUrl || defaultUrl;
+    let endpoint = "https://api.telegram.org/bot" + config.botToken + "/setWebhook?url=" + encodeURIComponent(targetUrl);
+    if (secret) {
+      endpoint += "&secret_token=" + encodeURIComponent(secret);
+    }
     const res = UrlFetchApp.fetch(endpoint, { muteHttpExceptions: true });
     const code = res.getResponseCode();
     const body = res.getContentText();
@@ -3026,13 +3046,17 @@ function generateKunjunganRegister_(sheet, targetDateStr) {
   }
 
   let maxSeq = 0;
+  const existingRegisters = {};
   if (lastRow > 1) {
     const colAValues = targetSheet.getRange(2, 1, lastRow - 1, 1).getValues();
     const prefix = "KD" + yy;
     for (let i = 0; i < colAValues.length; i++) {
       const val = String(colAValues[i][0] || "").trim().toUpperCase();
+      if (val) {
+        existingRegisters[val] = true;
+      }
       if (val.startsWith(prefix) && val.length >= 10) {
-        const seqPart = parseInt(val.slice(10), 10);
+        const seqPart = parseInt(val.slice(8), 10);
         if (!isNaN(seqPart) && seqPart > maxSeq) {
           maxSeq = seqPart;
         }
@@ -3040,9 +3064,13 @@ function generateKunjunganRegister_(sheet, targetDateStr) {
     }
   }
 
-  const nextSeq = maxSeq + 1;
-  const seqStr = String(nextSeq).padStart(4, "0");
-  return "KD" + yy + mm + dd + seqStr;
+  let nextSeq = maxSeq + 1;
+  let candidate = "KD" + yy + mm + dd + String(nextSeq).padStart(4, "0");
+  while (existingRegisters[candidate]) {
+    nextSeq++;
+    candidate = "KD" + yy + mm + dd + String(nextSeq).padStart(4, "0");
+  }
+  return candidate;
 }
 
 /**
@@ -3107,12 +3135,16 @@ function writeKunjunganRowsToSheet_(sheet, rows) {
   const targetSheet = sheet || getKunjunganSheet();
   const lastRow = targetSheet.getLastRow();
 
-  if (lastRow > 1) {
-    targetSheet.getRange(2, 1, lastRow - 1, KUNJUNGAN_HEADERS.length).clearContent();
+  if (!rows || rows.length === 0) {
+    if (lastRow > 1) {
+      targetSheet.getRange(2, 1, lastRow - 1, KUNJUNGAN_HEADERS.length).clearContent();
+    }
+    return;
   }
 
-  if (!rows || rows.length === 0) {
-    return;
+  // Jika jumlah baris baru lebih sedikit dari baris lama, bersihkan sisa baris
+  if (lastRow > 1 && rows.length < (lastRow - 1)) {
+    targetSheet.getRange(2, 1, lastRow - 1, KUNJUNGAN_HEADERS.length).clearContent();
   }
 
   rows.sort(function(a, b) {
@@ -3366,12 +3398,16 @@ function writeJumatBerkahRowsToSheet_(sheet, rows) {
   const targetSheet = sheet || getJumatBerkahSheet();
   const lastRow = targetSheet.getLastRow();
 
-  if (lastRow > 1) {
-    targetSheet.getRange(2, 1, lastRow - 1, JUMAT_BERKAH_HEADERS.length).clearContent();
+  if (!rows || rows.length === 0) {
+    if (lastRow > 1) {
+      targetSheet.getRange(2, 1, lastRow - 1, JUMAT_BERKAH_HEADERS.length).clearContent();
+    }
+    return;
   }
 
-  if (!rows || rows.length === 0) {
-    return;
+  // Jika jumlah baris baru lebih sedikit dari baris lama, bersihkan sisa baris
+  if (lastRow > 1 && rows.length < (lastRow - 1)) {
+    targetSheet.getRange(2, 1, lastRow - 1, JUMAT_BERKAH_HEADERS.length).clearContent();
   }
 
   rows.sort(function(a, b) {
@@ -3924,6 +3960,9 @@ function doGet(e) {
     }
 
     if (action === "testTelegramNotification") {
+      if (!validateSessionToken(params.token)) {
+        return unauthorizedResponse();
+      }
       const sampleBooking = {
         idBooking: "KD-TEST01",
         namaAnanda: "Rayyan Al-Fatih (Uji Coba)",
@@ -3948,6 +3987,9 @@ function doGet(e) {
     }
 
     if (action === "testReminderNotification") {
+      if (!validateSessionToken(params.token)) {
+        return unauthorizedResponse();
+      }
       const sampleItem = {
         idBooking: "KD-REMIND01",
         namaAnanda: "Rayyan Al-Fatih (Uji Coba)",
@@ -3966,6 +4008,9 @@ function doGet(e) {
     }
 
     if (action === "checkReminders") {
+      if (!validateSessionToken(params.token)) {
+        return unauthorizedResponse();
+      }
       const res = checkAndSendUpcomingReminders_();
       return createJsonResponse({
         status: "success",
@@ -3975,6 +4020,9 @@ function doGet(e) {
     }
 
     if (action === "setupReminderTrigger") {
+      if (!validateSessionToken(params.token)) {
+        return unauthorizedResponse();
+      }
       const res = setupHourlyReminderTrigger();
       return createJsonResponse({
         status: "success",
@@ -3983,9 +4031,12 @@ function doGet(e) {
     }
 
     if (action === "getUpcomingSchedule") {
-      const scheduleFilter = (params && params.filter) ? params.filter : (payload && payload.filter ? payload.filter : "upcoming");
+      if (!validateSessionToken(params.token)) {
+        return unauthorizedResponse();
+      }
+      const scheduleFilter = params.filter || "upcoming";
       const data = getUpcomingBookingsGroupedByDate_(scheduleFilter);
-      const formatted = formatUpcomingScheduleMessage_(data, (params ? params.isAdmin === "true" : (payload ? payload.isAdmin === true : false)));
+      const formatted = formatUpcomingScheduleMessage_(data, params.isAdmin === "true");
       return createJsonResponse({
         status: "success",
         message: "Data jadwal khitan mendatang per hari/tanggal",
@@ -3995,7 +4046,10 @@ function doGet(e) {
     }
 
     if (action === "setTelegramWebhook") {
-      const targetUrl = (params && params.url) ? params.url : (payload && payload.url ? payload.url : "");
+      if (!validateSessionToken(params.token)) {
+        return unauthorizedResponse();
+      }
+      const targetUrl = params.url || "";
       const res = setTelegramWebhookUrl_(targetUrl);
       return createJsonResponse({
         status: res.success ? "success" : "error",
@@ -4015,9 +4069,8 @@ function doGet(e) {
       }
 
       const sheet = getSheet();
-      const lastRow = sheet.getLastRow();
-      
-      if (lastRow <= 1) {
+      const allBookings = readBookingsFromSheet(sheet, false);
+      if (!allBookings || allBookings.length === 0) {
         return createJsonResponse({
           status: "not_found",
           found: false,
@@ -4026,14 +4079,13 @@ function doGet(e) {
         });
       }
 
-      const values = sheet.getRange(2, 1, lastRow - 1, HEADERS.length).getValues();
       let matchedBooking = null;
 
       // Iterasi dari yang paling baru (bawah ke atas)
-      for (let i = values.length - 1; i >= 0; i--) {
-        const row = values[i];
-        const rowId = String(row[0] || "").trim().toUpperCase(); // Kolom ke-1: ID BOOKING
-        const rowPhone = cleanPhoneNumber(row[14]); // Kolom ke-15: NOMOR HP
+      for (let i = allBookings.length - 1; i >= 0; i--) {
+        const b = allBookings[i];
+        const rowId = String(b.id || b.idBooking || "").trim().toUpperCase();
+        const rowPhone = cleanPhoneNumber(b.noHp || b.nomorHp);
         
         let isMatch = false;
         if (idQuery && rowId === idQuery) {
@@ -4043,43 +4095,34 @@ function doGet(e) {
         }
 
         if (isMatch) {
-          // Format tanggal khitan dan tanggal lahir tanpa pergeseran zona waktu
-          let tglLahirStr = normalizeYmd_(row[3]);
-          let tglKhitanStr = normalizeYmd_(row[5]);
-
-          let timestampStr = row[20];
-          if (timestampStr instanceof Date) {
-            timestampStr = Utilities.formatDate(timestampStr, "Asia/Jakarta", "yyyy-MM-dd HH:mm:ss");
-          }
-
           matchedBooking = {
-            id: String(row[0] || ""),
-            idBooking: String(row[0] || ""),
-            timestamp: String(timestampStr || ""),
-            namaAnak: String(row[1] || ""),
-            namaAnanda: String(row[1] || ""),
-            tempatLahir: String(row[2] || ""),
-            tanggalLahir: String(tglLahirStr || ""),
-            beratBadan: String(row[4] || ""),
-            tglKhitan: String(tglKhitanStr || ""),
-            tanggalKhitan: String(tglKhitanStr || ""),
-            jamKhitan: String(row[6] || ""),
-            metodeKhitan: String(row[7] || ""),
-            ukuranCelana: String(row[8] || ""),
-            obat: String(row[9] || ""),
-            namaOrtu: String(row[10] || ""),
-            namaPenanggungJawab: String(row[10] || ""),
-            usiaPenanggungJawab: String(row[11] || ""),
-            pekerjaan: String(row[12] || ""),
-            hubunganKeluarga: String(row[13] || ""),
-            noHp: maskPhoneNumber(row[14]),
-            nomorHp: maskPhoneNumber(row[14]),
-            alamat: String(row[15] || ""),
-            provinsi: String(row[16] || ""),
-            kabupaten: String(row[17] || ""),
-            kecamatan: String(row[18] || ""),
-            kelurahan: String(row[19] || ""),
-            status: String(row[21] || "Pending")
+            id: b.id,
+            idBooking: b.idBooking || b.id,
+            timestamp: b.timestamp,
+            namaAnak: b.namaAnak,
+            namaAnanda: b.namaAnanda || b.namaAnak,
+            tempatLahir: b.tempatLahir,
+            tanggalLahir: b.tanggalLahir,
+            beratBadan: b.beratBadan,
+            tglKhitan: b.tglKhitan,
+            tanggalKhitan: b.tanggalKhitan || b.tglKhitan,
+            jamKhitan: b.jamKhitan,
+            metodeKhitan: b.metodeKhitan,
+            ukuranCelana: b.ukuranCelana,
+            obat: b.obat,
+            namaOrtu: b.namaOrtu || b.namaPenanggungJawab,
+            namaPenanggungJawab: b.namaPenanggungJawab || b.namaOrtu,
+            usiaPenanggungJawab: b.usiaPenanggungJawab,
+            pekerjaan: b.pekerjaan,
+            hubunganKeluarga: b.hubunganKeluarga,
+            noHp: maskPhoneNumber(b.noHp || b.nomorHp),
+            nomorHp: maskPhoneNumber(b.noHp || b.nomorHp),
+            alamat: b.alamat,
+            provinsi: b.provinsi,
+            kabupaten: b.kabupaten,
+            kecamatan: b.kecamatan,
+            kelurahan: b.kelurahan,
+            status: b.status || "Pending"
           };
           break;
         }
@@ -4740,10 +4783,31 @@ function doPost(e) {
 
     // 0. Deteksi Telegram Webhook Update (2 arah)
     if (payload && (payload.update_id !== undefined || payload.message || payload.callback_query)) {
+      const configuredSecret = getTelegramHookSecret_();
+      if (configuredSecret) {
+        const incomingHook = (e && e.parameter && e.parameter.hook) ? e.parameter.hook : "";
+        if (incomingHook !== configuredSecret) {
+          return createJsonResponse({
+            status: "error",
+            message: "Akses webhook Telegram tidak diizinkan."
+          });
+        }
+      }
       return handleTelegramWebhookUpdate_(payload);
     }
 
-    const action = payload.action || "createBooking";
+    let action = payload.action;
+    if (!action) {
+      const dataObj = payload.data || payload;
+      if (dataObj && (dataObj.namaAnanda || dataObj.namaAnak || dataObj.idBooking)) {
+        action = "createBooking";
+      } else {
+        return createJsonResponse({
+          status: "error",
+          message: "Aksi tidak dikenali atau parameter action wajib disertakan."
+        });
+      }
+    }
 
     // 1. Aksi LOGIN ADMIN
     if (action === "login") {
@@ -6053,8 +6117,8 @@ function doPost(e) {
         }
       }
 
-      const timestamp = data.timestamp || getJakartaTimestamp();
-      const status = data.status || "Pending";
+      const timestamp = getJakartaTimestamp();
+      const status = "Pending";
 
       const formattedNoHp = formatDisplayPhone(rawPhone);
       const storedNoHp = "'" + (rawPhone.startsWith("+62") ? rawPhone : formattedNoHp);
@@ -6066,7 +6130,7 @@ function doPost(e) {
         tanggalLahir,                                       // 4. TANGGAL LAHIR
         sanitizeSpreadsheetFormula(beratBadan),             // 5. BERAT BADAN
         tanggalKhitan,                                      // 6. TANGGAL KHITAN
-        jamKhitan,                                          // 7. JAM KHITAN
+        sanitizeSpreadsheetFormula(jamKhitan),              // 7. JAM KHITAN
         sanitizeSpreadsheetFormula(metodeKhitan),           // 8. METODE KHITAN
         sanitizeSpreadsheetFormula(ukuranCelana),           // 9. UKURAN CELANA
         sanitizeSpreadsheetFormula(obat),                   // 10. OBAT
@@ -6132,6 +6196,10 @@ function doPost(e) {
 
     // 4b. Aksi TEST TELEGRAM NOTIFICATION
     if (action === "testTelegramNotification") {
+      const token = payload.token || (payload.data && payload.data.token);
+      if (!validateSessionToken(token)) {
+        return unauthorizedResponse();
+      }
       const sampleBooking = {
         idBooking: "KD-TEST01",
         namaAnanda: "Rayyan Al-Fatih (Uji Coba)",
@@ -6157,6 +6225,10 @@ function doPost(e) {
 
     // 4c. Aksi TEST REMINDER NOTIFICATION & CHECK REMINDERS
     if (action === "testReminderNotification") {
+      const token = payload.token || (payload.data && payload.data.token);
+      if (!validateSessionToken(token)) {
+        return unauthorizedResponse();
+      }
       const sampleItem = {
         idBooking: "KD-REMIND01",
         namaAnanda: "Rayyan Al-Fatih (Uji Coba)",
@@ -6175,6 +6247,10 @@ function doPost(e) {
     }
 
     if (action === "checkReminders") {
+      const token = payload.token || (payload.data && payload.data.token);
+      if (!validateSessionToken(token)) {
+        return unauthorizedResponse();
+      }
       const res = checkAndSendUpcomingReminders_();
       return createJsonResponse({
         status: "success",
@@ -6184,6 +6260,10 @@ function doPost(e) {
     }
 
     if (action === "setupReminderTrigger") {
+      const token = payload.token || (payload.data && payload.data.token);
+      if (!validateSessionToken(token)) {
+        return unauthorizedResponse();
+      }
       const res = setupHourlyReminderTrigger();
       return createJsonResponse({
         status: "success",
@@ -6192,9 +6272,14 @@ function doPost(e) {
     }
 
     if (action === "getUpcomingSchedule") {
-      const scheduleFilter = (params && params.filter) ? params.filter : (payload && payload.filter ? payload.filter : "upcoming");
+      const token = payload.token || (payload.data && payload.data.token);
+      if (!validateSessionToken(token)) {
+        return unauthorizedResponse();
+      }
+      const scheduleFilter = (payload.data && payload.data.filter) || payload.filter || "upcoming";
       const data = getUpcomingBookingsGroupedByDate_(scheduleFilter);
-      const formatted = formatUpcomingScheduleMessage_(data, (params ? params.isAdmin === "true" : (payload ? payload.isAdmin === true : false)));
+      const isAdmin = (payload.data && payload.data.isAdmin === true) || payload.isAdmin === true;
+      const formatted = formatUpcomingScheduleMessage_(data, isAdmin);
       return createJsonResponse({
         status: "success",
         message: "Data jadwal khitan mendatang per hari/tanggal",
@@ -6204,7 +6289,11 @@ function doPost(e) {
     }
 
     if (action === "setTelegramWebhook") {
-      const targetUrl = (params && params.url) ? params.url : (payload && payload.url ? payload.url : "");
+      const token = payload.token || (payload.data && payload.data.token);
+      if (!validateSessionToken(token)) {
+        return unauthorizedResponse();
+      }
+      const targetUrl = (payload.data && payload.data.url) || payload.url || "";
       const res = setTelegramWebhookUrl_(targetUrl);
       return createJsonResponse({
         status: res.success ? "success" : "error",
