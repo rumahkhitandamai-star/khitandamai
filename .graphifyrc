@@ -1,0 +1,2 @@
+# Map Google Apps Script (.gs) files to JavaScript for tree-sitter AST parsing
+language.gs=javascript

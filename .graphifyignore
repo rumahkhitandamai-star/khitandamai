@@ -1,0 +1,15 @@
+# Mirror folders - source of truth is in asset/
+backend/
+public/
+
+# Build and test artifacts
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+node_modules/
+.firebase/
+
+
+
+

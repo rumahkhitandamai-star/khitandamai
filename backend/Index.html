@@ -2508,6 +2508,7 @@
                   >
                     <option value="Bayar">Bayar</option>
                     <option value="Free">Free</option>
+                    <option value="Belum">Belum</option>
                   </select>
                 </div>
 
@@ -3643,13 +3644,22 @@
         </div>
 
         <!-- Modal Footer -->
-        <div class="bg-slate-50 px-5 py-3 border-t border-slate-200 flex items-center justify-end gap-2 shrink-0">
+        <div class="bg-slate-50 px-5 py-3 border-t border-slate-200 flex flex-wrap items-center justify-end gap-2 shrink-0">
           <button 
             type="button" 
             @click="closeWaSambutanModal" 
             class="btn-press px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold text-xs transition"
           >
             Batal
+          </button>
+          <button 
+            type="button" 
+            @click="copyWaSambutanText" 
+            class="btn-press px-4 py-2.5 rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center gap-1.5 transition"
+            title="Salin Teks Pesan ke Clipboard"
+          >
+            <v-icon name="copy"></v-icon>
+            <span>Salin Teks</span>
           </button>
           <button 
             type="button" 
@@ -3711,13 +3721,22 @@
         </div>
 
         <!-- Modal Footer -->
-        <div class="bg-slate-50 px-5 py-3 border-t border-slate-200 flex items-center justify-end gap-2 shrink-0">
+        <div class="bg-slate-50 px-5 py-3 border-t border-slate-200 flex flex-wrap items-center justify-end gap-2 shrink-0">
           <button 
             type="button" 
             @click="closeWaReminderModal" 
             class="btn-press px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold text-xs transition"
           >
             Batal
+          </button>
+          <button 
+            type="button" 
+            @click="copyWaReminderText" 
+            class="btn-press px-4 py-2.5 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs flex items-center gap-1.5 transition"
+            title="Salin Teks Pesan ke Clipboard"
+          >
+            <v-icon name="copy"></v-icon>
+            <span>Salin Teks</span>
           </button>
           <button 
             type="button" 
@@ -3779,13 +3798,22 @@
         </div>
 
         <!-- Modal Footer -->
-        <div class="bg-slate-50 px-5 py-3 border-t border-slate-200 flex items-center justify-end gap-2 shrink-0">
+        <div class="bg-slate-50 px-5 py-3 border-t border-slate-200 flex flex-wrap items-center justify-end gap-2 shrink-0">
           <button 
             type="button" 
             @click="closeWaUcapanModal" 
             class="btn-press px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold text-xs transition"
           >
             Batal
+          </button>
+          <button 
+            type="button" 
+            @click="copyWaUcapanText" 
+            class="btn-press px-4 py-2.5 rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center gap-1.5 transition"
+            title="Salin Teks Pesan ke Clipboard"
+          >
+            <v-icon name="copy"></v-icon>
+            <span>Salin Teks</span>
           </button>
           <button 
             type="button" 
@@ -7055,7 +7083,7 @@
                 </div>
 
                 <!-- Card Kunjungan Bulan Berjalan -->
-                <div class="bg-white border border-slate-200 rounded-3xl p-4 sm:p-6 shadow-xs space-y-4">
+                <div v-show="dashboardViewFilter === 'all' || dashboardViewFilter === 'keuangan'" class="bg-white border border-slate-200 rounded-3xl p-4 sm:p-6 shadow-xs space-y-4">
                   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
                     <div class="flex items-center gap-2.5">
                       <div class="w-10 h-10 rounded-2xl bg-teal-50 text-tosca-700 flex items-center justify-center text-lg font-bold shrink-0">
@@ -7391,14 +7419,14 @@
                       <button v-if="adminSearchQuery" @click="adminSearchQuery = ''" type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"><v-icon name="xmark"></v-icon></button>
                     </div>
 
-                    <!-- Filter Jadwal & Menampilkan Baris Dropdowns -->
+                    <!-- Filter Jadwal, Status & Menampilkan Baris Dropdowns -->
                     <div class="flex flex-wrap items-center gap-3 shrink-0">
                       <!-- 1. Filter Jadwal Combobox Dropdown -->
                       <div class="flex items-center gap-2 shrink-0">
                         <label for="booking-date-filter" class="text-xs text-slate-600 font-bold flex items-center gap-1.5 shrink-0">
                           <v-icon name="calendar-days" class="mr-1"></v-icon> Jadwal:
                         </label>
-                        <div class="relative min-w-[170px] sm:w-48">
+                        <div class="relative min-w-[150px] sm:w-44">
                           <select 
                             id="booking-date-filter"
                             v-model="adminDateFilter"
@@ -7416,7 +7444,30 @@
                         </div>
                       </div>
 
-                      <!-- 2. Combobox Menampilkan Baris (Paginasi Global) -->
+                      <!-- 2. Filter Status Combobox Dropdown -->
+                      <div class="flex items-center gap-2 shrink-0">
+                        <label for="booking-status-filter" class="text-xs text-slate-600 font-bold flex items-center gap-1.5 shrink-0">
+                          <v-icon name="filter" class="mr-1"></v-icon> Status:
+                        </label>
+                        <div class="relative min-w-[140px] sm:w-40">
+                          <select 
+                            id="booking-status-filter"
+                            v-model="adminStatusFilter"
+                            class="w-full text-xs font-semibold pl-3 pr-8 py-2.5 bg-slate-50 hover:bg-white border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-tosca-600 focus:border-tosca-600 focus:outline-none transition appearance-none cursor-pointer shadow-2xs text-slate-800"
+                          >
+                            <option 
+                              v-for="st in adminStatusOptions" 
+                              :key="st" 
+                              :value="st"
+                            >
+                              {{ st }} ({{ countAdminByStatus(st) }})
+                            </option>
+                          </select>
+                          <svg class="w-3.5 h-3.5 text-slate-500 pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                        </div>
+                      </div>
+
+                      <!-- 3. Combobox Menampilkan Baris (Paginasi Global) -->
                       <admin-per-page-select id="booking-per-page"></admin-per-page-select>
                     </div>
                   </div>
@@ -7587,9 +7638,23 @@
 
                           <!-- STATUS -->
                           <td class="py-3 px-3 whitespace-nowrap text-center">
-                            <span :class="statusBadgeClass(item.status)" class="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-2xs">
-                              {{ item.status || 'Pending' }}
-                            </span>
+                            <div class="relative inline-flex items-center justify-center">
+                              <select 
+                                :value="item.status || 'Pending'" 
+                                @change="handleStatusChange(item.idBooking || item.id, $event.target.value)"
+                                :disabled="updatingStatusId === (item.idBooking || item.id)"
+                                :class="statusBadgeClass(item.status)"
+                                class="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-2xs cursor-pointer focus:outline-none focus:ring-2 focus:ring-tosca-600 transition border-0 disabled:opacity-50 appearance-none"
+                                title="Klik untuk mengubah status pendaftaran"
+                              >
+                                <option value="Pending" class="bg-white text-slate-800 font-bold">Pending</option>
+                                <option value="Confirmed" class="bg-white text-slate-800 font-bold">Confirmed</option>
+                                <option value="Selesai" class="bg-white text-slate-800 font-bold">Selesai</option>
+                              </select>
+                              <span v-if="updatingStatusId === (item.idBooking || item.id)" class="absolute -right-3">
+                                <svg class="animate-spin h-2.5 w-2.5 text-tosca-700" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                              </span>
+                            </div>
                           </td>
 
                           <!-- 2. NAMA ANANDA -->
@@ -7713,9 +7778,23 @@
                       <span class="font-mono font-black text-xs sm:text-sm text-slate-900 bg-white px-2.5 py-1 rounded-md border border-slate-300 shadow-2xs">
                         {{ item.idBooking || item.id }}
                       </span>
-                      <span :class="statusBadgeClass(item.status)" class="text-xs font-black px-2.5 py-1 rounded-full uppercase tracking-wider">
-                        {{ item.status }}
-                      </span>
+                      <div class="relative inline-flex items-center">
+                        <select 
+                          :value="item.status || 'Pending'" 
+                          @change="handleStatusChange(item.idBooking || item.id, $event.target.value)"
+                          :disabled="updatingStatusId === (item.idBooking || item.id)"
+                          :class="statusBadgeClass(item.status)"
+                          class="text-xs font-black px-2.5 py-1 rounded-full uppercase tracking-wider shadow-2xs cursor-pointer focus:outline-none focus:ring-2 focus:ring-tosca-600 transition border-0 disabled:opacity-50 appearance-none"
+                          title="Klik untuk mengubah status pendaftaran"
+                        >
+                          <option value="Pending" class="bg-white text-slate-800 font-bold">Pending</option>
+                          <option value="Confirmed" class="bg-white text-slate-800 font-bold">Confirmed</option>
+                          <option value="Selesai" class="bg-white text-slate-800 font-bold">Selesai</option>
+                        </select>
+                        <span v-if="updatingStatusId === (item.idBooking || item.id)" class="ml-1.5">
+                          <svg class="animate-spin h-3 w-3 text-tosca-700" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                        </span>
+                      </div>
                     </div>
 
                     <div class="grid grid-cols-2 gap-2.5 text-xs">
@@ -8133,12 +8212,12 @@
                           <tr 
                             v-for="item in pagedKunjungan" 
                             :key="'kunj-row-' + item.register"
-                            class="hover:bg-slate-50 transition"
+                            :class="[kunjunganRowTone(item), 'transition']"
                           >
                             <!-- 1. Aksi Kompak (Sticky Left, Hemat Ruang Horizontal) -->
                             <td 
-                              :class="activeKunjunganMenuRegister === item.register ? 'z-50' : 'z-20'" 
-                              class="sticky left-0 bg-white hover:bg-slate-50 py-2.5 px-2 text-center min-w-[125px] w-[125px] whitespace-nowrap border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)]"
+                              :class="[activeKunjunganMenuRegister === item.register ? 'z-50' : 'z-20', kunjunganRowCellTone(item)]" 
+                              class="sticky left-0 py-2.5 px-2 text-center min-w-[125px] w-[125px] whitespace-nowrap border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)]"
                             >
                               <div class="inline-flex items-center gap-1">
                                 <!-- 1. Tombol Edit Utama -->
@@ -8217,6 +8296,7 @@
                                       </button>
                                       <button 
                                         type="button" 
+                                        v-if="item.idBooking && item.idBooking !== '-'"
                                         @click="openLihatBooking(item); closeKunjunganActionMenu()"
                                         class="w-full text-left px-3 py-2 hover:bg-indigo-50 hover:text-indigo-800 text-slate-700 flex items-center gap-2.5 transition"
                                       >
@@ -8283,13 +8363,24 @@
                             <td v-if="isKunjunganColVisible('ukuranKlamp')" class="p-2 text-slate-600">{{ item.ukuranKlamp || '-' }}</td>
 
                             <!-- STATUS BAYAR -->
-                            <td v-if="isKunjunganColVisible('statusBayar')" class="p-2 text-center">
-                              <span 
-                                :class="item.statusBayar === 'Bayar' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : (item.statusBayar === 'Free' ? 'bg-blue-100 text-blue-800 border-blue-300' : 'bg-rose-100 text-rose-800 border-rose-300')"
-                                class="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase"
-                              >
-                                {{ item.statusBayar || '-' }}
-                              </span>
+                            <td v-if="isKunjunganColVisible('statusBayar')" class="p-2 text-center whitespace-nowrap">
+                              <div class="relative inline-flex items-center justify-center">
+                                <select 
+                                  :value="item.statusBayar || 'Bayar'"
+                                  @change="handleKunjunganStatusBayarChange(item.register, $event.target.value)"
+                                  :disabled="updatingKunjunganStatusRegister === item.register"
+                                  :class="item.statusBayar === 'Bayar' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : (item.statusBayar === 'Free' ? 'bg-blue-100 text-blue-800 border-blue-300' : 'bg-rose-100 text-rose-800 border-rose-300')"
+                                  class="text-[10px] font-bold px-2.5 py-0.5 rounded-full border uppercase tracking-wider shadow-2xs cursor-pointer focus:outline-none focus:ring-2 focus:ring-tosca-600 transition disabled:opacity-50 appearance-none"
+                                  title="Klik untuk mengubah status pembayaran"
+                                >
+                                  <option value="Bayar" class="bg-white text-emerald-800 font-bold">Bayar</option>
+                                  <option value="Free" class="bg-white text-blue-800 font-bold">Free</option>
+                                  <option value="Belum" class="bg-white text-rose-800 font-bold">Belum</option>
+                                </select>
+                                <span v-if="updatingKunjunganStatusRegister === item.register" class="absolute -right-3">
+                                  <svg class="animate-spin h-2.5 w-2.5 text-tosca-700" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                                </span>
+                              </div>
                             </td>
 
                             <td v-if="isKunjunganColVisible('jumlahBayar')" class="p-2 text-right font-mono text-slate-700">{{ item.jumlahBayar || '0' }}</td>
@@ -8309,8 +8400,8 @@
                   <div class="block md:hidden space-y-3">
                     <div 
                       v-for="item in pagedKunjungan" 
-                      :key="'kunj-card-' + item.register"
-                      class="p-4 bg-white border border-slate-200 rounded-2xl shadow-xs space-y-3.5"
+                      :key="'kunj-card-' + item.register" 
+                      :class="['p-4 border rounded-2xl shadow-xs space-y-3.5 transition', kunjunganRowTone(item), 'border-slate-200']"
                     >
                       <div class="flex items-start justify-between gap-2 border-b border-slate-100 pb-2.5">
                         <div>
@@ -8318,12 +8409,23 @@
                             <span class="font-mono text-xs font-black text-tosca-900 bg-teal-50 px-2.5 py-1 rounded-md border border-teal-200">
                               {{ item.register }}
                             </span>
-                            <span 
-                              :class="item.statusBayar === 'Bayar' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : (item.statusBayar === 'Free' ? 'bg-blue-100 text-blue-800 border-blue-300' : 'bg-rose-100 text-rose-800 border-rose-300')"
-                              class="text-xs font-black px-2.5 py-0.5 rounded-full border uppercase"
-                            >
-                              {{ item.statusBayar || '-' }}
-                            </span>
+                            <div class="relative inline-flex items-center">
+                              <select 
+                                :value="item.statusBayar || 'Bayar'"
+                                @change="handleKunjunganStatusBayarChange(item.register, $event.target.value)"
+                                :disabled="updatingKunjunganStatusRegister === item.register"
+                                :class="item.statusBayar === 'Bayar' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : (item.statusBayar === 'Free' ? 'bg-blue-100 text-blue-800 border-blue-300' : 'bg-rose-100 text-rose-800 border-rose-300')"
+                                class="text-xs font-black px-2.5 py-0.5 rounded-full border uppercase tracking-wider shadow-2xs cursor-pointer focus:outline-none focus:ring-2 focus:ring-tosca-600 transition disabled:opacity-50 appearance-none"
+                                title="Klik untuk mengubah status pembayaran"
+                              >
+                                <option value="Bayar" class="bg-white text-emerald-800 font-bold">Bayar</option>
+                                <option value="Free" class="bg-white text-blue-800 font-bold">Free</option>
+                                <option value="Belum" class="bg-white text-rose-800 font-bold">Belum</option>
+                              </select>
+                              <span v-if="updatingKunjunganStatusRegister === item.register" class="ml-1">
+                                <svg class="animate-spin h-3 w-3 text-tosca-700" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                              </span>
+                            </div>
                           </div>
                           <h4 class="font-black text-slate-900 text-base mt-1.5">{{ item.namaAnanda }}</h4>
                         </div>
@@ -8443,6 +8545,7 @@
                               </button>
                               <button 
                                 type="button" 
+                                v-if="item.idBooking && item.idBooking !== '-'"
                                 @click="openLihatBooking(item); closeKunjunganActionMenu()"
                                 class="w-full text-left px-3 py-2 hover:bg-indigo-50 hover:text-indigo-800 text-slate-700 flex items-center gap-2.5 transition"
                               >
@@ -16547,6 +16650,7 @@
         const isLoadingAdminData = ref(false);
         const adminSearchQuery = ref('');
         const adminStatusFilter = ref('Semua');
+        const adminStatusOptions = ['Semua', 'Pending', 'Confirmed', 'Selesai'];
         const adminDateFilter = ref('Mendatang');
         const adminDateFilters = ['Mendatang', 'Hari Ini', 'H-1', 'Semua'];
         const updatingStatusId = ref(null);
@@ -17420,31 +17524,32 @@
 
         const handleStatusChange = async (bookingId, newStatus) => {
           updatingStatusId.value = bookingId;
+          const targetId = String(bookingId || '').trim();
           const token = (adminUser.value && adminUser.value.token) ? adminUser.value.token : '';
           const payload = {
             action: 'updateBookingStatus',
             token: token,
             data: {
-              id: bookingId,
+              id: targetId,
               status: newStatus
             }
           };
 
           try {
             if (USE_MOCK) {
-              await new Promise(resolve => setTimeout(resolve, 400));
-              const item = LOCAL_MOCK_DATABASE.find(b => b.id === bookingId);
+              await new Promise(resolve => setTimeout(resolve, 300));
+              const item = LOCAL_MOCK_DATABASE.find(b => (b.id === targetId || b.idBooking === targetId));
               if (item) item.status = newStatus;
-              const adminItem = adminBookings.value.find(b => b.id === bookingId);
+              const adminItem = adminBookings.value.find(b => (b.id === targetId || b.idBooking === targetId));
               if (adminItem) adminItem.status = newStatus;
               saveCacheSnapshot('bookings', adminBookings.value);
               recordSyncEntry({
                 type: 'perubahan',
                 target: 'bookings',
                 status: 'success',
-                message: "Status booking " + (bookingId) + " diubah ke " + (newStatus) + " (Mode Mock)"
+                message: "Status booking " + (targetId) + " diubah ke " + (newStatus) + " (Mode Mock)"
               });
-              showToastNotification("Status " + (bookingId) + " berhasil diubah ke " + (newStatus));
+              showToastNotification("Status " + (targetId) + " berhasil diubah ke " + (newStatus));
             } else {
               const res = await fetch(GAS_ENDPOINT_URL, {
                 method: 'POST',
@@ -17456,16 +17561,16 @@
               });
               const json = await parseApiResponse(res);
               if (json.status === 'success') {
-                const adminItem = adminBookings.value.find(b => b.id === bookingId);
+                const adminItem = adminBookings.value.find(b => (b.id === targetId || b.idBooking === targetId));
                 if (adminItem) adminItem.status = newStatus;
                 saveCacheSnapshot('bookings', adminBookings.value);
                 recordSyncEntry({
                   type: 'perubahan',
                   target: 'bookings',
                   status: 'success',
-                  message: "Status booking " + (bookingId) + " berhasil diubah ke " + (newStatus)
+                  message: "Status booking " + (targetId) + " berhasil diubah ke " + (newStatus)
                 });
-                showToastNotification("Status " + (bookingId) + " berhasil diubah ke " + (newStatus));
+                showToastNotification("Status " + (targetId) + " berhasil diubah ke " + (newStatus));
               } else if (json.code === 'unauthorized') {
                 openAlertDialog({
                   type: 'warning',
@@ -17477,7 +17582,7 @@
                 openAlertDialog({
                   type: 'danger',
                   title: 'Gagal Mengubah Status',
-                  message: json.message || 'Gagal mengubah status booking.'
+                  message: json.message || 'Gagal mengubah status booking di database.'
                 });
               }
             }
@@ -17486,7 +17591,7 @@
             openAlertDialog({
               type: 'danger',
               title: 'Kesalahan Sistem',
-              message: 'Terjadi kesalahan saat memperbarui status booking.'
+              message: 'Terjadi kesalahan saat memperbarui status booking: ' + (err.message || 'Koneksi terputus')
             });
           } finally {
             updatingStatusId.value = null;
@@ -17496,11 +17601,18 @@
         // Perhitungan selisih tanggal khitan terhadap hari ini (tanpa resiko zona waktu)
         const getKhitanDateDiffDays = (tglKhitanStr) => {
           if (!tglKhitanStr) return null;
-          const parts = String(tglKhitanStr).trim().split('-');
+          const cleanStr = String(tglKhitanStr).trim().substring(0, 10).replace(/\//g, '-');
+          const parts = cleanStr.split('-');
           if (parts.length !== 3) return null;
-          const ky = parseInt(parts[0], 10);
-          const km = parseInt(parts[1], 10) - 1;
-          const kd = parseInt(parts[2], 10);
+          let ky = parseInt(parts[0], 10);
+          let km = parseInt(parts[1], 10) - 1;
+          let kd = parseInt(parts[2], 10);
+          // Handle format DD-MM-YYYY jika hari dan tahun terbalik
+          if (parts[0].length <= 2 && parts[2].length === 4) {
+            kd = parseInt(parts[0], 10);
+            km = parseInt(parts[1], 10) - 1;
+            ky = parseInt(parts[2], 10);
+          }
           if (isNaN(ky) || isNaN(km) || isNaN(kd)) return null;
           const now = new Date();
           const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
@@ -17513,8 +17625,8 @@
           const diff = getKhitanDateDiffDays(item.tanggalKhitan || item.tglKhitan);
           if (diff === null) return 'bg-white hover:bg-slate-50 text-slate-800';
           if (diff === 0) return 'bg-sky-50/90 hover:bg-sky-100/90 text-slate-900'; // Hari Ini: Biru
-          if (diff === 1) return 'bg-amber-50/90 hover:bg-amber-100/90 text-slate-900'; // Kemarin (H-1): Kuning
-          if (diff >= 2) return 'bg-rose-50/90 hover:bg-rose-100/90 text-slate-900'; // Lewat >=2 hari (H-2): Merah
+          if (diff === -1) return 'bg-amber-50/90 hover:bg-amber-100/90 text-slate-900'; // Besok (H-1): Kuning Amber
+          if (diff >= 1) return 'bg-rose-50/90 hover:bg-rose-100/90 text-slate-900'; // Terlewat (Overdue): Rose
           return 'bg-white hover:bg-slate-50 text-slate-800'; // Mendatang
         };
 
@@ -17522,8 +17634,8 @@
           const diff = getKhitanDateDiffDays(item.tanggalKhitan || item.tglKhitan);
           if (diff === null) return 'bg-white group-hover:bg-slate-50';
           if (diff === 0) return 'bg-sky-50 group-hover:bg-sky-100';
-          if (diff === 1) return 'bg-amber-50 group-hover:bg-amber-100';
-          if (diff >= 2) return 'bg-rose-50 group-hover:bg-rose-100';
+          if (diff === -1) return 'bg-amber-50 group-hover:bg-amber-100';
+          if (diff >= 1) return 'bg-rose-50 group-hover:bg-rose-100';
           return 'bg-white group-hover:bg-slate-50';
         };
 
@@ -17596,11 +17708,20 @@
           }).length;
         };
 
+        const countAdminByStatus = (statusVal) => {
+          if (!adminBookings.value || adminBookings.value.length === 0) return 0;
+          if (statusVal === 'Semua') return adminBookings.value.length;
+          const target = String(statusVal || '').toLowerCase().trim();
+          return adminBookings.value.filter(b => String(b.status || 'Pending').toLowerCase().trim() === target).length;
+        };
+
         const cleanPhoneForWa = (phone) => {
           if (!phone) return '';
           let digits = phone.toString().replace(/\D/g, '');
           if (digits.startsWith('0')) {
             digits = '62' + digits.slice(1);
+          } else if (digits.startsWith('8')) {
+            digits = '62' + digits;
           }
           return digits;
         };
@@ -17978,11 +18099,20 @@
 
         const openLihatBooking = (item) => {
           if (!item) return;
-          const copy = JSON.parse(JSON.stringify(item));
-          if (!copy.status && copy.statusBayar) {
-            copy.status = copy.statusBayar;
+          const targetBookingId = String(item.idBooking || item.id || '').trim().toUpperCase();
+          const foundBooking = (adminBookings.value || []).find(b => String(b.idBooking || b.id || '').trim().toUpperCase() === targetBookingId);
+          if (foundBooking) {
+            lastBookingData.value = JSON.parse(JSON.stringify(foundBooking));
+          } else {
+            const copy = JSON.parse(JSON.stringify(item));
+            if (!copy.status && copy.statusBayar) {
+              copy.status = copy.statusBayar;
+            }
+            if (!copy.id && copy.idBooking) {
+              copy.id = copy.idBooking;
+            }
+            lastBookingData.value = copy;
           }
-          lastBookingData.value = copy;
           showAdminBuktiModal.value = true;
         };
 
@@ -18195,6 +18325,27 @@
           activeWaReminderData.value = null;
         };
 
+        const copyWaSambutanText = async () => {
+          if (!activeWaSambutanData.value) return;
+          const text = buildWaSambutanText(activeWaSambutanData.value);
+          try {
+            if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
+              await navigator.clipboard.writeText(text);
+              showToastNotification('Teks WhatsApp Sambutan berhasil disalin!');
+            } else {
+              const ta = document.createElement('textarea');
+              ta.value = text;
+              document.body.appendChild(ta);
+              ta.select();
+              document.execCommand('copy');
+              document.body.removeChild(ta);
+              showToastNotification('Teks WhatsApp Sambutan berhasil disalin!');
+            }
+          } catch (e) {
+            showToastNotification('Gagal menyalin teks');
+          }
+        };
+
         const sendWaSambutan = () => {
           if (!activeWaSambutanData.value) return;
           const b = activeWaSambutanData.value;
@@ -18202,6 +18353,27 @@
           const text = buildWaSambutanText(b);
           const url = 'https://wa.me/' + phone + '?text=' + encodeURIComponent(text);
           window.open(url, '_blank', 'noopener,noreferrer');
+        };
+
+        const copyWaReminderText = async () => {
+          if (!activeWaReminderData.value) return;
+          const text = buildWaReminderText(activeWaReminderData.value);
+          try {
+            if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
+              await navigator.clipboard.writeText(text);
+              showToastNotification('Teks WhatsApp Reminder berhasil disalin!');
+            } else {
+              const ta = document.createElement('textarea');
+              ta.value = text;
+              document.body.appendChild(ta);
+              ta.select();
+              document.execCommand('copy');
+              document.body.removeChild(ta);
+              showToastNotification('Teks WhatsApp Reminder berhasil disalin!');
+            }
+          } catch (e) {
+            showToastNotification('Gagal menyalin teks');
+          }
         };
 
         const sendWaReminder = () => {
@@ -18312,6 +18484,27 @@
         const closeWaUcapanModal = () => {
           showWaUcapanModal.value = false;
           activeWaUcapanData.value = null;
+        };
+
+        const copyWaUcapanText = async () => {
+          if (!activeWaUcapanData.value) return;
+          const text = buildWaUcapanText(activeWaUcapanData.value);
+          try {
+            if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
+              await navigator.clipboard.writeText(text);
+              showToastNotification('Teks WhatsApp Ucapan berhasil disalin!');
+            } else {
+              const ta = document.createElement('textarea');
+              ta.value = text;
+              document.body.appendChild(ta);
+              ta.select();
+              document.execCommand('copy');
+              document.body.removeChild(ta);
+              showToastNotification('Teks WhatsApp Ucapan berhasil disalin!');
+            }
+          } catch (e) {
+            showToastNotification('Gagal menyalin teks');
+          }
         };
 
         const sendWaUcapan = () => {
@@ -19651,14 +19844,19 @@
         const countKunjunganByBayar = (statusVal) => {
           if (!adminKunjungan.value || adminKunjungan.value.length === 0) return 0;
           if (statusVal === 'Semua') return adminKunjungan.value.length;
-          const target = statusVal.toLowerCase();
-          return adminKunjungan.value.filter(k => (k.statusBayar || '').toLowerCase() === target).length;
+          const target = statusVal.toLowerCase().trim();
+          return adminKunjungan.value.filter(k => String(k.statusBayar || '').trim().toLowerCase() === target).length;
         };
 
         const countKunjunganByMonth = (monthVal) => {
           if (!adminKunjungan.value || adminKunjungan.value.length === 0) return 0;
           if (monthVal === 'Semua') return adminKunjungan.value.length;
           return adminKunjungan.value.filter(k => {
+            const tgl = String(k.tanggalKhitan || k.tglKhitan || '');
+            if (tgl.length >= 7) {
+              const m = tgl.slice(5, 7);
+              if (m === String(monthVal)) return true;
+            }
             const reg = String(k.register || '');
             if (reg.length >= 6) {
               const m = reg.slice(4, 6);
@@ -19672,6 +19870,11 @@
           if (!adminKunjungan.value || adminKunjungan.value.length === 0) return 0;
           if (yearVal === 'Semua') return adminKunjungan.value.length;
           return adminKunjungan.value.filter(k => {
+            const tgl = String(k.tanggalKhitan || k.tglKhitan || '');
+            if (tgl.length >= 4) {
+              const y = tgl.slice(0, 4);
+              if (y === String(yearVal)) return true;
+            }
             const reg = String(k.register || '');
             if (reg.length >= 4) {
               const y = '20' + reg.slice(2, 4);
@@ -19741,6 +19944,28 @@
           }
           return kunjunganColumns.filter(c => compactKunjunganKeys.includes(c.key));
         });
+
+        const kunjunganRowTone = (item) => {
+          if (!item) return 'bg-white hover:bg-slate-50';
+          if (item.statusBayar === 'Belum') {
+            return 'bg-rose-50/70 hover:bg-rose-100/70';
+          }
+          if (item.tanggalKhitan && item.tanggalKhitan === todayYmdStr.value) {
+            return 'bg-sky-50/60 hover:bg-sky-100/70';
+          }
+          return 'bg-white hover:bg-slate-50';
+        };
+
+        const kunjunganRowCellTone = (item) => {
+          if (!item) return 'bg-white hover:bg-slate-50';
+          if (item.statusBayar === 'Belum') {
+            return 'bg-rose-50 hover:bg-rose-100/80';
+          }
+          if (item.tanggalKhitan && item.tanggalKhitan === todayYmdStr.value) {
+            return 'bg-sky-50 hover:bg-sky-100/80';
+          }
+          return 'bg-white hover:bg-slate-50';
+        };
 
         // Popover Dropdown Menu Aksi Lainnya Baris Kunjungan
         const activeKunjunganMenuRegister = ref(null);
@@ -19885,6 +20110,17 @@
           }
         );
 
+        // Jika statusBayar diubah ke 'Free', otomatiskan jumlahBayar & zakat menjadi '0'
+        watch(
+          () => kunjunganForm.statusBayar,
+          (val) => {
+            if (val === 'Free') {
+              kunjunganForm.jumlahBayar = '0';
+              kunjunganForm.zakat = '0';
+            }
+          }
+        );
+
         const kunjunganAlamatModel = computed({
           get: () => ({
             provinsi: kunjunganForm.provinsi,
@@ -19909,9 +20145,14 @@
             list = list.filter(k => (k.statusBayar || '').toLowerCase() === kunjunganStatusBayarFilter.value.toLowerCase());
           }
 
-          // 2. Filter Bulan Register
+          // 2. Filter Bulan Tindakan (Fallback Register)
           if (kunjunganMonthFilter.value !== 'Semua') {
             list = list.filter(k => {
+              const tgl = String(k.tanggalKhitan || k.tglKhitan || '');
+              if (tgl.length >= 7) {
+                const m = tgl.slice(5, 7);
+                if (m === kunjunganMonthFilter.value) return true;
+              }
               const reg = String(k.register || '');
               if (reg.length >= 6) {
                 const m = reg.slice(4, 6);
@@ -19921,9 +20162,14 @@
             });
           }
 
-          // 3. Filter Tahun Register
+          // 3. Filter Tahun Tindakan (Fallback Register)
           if (kunjunganYearFilter.value !== 'Semua') {
             list = list.filter(k => {
+              const tgl = String(k.tanggalKhitan || k.tglKhitan || '');
+              if (tgl.length >= 4) {
+                const y = tgl.slice(0, 4);
+                if (y === kunjunganYearFilter.value) return true;
+              }
               const reg = String(k.register || '');
               if (reg.length >= 4) {
                 const y = '20' + reg.slice(2, 4);
@@ -20508,6 +20754,73 @@
               }
             }
           });
+        };
+
+        const updatingKunjunganStatusRegister = ref(null);
+
+        const handleKunjunganStatusBayarChange = async (register, newStatus) => {
+          if (!register || !newStatus) return;
+          const target = (adminKunjungan.value || []).find(k => k.register === register);
+          if (!target || target.statusBayar === newStatus) return;
+
+          const oldStatus = target.statusBayar;
+          const oldJumlah = target.jumlahBayar;
+          const oldZakat = target.zakat;
+
+          target.statusBayar = newStatus;
+          if (newStatus === 'Free') {
+            target.jumlahBayar = '0';
+            target.zakat = '0';
+          }
+          updatingKunjunganStatusRegister.value = register;
+
+          try {
+            if (USE_MOCK) {
+              await new Promise(r => setTimeout(r, 200));
+              saveCacheSnapshot('kunjungan', adminKunjungan.value);
+              showToastNotification('Status pembayaran ' + (target.namaAnanda || register) + ' diubah ke ' + newStatus + ' (Mock)');
+              return;
+            }
+
+            const payload = {
+              action: 'updateKunjungan',
+              token: adminUser.value.token,
+              data: {
+                ...target,
+                statusBayar: newStatus
+              }
+            };
+
+            const res = await fetch(GAS_ENDPOINT_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+              body: JSON.stringify(payload),
+              redirect: 'follow'
+            });
+            const json = await parseApiResponse(res);
+
+            if (json.status === 'success') {
+              saveCacheSnapshot('kunjungan', adminKunjungan.value);
+              showToastNotification('Status pembayaran ' + (target.namaAnanda || register) + ' berhasil diubah ke ' + newStatus);
+            } else {
+              target.statusBayar = oldStatus;
+              target.jumlahBayar = oldJumlah;
+              target.zakat = oldZakat;
+              throw new Error(json.message || 'Gagal memperbarui status pembayaran.');
+            }
+          } catch (err) {
+            target.statusBayar = oldStatus;
+            target.jumlahBayar = oldJumlah;
+            target.zakat = oldZakat;
+            console.error('Gagal quick update status bayar:', err);
+            openAlertDialog({
+              type: 'danger',
+              title: 'Gagal Mengubah Status',
+              message: err.message || 'Terjadi kesalahan saat memperbarui status pembayaran.'
+            });
+          } finally {
+            updatingKunjunganStatusRegister.value = null;
+          }
         };
 
         // ================= DATA KHITAN JUMAT BERKAH (Sheet JUMAT BERKAH) =================
@@ -22401,12 +22714,21 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
           }
         });
 
+        watch(adminTheme, () => {
+          if (adminActiveTab.value === 'dashboard') {
+            nextTick(() => {
+              renderDashboardCharts();
+            });
+          }
+        });
+
         // ================= WIDGET OPERASIONAL HARIAN (PASIEN HARI INI & PENDING) =================
         const dashboardHariIniKunjungan = computed(() => {
           const rows = Array.isArray(adminKunjungan.value) ? adminKunjungan.value : [];
           return rows.filter(item => {
-            if (!item || !item.tanggalKhitan) return false;
-            return getKhitanDateDiffDays(item.tanggalKhitan) === 0;
+            const tgl = item && (item.tanggalKhitan || item.tglKhitan);
+            if (!tgl) return false;
+            return getKhitanDateDiffDays(tgl) === 0;
           });
         });
 
@@ -22489,17 +22811,9 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
 
           rows.forEach(item => {
             if (!item) return;
-            let y = '';
-            const reg = String(item.register || '');
-            if (reg.length >= 4) {
-              y = '20' + reg.slice(2, 4);
-            }
-            if (!y && item.tanggalKhitan && typeof item.tanggalKhitan === 'string') {
-              const m = item.tanggalKhitan.match(/^(\d{4})/);
-              if (m) y = m[1];
-            }
-            if (y && /^\d{4}$/.test(y)) {
-              yearSet[y] = true;
+            const yr = extractTahunKunjungan(item);
+            if (yr && /^\d{4}$/.test(yr)) {
+              yearSet[yr] = true;
             }
           });
 
@@ -22522,20 +22836,8 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
           if (!targetMonth) return rows;
           return rows.filter(item => {
             if (!item) return false;
-            let m = '';
-            let y = '';
-            const reg = String(item.register || '');
-            if (reg.length >= 6) {
-              m = reg.slice(4, 6);
-              y = '20' + reg.slice(2, 4);
-            }
-            if (!m && item.tanggalKhitan && typeof item.tanggalKhitan === 'string') {
-              const match = item.tanggalKhitan.match(/^(\d{4})-(\d{2})/);
-              if (match) {
-                y = match[1];
-                m = match[2];
-              }
-            }
+            const m = extractBulanKunjungan(item);
+            const y = extractTahunKunjungan(item);
             return m === targetMonth && y === targetYear;
           });
         });
@@ -22545,11 +22847,11 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
         });
 
         const dashboardBulanTotalBayar = computed(() => {
-          return dashboardRowsBulanBerjalan.value.filter(k => (k && (k.statusBayar || '').toLowerCase() === 'bayar')).length;
+          return dashboardRowsBulanBerjalan.value.filter(k => (k && String(k.statusBayar || '').trim().toLowerCase() === 'bayar')).length;
         });
 
         const dashboardBulanTotalFree = computed(() => {
-          return dashboardRowsBulanBerjalan.value.filter(k => (k && (k.statusBayar || '').toLowerCase() === 'free')).length;
+          return dashboardRowsBulanBerjalan.value.filter(k => (k && String(k.statusBayar || '').trim().toLowerCase() === 'free')).length;
         });
 
         const dashboardBulanPersenBayar = computed(() => {
@@ -22678,17 +22980,9 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
 
           rows.forEach(item => {
             if (!item) return;
-            let y = '';
-            const reg = String(item.register || '');
-            if (reg.length >= 4) {
-              y = '20' + reg.slice(2, 4);
-            }
-            if (!y && item.tanggalKhitan && typeof item.tanggalKhitan === 'string') {
-              const m = item.tanggalKhitan.match(/^(\d{4})/);
-              if (m) y = m[1];
-            }
-            if (y && /^\d{4}$/.test(y)) {
-              yearSet[y] = true;
+            const yr = extractTahunKunjungan(item);
+            if (yr && /^\d{4}$/.test(yr)) {
+              yearSet[yr] = true;
             }
           });
 
@@ -22724,26 +23018,14 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
 
           rows.forEach(item => {
             if (!item) return;
-            let m = '';
-            let y = '';
-            const reg = String(item.register || '');
-            if (reg.length >= 6) {
-              m = reg.slice(4, 6);
-              y = '20' + reg.slice(2, 4);
-            }
-            if (!m && item.tanggalKhitan && typeof item.tanggalKhitan === 'string') {
-              const match = item.tanggalKhitan.match(/^(\d{4})-(\d{2})/);
-              if (match) {
-                y = match[1];
-                m = match[2];
-              }
-            }
+            const m = extractBulanKunjungan(item);
+            const y = extractTahunKunjungan(item);
 
             if (y === targetYear && monthsMap[m]) {
               const target = monthsMap[m];
               target.jumlah += 1;
 
-              const sb = (item.statusBayar || '').toLowerCase();
+              const sb = String(item.statusBayar || '').trim().toLowerCase();
               if (sb === 'bayar') target.bayar += 1;
               else if (sb === 'free') target.free += 1;
 
@@ -23148,10 +23430,13 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
           window.__kdOpenWaUcapanModal = openWaUcapanModal;
           window.__kdCloseWaUcapanModal = closeWaUcapanModal;
           window.__kdSendWaUcapan = sendWaUcapan;
+          window.__kdCopyWaUcapanText = copyWaUcapanText;
           window.__kdOpenWaReminderModal = openWaReminderModal;
           window.__kdCloseWaReminderModal = closeWaReminderModal;
           window.__kdSendWaReminder = sendWaReminder;
           window.__kdAdminKunjungan = adminKunjungan;
+          window.__kdKunjunganForm = kunjunganForm;
+          window.__kdFilteredAdminKunjungan = filteredAdminKunjungan;
           window.__kdFormBooking = formBooking;
           window.__kdSubmitBooking = submitBooking;
         }
@@ -23426,6 +23711,8 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
           isLoadingAdminData,
           adminSearchQuery,
           adminStatusFilter,
+          adminStatusOptions,
+          countAdminByStatus,
           adminDateFilter,
           adminDateFilters,
           updatingStatusId,
@@ -23485,6 +23772,9 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
           closeWaReminderModal,
           openWaUcapanModal,
           closeWaUcapanModal,
+          copyWaSambutanText,
+          copyWaReminderText,
+          copyWaUcapanText,
           sendWaSambutan,
           sendWaReminder,
           sendWaUcapan,
@@ -23778,6 +24068,10 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
           closeKunjunganModal,
           saveKunjungan,
           deleteKunjunganConfirm,
+          kunjunganRowTone,
+          kunjunganRowCellTone,
+          updatingKunjunganStatusRegister,
+          handleKunjunganStatusBayarChange,
           // Fitur Jumat Berkah (Sheet JUMAT BERKAH)
           adminJumatBerkah,
           isLoadingJumat,

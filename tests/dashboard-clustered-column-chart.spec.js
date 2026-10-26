@@ -70,14 +70,15 @@ test('Verify Dashboard Clustered Column Chart: Position under Grid Card Total Ku
   // Tunggu sinkronisasi database selesai jika sedang fetch
   await page.waitForTimeout(2000);
 
-  // Cek instance Chart.js pada canvas
-  const isChartInitialized = await page.evaluate(() => {
-    const canvas = document.getElementById('chart-clustered-bulanan');
-    if (!canvas || typeof Chart === 'undefined') return false;
-    const chart = Chart.getChart(canvas);
-    return Boolean(chart && chart.data && chart.data.labels && chart.data.labels.length === 12);
-  });
-  expect(isChartInitialized).toBe(true);
+  // Cek instance Chart.js pada canvas (tunggu jika Chart CDN / database sedang proses)
+  await expect.poll(async () => {
+    return await page.evaluate(() => {
+      const canvas = document.getElementById('chart-clustered-bulanan');
+      if (!canvas || typeof Chart === 'undefined') return false;
+      const chart = Chart.getChart(canvas);
+      return Boolean(chart && chart.data && chart.data.labels && chart.data.labels.length === 12);
+    });
+  }, { timeout: 15000 }).toBe(true);
 
   // 7. Uji interaktivitas filter tahun: ubah filter dan verifikasi re-render
   const availableYears = fromOptions.map(t => t.trim());

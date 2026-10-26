@@ -24,3 +24,7 @@ qc-test.spec.js
 Thumbs.db
 .vscode/
 .idea/
+
+# Graphify cache
+graphify-out/cache/
+
