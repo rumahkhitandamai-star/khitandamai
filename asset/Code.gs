@@ -380,7 +380,15 @@ function sendTelegramReminderNotification_(item, diffHours) {
     const noHp = item.nomorHp || item.noHp || "-";
     const tglKhitan = (item.tanggalKhitan || item.tglKhitan) ? formatIndonesianDateStr_(item.tanggalKhitan || item.tglKhitan) : "-";
     const jamKhitan = formatJamDisplay_(item.jamKhitan);
-    const sisaJamText = typeof diffHours === "number" ? ("± " + Math.round(diffHours) + " Jam lagi menuju tindakan!") : "Kurang dari 12 Jam!";
+    let sisaJamText = "Kurang dari 12 Jam!";
+    if (typeof diffHours === "number") {
+      if (diffHours < 1) {
+        const sisaMenit = Math.max(1, Math.round(diffHours * 60));
+        sisaJamText = "± " + sisaMenit + " Menit lagi menuju tindakan!";
+      } else {
+        sisaJamText = "± " + Math.round(diffHours) + " Jam lagi menuju tindakan!";
+      }
+    }
 
     const text = "⏰ <b>PENGINGAT JADWAL KHITAN (&lt; 12 JAM)</b> 🔔\n" +
       "━━━━━━━━━━━━━━━━━━\n" +
@@ -434,84 +442,167 @@ function sendTelegramReminderNotification_(item, diffHours) {
 }
 
 /**
- * Memindai Sheet BOOKING untuk jadwal khitan yang akan berlangsung < 12 Jam ke depan
- * dan mengirimkan notifikasi Telegram otomatis (dengan proteksi anti-duplikasi).
+ * Membersihkan Script Properties reminder kedaluwarsa (> 30 hari)
  */
-function checkAndSendUpcomingReminders_() {
-  const sheet = getSheet();
-  const lastRow = sheet.getLastRow();
-  if (lastRow <= 1) return { checked: 0, sent: 0 };
+function pruneExpiredReminderProperties_(props, nowMs) {
+  try {
+    const lastPruneStr = props.getProperty("remind_last_prune_time");
+    const lastPrune = lastPruneStr ? parseInt(lastPruneStr, 10) : 0;
+    // Jalankan pembersihan maksimal sekali setiap 3 hari
+    if (nowMs - lastPrune < 3 * 24 * 60 * 60 * 1000) return;
 
-  const values = sheet.getRange(2, 1, lastRow - 1, HEADERS.length).getValues();
-  const now = new Date();
-  const nowMs = now.getTime();
-  let sentCount = 0;
-  const props = PropertiesService.getScriptProperties();
+    const allProps = props.getProperties();
+    const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+    const keysToDelete = [];
 
-  for (let i = 0; i < values.length; i++) {
-    const row = values[i];
-    const id = String(row[0] || "").trim();
-    const namaAnanda = String(row[1] || "").trim();
-    let tglKhitanStr = row[5];
-    let jamKhitanStr = String(row[6] || "").trim();
-    const noHp = String(row[14] || "").trim();
-    const status = String(row[21] || "").trim().toLowerCase();
-
-    // Skip jika tidak ada nomor HP atau status Batal/Selesai
-    if (!noHp || status === "batal" || status === "selesai") continue;
-
-    // Normalisasi tanggal khitan (format YYYY-MM-DD)
-    if (tglKhitanStr instanceof Date) {
-      tglKhitanStr = Utilities.formatDate(tglKhitanStr, "Asia/Jakarta", "yyyy-MM-dd");
-    } else {
-      tglKhitanStr = normalizeYmd_(tglKhitanStr);
-    }
-    if (!tglKhitanStr || tglKhitanStr.length < 10) continue;
-
-    // Normalisasi jam khitan (default 08:00 jika kosong)
-    if (!jamKhitanStr || jamKhitanStr === "-") {
-      jamKhitanStr = "08:00";
-    }
-    const jamClean = jamKhitanStr.replace(".", ":");
-    const jamParts = jamClean.match(/(\d{1,2}):(\d{2})/);
-    const hour = jamParts ? parseInt(jamParts[1], 10) : 8;
-    const minute = jamParts ? parseInt(jamParts[2], 10) : 0;
-
-    // Buat target datetime khitan di WIB
-    const tParts = tglKhitanStr.substring(0, 10).split("-");
-    const targetDate = new Date(parseInt(tParts[0], 10), parseInt(tParts[1], 10) - 1, parseInt(tParts[2], 10), hour, minute, 0);
-    const targetMs = targetDate.getTime();
-
-    // Hitung selisih jam
-    const diffHours = (targetMs - nowMs) / (1000 * 60 * 60);
-
-    // Kriteria: Kurang dari 12 jam ke depan (> 0 dan <= 12 jam)
-    if (diffHours > 0 && diffHours <= 12) {
-      const propKey = "remind_sent_" + id;
-      const alreadySent = props.getProperty(propKey);
-
-      if (!alreadySent) {
-        const item = {
-          idBooking: id,
-          namaAnanda: namaAnanda,
-          namaPenanggungJawab: String(row[10] || "").trim(),
-          hubunganKeluarga: String(row[13] || "").trim(),
-          nomorHp: noHp,
-          tanggalKhitan: tglKhitanStr,
-          jamKhitan: jamKhitanStr
-        };
-
-        const res = sendTelegramReminderNotification_(item, diffHours);
-        if (res.success) {
-          props.setProperty(propKey, Utilities.formatDate(now, "Asia/Jakarta", "yyyy-MM-dd HH:mm:ss"));
-          sentCount++;
-          Logger.log("Reminder Telegram terkirim untuk: " + id + " (" + namaAnanda + ")");
+    for (const k in allProps) {
+      if (k.indexOf("remind_sent_") === 0) {
+        const val = allProps[k] || "";
+        let dateToCheck = "";
+        if (val.indexOf("|") !== -1) {
+          dateToCheck = val.split("|")[0].split(" ")[0]; // YYYY-MM-DD
+        } else if (val.length >= 10) {
+          dateToCheck = val.substring(0, 10);
+        }
+        if (dateToCheck && /^\d{4}-\d{2}-\d{2}$/.test(dateToCheck)) {
+          const itemMs = new Date(dateToCheck + "T00:00:00+07:00").getTime();
+          if (!isNaN(itemMs) && (nowMs - itemMs) > THIRTY_DAYS_MS) {
+            keysToDelete.push(k);
+          }
         }
       }
     }
+
+    for (let d = 0; d < keysToDelete.length; d++) {
+      props.deleteProperty(keysToDelete[d]);
+    }
+    props.setProperty("remind_last_prune_time", String(nowMs));
+    if (keysToDelete.length > 0) {
+      Logger.log("Pembersihan cache reminder: " + keysToDelete.length + " entri kedaluwarsa dihapus.");
+    }
+  } catch (e) {
+    Logger.log("Peringatan saat membersihkan properti reminder: " + e.toString());
+  }
+}
+
+/**
+ * Memindai Sheet BOOKING untuk jadwal khitan yang akan berlangsung < 12 Jam ke depan
+ * dan mengirimkan notifikasi Telegram otomatis (dengan proteksi anti-duplikasi, penanganan reschedule, & lock).
+ */
+function checkAndSendUpcomingReminders_() {
+  const lock = LockService.getScriptLock();
+  const hasLock = lock.tryLock(10000);
+  if (!hasLock) {
+    Logger.log("checkAndSendUpcomingReminders_ dilewati karena proses pemindaian lain sedang berjalan.");
+    return { checked: 0, sent: 0, locked: true };
   }
 
-  return { checked: values.length, sent: sentCount };
+  try {
+    const sheet = getSheet();
+    const lastRow = sheet.getLastRow();
+    if (lastRow <= 1) return { checked: 0, sent: 0 };
+
+    const values = sheet.getRange(2, 1, lastRow - 1, HEADERS.length).getValues();
+    const now = new Date();
+    const nowMs = now.getTime();
+    let sentCount = 0;
+    const props = PropertiesService.getScriptProperties();
+
+    for (let i = 0; i < values.length; i++) {
+      const row = values[i];
+      const id = String(row[0] || "").trim();
+      const namaAnanda = String(row[1] || "").trim();
+      let tglKhitanStr = row[5];
+      let jamKhitanStr = String(row[6] || "").trim();
+      const noHp = String(row[14] || "").trim();
+      const status = String(row[21] || "").trim().toLowerCase();
+
+      // Skip jika tidak ada ID, tidak ada nomor HP, atau status Batal/Selesai
+      if (!id || !noHp || status === "batal" || status === "selesai") continue;
+
+      // Normalisasi tanggal khitan (format YYYY-MM-DD)
+      if (tglKhitanStr instanceof Date) {
+        tglKhitanStr = Utilities.formatDate(tglKhitanStr, "Asia/Jakarta", "yyyy-MM-dd");
+      } else {
+        tglKhitanStr = normalizeYmd_(tglKhitanStr);
+      }
+      if (!tglKhitanStr || tglKhitanStr.length < 10) continue;
+
+      // Normalisasi jam khitan (default 08:00 jika kosong)
+      if (!jamKhitanStr || jamKhitanStr === "-") {
+        jamKhitanStr = "08:00";
+      }
+      const jamClean = jamKhitanStr.replace(".", ":");
+      const jamParts = jamClean.match(/(\d{1,2}):(\d{2})/);
+      const hour = jamParts ? parseInt(jamParts[1], 10) : 8;
+      const minute = jamParts ? parseInt(jamParts[2], 10) : 0;
+      const hourPad = hour < 10 ? "0" + hour : String(hour);
+      const minPad = minute < 10 ? "0" + minute : String(minute);
+
+      // Buat target datetime khitan di WIB (eksplisit UTC+07:00 agar independen dari timezone server)
+      const targetIso = tglKhitanStr.substring(0, 10) + "T" + hourPad + ":" + minPad + ":00+07:00";
+      const targetDate = new Date(targetIso);
+      const targetMs = targetDate.getTime();
+
+      // Hitung selisih jam
+      const diffHours = (targetMs - nowMs) / (1000 * 60 * 60);
+
+      // Kriteria: Kurang dari 12 jam ke depan (> 0 dan <= 12 jam)
+      if (diffHours > 0 && diffHours <= 12) {
+        const propKey = "remind_sent_" + id;
+        const targetSlot = tglKhitanStr.substring(0, 10) + " " + hourPad + ":" + minPad;
+        const alreadySent = props.getProperty(propKey);
+
+        let shouldSend = false;
+        if (!alreadySent) {
+          shouldSend = true;
+        } else if (alreadySent.indexOf("|") !== -1) {
+          const sentSlot = alreadySent.split("|")[0];
+          // Jika jadwal di-reschedule ke slot waktu baru, kirim reminder untuk jadwal baru
+          if (sentSlot !== targetSlot) {
+            shouldSend = true;
+          }
+        } else {
+          // Format warisan lama (hanya timestamp pengiriman)
+          const oldSentDate = new Date(alreadySent.replace(" ", "T") + "+07:00").getTime();
+          if (!isNaN(oldSentDate) && (nowMs - oldSentDate) < 12 * 3600 * 1000) {
+            // Sudah dikirim < 12 jam lalu, upgrade format tanpa spam duplikasi
+            props.setProperty(propKey, targetSlot + "|" + alreadySent);
+            shouldSend = false;
+          } else {
+            shouldSend = true;
+          }
+        }
+
+        if (shouldSend) {
+          const item = {
+            idBooking: id,
+            namaAnanda: namaAnanda,
+            namaPenanggungJawab: String(row[10] || "").trim(),
+            hubunganKeluarga: String(row[13] || "").trim(),
+            nomorHp: noHp,
+            tanggalKhitan: tglKhitanStr,
+            jamKhitan: jamKhitanStr
+          };
+
+          const res = sendTelegramReminderNotification_(item, diffHours);
+          if (res.success) {
+            const sentTimestamp = Utilities.formatDate(now, "Asia/Jakarta", "yyyy-MM-dd HH:mm:ss");
+            props.setProperty(propKey, targetSlot + "|" + sentTimestamp);
+            sentCount++;
+            Logger.log("Reminder Telegram terkirim untuk: " + id + " (" + namaAnanda + ") jadwal: " + targetSlot);
+          }
+        }
+      }
+    }
+
+    // Pembersihan properti reminder kedaluwarsa secara berkala
+    pruneExpiredReminderProperties_(props, nowMs);
+
+    return { checked: values.length, sent: sentCount };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 /**
@@ -1029,6 +1120,10 @@ function handleTelegramWebhookUpdate_(update) {
       }
 
       const scanRes = checkAndSendUpcomingReminders_();
+      if (scanRes.locked) {
+        sendTelegramMessage_(chatId, "⏳ <i>Pemindaian reminder sedang berjalan oleh proses lain. Silakan coba kembali dalam beberapa saat.</i>", mainKeyboard);
+        return HtmlService.createHtmlOutput("OK");
+      }
       const statusNote = (scanRes.sent > 0)
         ? "✅ <b>" + scanRes.sent + " Notifikasi pengingat</b> berhasil dikirimkan ke chat ini di atas lengkap dengan tombol WhatsApp Reminder."
         : "ℹ️ <i>Tidak ada jadwal khitan baru yang berjarak &lt; 12 jam saat ini (semua sudah dikirimi reminder atau belum memasuki rentang 12 jam tindakan).</i>";

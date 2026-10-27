@@ -163,6 +163,11 @@ Google Apps Script membatasi pembuatan trigger terprogram (`ScriptApp.newTrigger
    - **Pilih interval jam**: `Setiap jam (Every hour)`
 5. Klik **Simpan (Save)** dan setujui izin otorisasi akun Google penyebar (*deployer*).
 6. Selesai. Google Apps Script akan secara otomatis memanggil fungsi `checkUpcomingKhitanReminders()` setiap 1 jam untuk memindai jadwal khitan < 12 jam dan mengirim notifikasi interaktif ke Telegram Admin.
+7. **Keandalan & Proteksi Sistem Reminder**:
+   - **Concurrency Lock (`LockService`)**: Memastikan pemindaian otomatis dan perintah manual `/cekreminder` tidak saling bertabrakan atau mengirim notifikasi ganda.
+   - **Dukungan Reschedule Otomatis**: Menyimpan slot jadwal target (`YYYY-MM-DD HH:mm`), sehingga jika jadwal pasien diubah/digeser ke waktu lain, sistem akan otomatis mengenali perubahan dan mengirimkan pengingat untuk jadwal baru tersebut.
+   - **Presisi Zona Waktu WIB**: Menggunakan konstruksi waktu eksplisit `+07:00` (Asia/Jakarta) agar perhitungan selisih jam tidak terpengaruh perbedaan zona waktu server.
+   - **Pembersihan Cache Berkala**: Entri `remind_sent_*` yang sudah kedaluwarsa (> 30 hari) dibersihkan secara otomatis berkala agar kapasitas *Script Properties* tetap ramping dan terjaga.
 
 ### 9.2 Sistem Peringatan & Backup Otomatis Seluruh Sheet (Tanggal 01 Pukul 08:00 WIB)
 Sistem memiliki mekanisme pencadangan basis data Spreadsheet utama secara berkala setiap tanggal 01 awal bulan pukul 08:00 WIB tanpa memerlukan intervensi manual:
