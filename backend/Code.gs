@@ -506,6 +506,7 @@ function checkAndSendUpcomingReminders_() {
     const now = new Date();
     const nowMs = now.getTime();
     let sentCount = 0;
+    const upcomingItems = [];
     const props = PropertiesService.getScriptProperties();
 
     for (let i = 0; i < values.length; i++) {
@@ -549,6 +550,21 @@ function checkAndSendUpcomingReminders_() {
 
       // Kriteria: Kurang dari 12 jam ke depan (> 0 dan <= 12 jam)
       if (diffHours > 0 && diffHours <= 12) {
+        const item = {
+          idBooking: id,
+          namaAnanda: namaAnanda,
+          namaPenanggungJawab: String(row[10] || "").trim(),
+          hubunganKeluarga: String(row[13] || "").trim(),
+          nomorHp: noHp,
+          tanggalKhitan: tglKhitanStr,
+          jamKhitan: jamKhitanStr
+        };
+
+        upcomingItems.push({
+          item: item,
+          diffHours: diffHours
+        });
+
         const propKey = "remind_sent_" + id;
         const targetSlot = tglKhitanStr.substring(0, 10) + " " + hourPad + ":" + minPad;
         const alreadySent = props.getProperty(propKey);
@@ -575,16 +591,6 @@ function checkAndSendUpcomingReminders_() {
         }
 
         if (shouldSend) {
-          const item = {
-            idBooking: id,
-            namaAnanda: namaAnanda,
-            namaPenanggungJawab: String(row[10] || "").trim(),
-            hubunganKeluarga: String(row[13] || "").trim(),
-            nomorHp: noHp,
-            tanggalKhitan: tglKhitanStr,
-            jamKhitan: jamKhitanStr
-          };
-
           const res = sendTelegramReminderNotification_(item, diffHours);
           if (res.success) {
             const sentTimestamp = Utilities.formatDate(now, "Asia/Jakarta", "yyyy-MM-dd HH:mm:ss");
@@ -599,7 +605,7 @@ function checkAndSendUpcomingReminders_() {
     // Pembersihan properti reminder kedaluwarsa secara berkala
     pruneExpiredReminderProperties_(props, nowMs);
 
-    return { checked: values.length, sent: sentCount };
+    return { checked: values.length, sent: sentCount, items: upcomingItems };
   } finally {
     lock.releaseLock();
   }
@@ -809,6 +815,33 @@ function parseDateQuery_(str) {
     return y + "-" + m + "-" + d;
   }
   return null;
+}
+
+/**
+ * Membangun inline keyboard tombol trigger WhatsApp Reminder untuk daftar jadwal pasien (khusus Admin)
+ */
+function buildWaReminderInlineKeyboard_(scheduleData) {
+  if (!scheduleData || !scheduleData.dates || scheduleData.dates.length === 0) return null;
+  const buttons = [];
+  for (let d = 0; d < scheduleData.dates.length; d++) {
+    const dateItems = scheduleData.grouped[scheduleData.dates[d]] || [];
+    for (let i = 0; i < dateItems.length; i++) {
+      const it = dateItems[i];
+      const cleanPhone = cleanPhoneForWa_(it.nomorHp);
+      if (cleanPhone) {
+        const waText = buildWaReminderText_(it);
+        const waUrl = "https://api.whatsapp.com/send?phone=" + cleanPhone + "&text=" + encodeURIComponent(waText);
+        const jamDisplay = (it.jamKhitan && it.jamKhitan !== "-") ? String(it.jamKhitan).replace(/wib/gi, "").trim() : "08:00";
+        buttons.push([
+          {
+            text: "🔔 WA Reminder • " + it.namaAnanda + " (" + jamDisplay + ")",
+            url: waUrl
+          }
+        ]);
+      }
+    }
+  }
+  return buttons.length > 0 ? { inline_keyboard: buttons } : null;
 }
 
 /**
@@ -1124,18 +1157,50 @@ function handleTelegramWebhookUpdate_(update) {
         sendTelegramMessage_(chatId, "⏳ <i>Pemindaian reminder sedang berjalan oleh proses lain. Silakan coba kembali dalam beberapa saat.</i>", mainKeyboard);
         return HtmlService.createHtmlOutput("OK");
       }
-      const statusNote = (scanRes.sent > 0)
-        ? "✅ <b>" + scanRes.sent + " Notifikasi pengingat</b> berhasil dikirimkan ke chat ini di atas lengkap dengan tombol WhatsApp Reminder."
-        : "ℹ️ <i>Tidak ada jadwal khitan baru yang berjarak &lt; 12 jam saat ini (semua sudah dikirimi reminder atau belum memasuki rentang 12 jam tindakan).</i>";
 
-      const resText = "⏰ <b>HASIL PEMINDAIAN JADWAL KHITAN (&lt; 12 JAM)</b> 🔔\n" +
+      const items = scanRes.items || [];
+      let resText = "⏰ <b>HASIL PEMINDAIAN JADWAL KHITAN (&lt; 12 JAM)</b> 🔔\n" +
         "━━━━━━━━━━━━━━━━━━\n" +
         "📋 <b>Total Pendaftaran Diperiksa:</b> " + (scanRes.checked || 0) + " baris data\n" +
-        "📨 <b>Notifikasi Reminder Dikirim:</b> " + (scanRes.sent || 0) + " pasien\n" +
-        "━━━━━━━━━━━━━━━━━━\n" +
-        statusNote;
+        "⏳ <b>Jadwal Pasien &lt; 12 Jam:</b> " + items.length + " pasien\n" +
+        "📨 <b>Notifikasi Otomatis Baru Terkirim:</b> " + (scanRes.sent || 0) + " pasien\n" +
+        "━━━━━━━━━━━━━━━━━━\n";
 
-      sendTelegramMessage_(chatId, resText, mainKeyboard);
+      let inlineButtons = null;
+      if (items.length > 0) {
+        resText += "\n📋 <b>Daftar Pasien Menuju Tindakan (&lt; 12 Jam):</b>\n";
+        const buttons = [];
+        for (let i = 0; i < items.length; i++) {
+          const entry = items[i];
+          const it = entry.item;
+          const diffH = entry.diffHours;
+          const sisaText = diffH < 1 ? ("± " + Math.max(1, Math.round(diffH * 60)) + " Menit") : ("± " + Math.round(diffH) + " Jam");
+          const jamDisplay = (it.jamKhitan && it.jamKhitan !== "-") ? String(it.jamKhitan).replace(/wib/gi, "").trim() : "08:00";
+
+          resText += (i + 1) + ". 👦 <b>" + escapeTelegramHtml_(it.namaAnanda) + "</b> (" + escapeTelegramHtml_(sisaText) + " lagi)\n" +
+                     "   🕒 Pukul " + escapeTelegramHtml_(jamDisplay) + " WIB • 📱 <code>" + escapeTelegramHtml_(it.nomorHp) + "</code>\n";
+
+          const cleanPhone = cleanPhoneForWa_(it.nomorHp);
+          if (cleanPhone) {
+            const waText = buildWaReminderText_(it);
+            const waUrl = "https://api.whatsapp.com/send?phone=" + cleanPhone + "&text=" + encodeURIComponent(waText);
+            buttons.push([
+              {
+                text: "🔔 WA Reminder • " + it.namaAnanda + " (" + sisaText + ")",
+                url: waUrl
+              }
+            ]);
+          }
+        }
+        resText += "\n💡 <i>Sentuh tombol di bawah untuk membuka WhatsApp & mengirim pesan reminder langsung ke keluarga pasien.</i>";
+        if (buttons.length > 0) {
+          inlineButtons = { inline_keyboard: buttons };
+        }
+      } else {
+        resText += "ℹ️ <i>Tidak ada jadwal khitan yang berjarak &lt; 12 jam saat ini (semua pendaftaran belum memasuki rentang 12 jam atau sudah berstatus selesai/batal).</i>";
+      }
+
+      sendTelegramMessage_(chatId, resText, inlineButtons || mainKeyboard);
       return HtmlService.createHtmlOutput("OK");
     }
 
@@ -1176,7 +1241,8 @@ function handleTelegramWebhookUpdate_(update) {
 
       const upcomingData = getUpcomingBookingsGroupedByDate_(filterArg);
       const scheduleText = formatUpcomingScheduleMessage_(upcomingData, isAdmin);
-      sendTelegramMessage_(chatId, scheduleText, mainKeyboard);
+      const inlineButtons = (isAdmin && filterArg === "tomorrow") ? buildWaReminderInlineKeyboard_(upcomingData) : null;
+      sendTelegramMessage_(chatId, scheduleText, inlineButtons || mainKeyboard);
       return HtmlService.createHtmlOutput("OK");
     }
 
@@ -1192,7 +1258,8 @@ function handleTelegramWebhookUpdate_(update) {
     if (lowerText === "/besok" || lowerText === "/tomorrow" || lowerText === "besok" || lowerText === "⚡ jadwal besok") {
       const tomorrowData = getUpcomingBookingsGroupedByDate_("tomorrow");
       const scheduleText = formatUpcomingScheduleMessage_(tomorrowData, isAdmin);
-      sendTelegramMessage_(chatId, scheduleText, mainKeyboard);
+      const inlineButtons = isAdmin ? buildWaReminderInlineKeyboard_(tomorrowData) : null;
+      sendTelegramMessage_(chatId, scheduleText, inlineButtons || mainKeyboard);
       return HtmlService.createHtmlOutput("OK");
     }
 
