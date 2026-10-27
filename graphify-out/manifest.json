@@ -13,10 +13,10 @@
     "semantic_hash": "9b5e4d4606c71e30dbf22e199a20c0a5"
   },
   "asset/Code.gs": {
-    "mtime": 1793108323.5980804,
-    "seen": 1793108568.0940275,
-    "ast_hash": "705ba50f6292a7d9d752d9c69d67e715",
-    "semantic_hash": "705ba50f6292a7d9d752d9c69d67e715",
+    "mtime": 1793109825.8079748,
+    "seen": 1793110643.7435653,
+    "ast_hash": "8252c83b090b2f0f22c081eecc5d7cb2",
+    "semantic_hash": "8252c83b090b2f0f22c081eecc5d7cb2",
     "language": "language=.js"
   },
   "asset/appsscript.json": {
@@ -399,5 +399,11 @@
     "seen": 1793107877.9265275,
     "ast_hash": "9f9cd42f2b72a3f4a1c724944407746f",
     "semantic_hash": "9f9cd42f2b72a3f4a1c724944407746f"
+  },
+  "tests/sync-delta-cache.spec.js": {
+    "mtime": 1793110262.5389724,
+    "seen": 1793110643.75841,
+    "ast_hash": "6ed21a7845965895c580c4431a950b56",
+    "semantic_hash": "6ed21a7845965895c580c4431a950b56"
   }
 }

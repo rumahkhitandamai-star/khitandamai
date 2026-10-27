@@ -10392,6 +10392,53 @@
                     </div>
                   </div>
 
+                  <!-- Kartu Metrik Efektivitas Cache & Sinkronisasi Delta -->
+                  <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 text-xs">
+                    <div class="bg-white border border-slate-200 rounded-2xl p-3 shadow-2xs flex flex-col justify-between">
+                      <div class="text-[11px] font-semibold text-slate-500 flex items-center gap-1.5">
+                        <v-icon name="bolt" class="text-amber-500"></v-icon>
+                        <span>Hit-Rate Cache</span>
+                      </div>
+                      <div class="mt-2 flex items-baseline justify-between">
+                        <span class="text-lg font-black text-tosca-800 font-mono">{{ cacheHitRatePercent }}%</span>
+                        <span class="text-[10px] text-slate-400 font-medium">Server GAS</span>
+                      </div>
+                    </div>
+
+                    <div class="bg-white border border-slate-200 rounded-2xl p-3 shadow-2xs flex flex-col justify-between">
+                      <div class="text-[11px] font-semibold text-slate-500 flex items-center gap-1.5">
+                        <v-icon name="arrow-down" class="text-teal-600"></v-icon>
+                        <span>Rata Payload</span>
+                      </div>
+                      <div class="mt-2 flex items-baseline justify-between">
+                        <span class="text-lg font-black text-slate-800 font-mono">{{ avgPayloadTransferred }}</span>
+                        <span class="text-[10px] text-slate-400 font-medium">per transfer</span>
+                      </div>
+                    </div>
+
+                    <div class="bg-white border border-slate-200 rounded-2xl p-3 shadow-2xs flex flex-col justify-between">
+                      <div class="text-[11px] font-semibold text-slate-500 flex items-center gap-1.5">
+                        <v-icon name="shield" class="text-emerald-600"></v-icon>
+                        <span>Bandwidth Hemat</span>
+                      </div>
+                      <div class="mt-2 flex items-baseline justify-between">
+                        <span class="text-lg font-black text-emerald-700 font-mono">{{ bandwidthSavingsEstimate }}</span>
+                        <span class="text-[10px] text-slate-400 font-medium">Delta Sync</span>
+                      </div>
+                    </div>
+
+                    <div class="bg-white border border-slate-200 rounded-2xl p-3 shadow-2xs flex flex-col justify-between">
+                      <div class="text-[11px] font-semibold text-slate-500 flex items-center gap-1.5">
+                        <v-icon name="clock" class="text-purple-600"></v-icon>
+                        <span>Versi Snapshot</span>
+                      </div>
+                      <div class="mt-2 flex items-baseline justify-between">
+                        <span class="text-lg font-black text-purple-700 font-mono">{{ cacheSnapshotHistory.length }}/50</span>
+                        <span class="text-[10px] text-slate-400 font-medium">retensi lokal</span>
+                      </div>
+                    </div>
+                  </div>
+
                   <!-- Interactive Cache Cards Matrix (8 Dataset Items) -->
                   <div class="space-y-2">
                     <div class="flex items-center justify-between text-xs">
@@ -10519,6 +10566,7 @@
                               { id: 'otomatis', label: 'Otomatis' },
                               { id: 'manual', label: 'Manual' },
                               { id: 'perubahan', label: 'Perubahan' },
+                              { id: 'delta', label: 'Delta' },
                               { id: 'failed', label: 'Gagal' }
                             ]"
                             :key="flt.id"
@@ -10620,6 +10668,18 @@
 
                                 <span v-if="item.durationMs" class="text-[9px] font-mono text-slate-500 bg-slate-100 px-1 py-0.2 rounded">
                                   {{ item.durationMs }}ms
+                                </span>
+
+                                <span v-if="item.payloadBytes" class="text-[9px] font-mono font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1 py-0.2 rounded">
+                                  ↓ {{ formatByteSize(item.payloadBytes) }}
+                                </span>
+
+                                <span v-if="item.deltaStatus" class="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-teal-50 text-tosca-800 border border-teal-200">
+                                  {{ item.deltaStatus }}
+                                </span>
+
+                                <span v-if="item.cacheHits !== null && item.cacheHits !== undefined" class="text-[9px] font-mono text-amber-700 bg-amber-50 border border-amber-200 px-1 py-0.2 rounded" title="Hit/Miss Cache Server GAS">
+                                  ⚡ {{ item.cacheHits }}/{{ (item.cacheHits + (item.cacheMisses || 0)) }} Hit
                                 </span>
 
                                 <span class="text-[11px] font-medium text-slate-700 break-words">{{ item.message }}</span>
@@ -12644,7 +12704,24 @@
 
         // Riwayat Versi Snapshot Cache (Cache History Versioning & Rollback)
         const cacheSnapshotHistory = ref([]);
-        const SNAPSHOT_HISTORY_MAX = 25;
+        const SNAPSHOT_HISTORY_MAX = 50;
+        const SNAPSHOT_PER_TARGET_MAX = 8;
+
+        // Versi Sinkronisasi Dataset Lokal (Delta Sync Engine)
+        function getStoredSyncVersions() {
+          try {
+            const raw = localStorage.getItem('kd_sync_versions');
+            return raw ? JSON.parse(raw) : {};
+          } catch (e) {
+            return {};
+          }
+        }
+
+        function saveStoredSyncVersions(versions) {
+          try {
+            localStorage.setItem('kd_sync_versions', JSON.stringify(versions || {}));
+          } catch (e) {}
+        }
 
         // Modal Inspeksi Snapshot Cache
         const showCacheInspectorModal = ref(false);
@@ -12653,7 +12730,7 @@
 
         // Sub-Tab & Filter Sinkronisasi
         const syncActiveSubTab = ref('log'); // 'log' | 'snapshot'
-        const syncLogFilter = ref('semua'); // 'semua' | 'otomatis' | 'manual' | 'perubahan' | 'failed'
+        const syncLogFilter = ref('semua'); // 'semua' | 'otomatis' | 'manual' | 'perubahan' | 'delta' | 'failed'
         const syncLogSearch = ref('');
 
         const formatByteSize = (bytes) => {
@@ -12699,13 +12776,33 @@
                 (snap.ts - cacheSnapshotHistory.value[0].ts) < 3000) {
               return;
             }
+
+            // Proteksi kuota per-dataset: maks 8 snapshot per target
+            const currentForTarget = cacheSnapshotHistory.value.filter(s => s.target === target);
+            if (currentForTarget.length >= SNAPSHOT_PER_TARGET_MAX) {
+              const oldestTargetSnap = currentForTarget[currentForTarget.length - 1];
+              cacheSnapshotHistory.value = cacheSnapshotHistory.value.filter(s => s.id !== oldestTargetSnap.id);
+            }
+
             cacheSnapshotHistory.value.unshift(snap);
             if (cacheSnapshotHistory.value.length > SNAPSHOT_HISTORY_MAX) {
               cacheSnapshotHistory.value = cacheSnapshotHistory.value.slice(0, SNAPSHOT_HISTORY_MAX);
             }
-            localStorage.setItem('kd_cache_snapshots_history', JSON.stringify(cacheSnapshotHistory.value));
+
+            // Proteksi batas kuota LocalStorage: jika payload mendekati 3.5MB, auto-prune snapshot tertua
+            let serialized = JSON.stringify(cacheSnapshotHistory.value);
+            while (serialized.length > 3500000 && cacheSnapshotHistory.value.length > 10) {
+              cacheSnapshotHistory.value.pop();
+              serialized = JSON.stringify(cacheSnapshotHistory.value);
+            }
+            localStorage.setItem('kd_cache_snapshots_history', serialized);
           } catch (e) {
             console.warn('Gagal mencatat snapshot version:', e);
+            try {
+              // Jika kuota browser penuh, simpan sebagian snapshot
+              cacheSnapshotHistory.value = cacheSnapshotHistory.value.slice(0, Math.floor(cacheSnapshotHistory.value.length / 2));
+              localStorage.setItem('kd_cache_snapshots_history', JSON.stringify(cacheSnapshotHistory.value));
+            } catch (err2) {}
           }
         }
 
@@ -12778,7 +12875,7 @@
           }
         }
 
-        function recordSyncEntry({ type = 'otomatis', target = 'semua', status = 'success', message = '', durationMs = null }) {
+        function recordSyncEntry({ type = 'otomatis', target = 'semua', status = 'success', message = '', durationMs = null, payloadBytes = null, deltaStatus = null, cacheHits = null, cacheMisses = null, savedBytes = null }) {
           try {
             loadSyncHistory();
             const now = new Date();
@@ -12786,11 +12883,16 @@
               id: 'sync_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
               time: now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB',
               date: now.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' }),
-              type: type, // 'otomatis' | 'manual' | 'perubahan' | 'remote' | 'pulihkan'
+              type: type, // 'otomatis' | 'manual' | 'perubahan' | 'remote' | 'pulihkan' | 'delta'
               target: target, // 'settings' | 'bookings' | 'kunjungan' | 'users' | 'galeri' | 'saran' | 'semua'
               status: status, // 'success' | 'failed' | 'skipped' | 'info'
               message: message,
-              durationMs: durationMs
+              durationMs: durationMs,
+              payloadBytes: payloadBytes,
+              deltaStatus: deltaStatus,
+              cacheHits: cacheHits,
+              cacheMisses: cacheMisses,
+              savedBytes: savedBytes
             };
             syncHistory.value.unshift(entry);
             if (syncHistory.value.length > 100) {
@@ -13219,6 +13321,8 @@
           if (syncLogFilter.value && syncLogFilter.value !== 'semua') {
             if (syncLogFilter.value === 'failed') {
               list = list.filter(item => item.status === 'failed');
+            } else if (syncLogFilter.value === 'delta') {
+              list = list.filter(item => Boolean(item.deltaStatus));
             } else {
               list = list.filter(item => item.type === syncLogFilter.value);
             }
@@ -13230,7 +13334,8 @@
               const tgt = (item.target || '').toLowerCase();
               const typ = (item.type || '').toLowerCase();
               const tim = (item.time || '').toLowerCase();
-              return msg.includes(query) || tgt.includes(query) || typ.includes(query) || tim.includes(query);
+              const dlt = (item.deltaStatus || '').toLowerCase();
+              return msg.includes(query) || tgt.includes(query) || typ.includes(query) || tim.includes(query) || dlt.includes(query);
             });
           }
           return list;
@@ -13250,6 +13355,39 @@
           if (syncHistory.value.length === 0) return 100;
           const successCount = syncHistory.value.filter(i => i.status === 'success').length;
           return Math.round((successCount / syncHistory.value.length) * 100);
+        });
+
+        // Efektivitas Cache Server (Hit Rate %)
+        const cacheHitRatePercent = computed(() => {
+          let hits = 0;
+          let total = 0;
+          for (const item of syncHistory.value) {
+            if (typeof item.cacheHits === 'number' && typeof item.cacheMisses === 'number') {
+              hits += item.cacheHits;
+              total += (item.cacheHits + item.cacheMisses);
+            }
+          }
+          if (total === 0) return 100;
+          return Math.round((hits / total) * 100);
+        });
+
+        // Rata-rata Payload Terkirim per Sinkronisasi
+        const avgPayloadTransferred = computed(() => {
+          const items = syncHistory.value.filter(i => typeof i.payloadBytes === 'number' && i.payloadBytes > 0);
+          if (items.length === 0) return '0 B';
+          const total = items.reduce((acc, curr) => acc + curr.payloadBytes, 0);
+          return formatByteSize(Math.round(total / items.length));
+        });
+
+        // Estimasi Penghematan Bandwidth Berkat Delta Sync & Cache
+        const bandwidthSavingsEstimate = computed(() => {
+          let totalSaved = 0;
+          for (const item of syncHistory.value) {
+            if (typeof item.savedBytes === 'number' && item.savedBytes > 0) {
+              totalSaved += item.savedBytes;
+            }
+          }
+          return formatByteSize(totalSaved);
         });
 
         const copySyncLogsToClipboard = async () => {
@@ -16969,6 +17107,7 @@
           try {
             localStorage.removeItem('kd_sync_history');
             localStorage.removeItem('kd_cache_snapshots_history');
+            localStorage.removeItem('kd_sync_versions');
             localStorage.removeItem('kd_cache_settings');
             localStorage.removeItem('kd_cache_bookings');
             localStorage.removeItem('kd_cache_kunjungan');
@@ -16984,7 +17123,7 @@
               type: 'manual',
               target: 'semua',
               status: 'info',
-              message: 'Seluruh cache lokal dan riwayat sinkronisasi dibersihkan oleh pengguna.'
+              message: 'Seluruh cache lokal, delta versioning, dan riwayat sinkronisasi dibersihkan oleh pengguna.'
             });
           } catch (e) {
             console.error('Gagal membersihkan cache sinkronisasi:', e);
@@ -23265,16 +23404,31 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
 
             if (token) {
               try {
-                const endpoint = GAS_ENDPOINT_URL + '?action=syncAdminData&token=' + encodeURIComponent(token) + (forceServerRefresh ? '&forceRefresh=true' : '') + '&t=' + Date.now();
+                const clientVersions = forceServerRefresh ? {} : getStoredSyncVersions();
+                const versionsParam = Object.keys(clientVersions).length > 0 ? ('&versions=' + encodeURIComponent(JSON.stringify(clientVersions))) : '';
+                const endpoint = GAS_ENDPOINT_URL + '?action=syncAdminData&token=' + encodeURIComponent(token) + (forceServerRefresh ? '&forceRefresh=true' : '') + versionsParam + '&t=' + Date.now();
                 const res = await fetch(endpoint, { method: 'GET', redirect: 'follow' });
-                const json = await parseApiResponse(res);
+                const rawText = await res.text();
+                const payloadBytes = (new TextEncoder().encode(rawText)).length;
+                let json;
+                try {
+                  json = JSON.parse(rawText);
+                } catch (pe) {
+                  throw new Error('Format respons server tidak valid.');
+                }
 
                 if (json.status === 'success' && json.data) {
                   unifiedSuccess = true;
                   const duration = Date.now() - syncStartTime;
+                  const unchangedMap = json.unchanged || {};
+                  let changedDatasetsCount = 0;
+                  let unchangedDatasetsCount = 0;
 
                   // 1. Bookings
-                  if (Array.isArray(json.data.bookings)) {
+                  if (unchangedMap.bookings) {
+                    unchangedDatasetsCount++;
+                  } else if (Array.isArray(json.data.bookings)) {
+                    changedDatasetsCount++;
                     if (JSON.stringify(adminBookings.value) !== JSON.stringify(json.data.bookings)) {
                       adminBookings.value = json.data.bookings;
                     }
@@ -23282,7 +23436,10 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
                   }
 
                   // 2. Kunjungan
-                  if (Array.isArray(json.data.kunjungan)) {
+                  if (unchangedMap.kunjungan) {
+                    unchangedDatasetsCount++;
+                  } else if (Array.isArray(json.data.kunjungan)) {
+                    changedDatasetsCount++;
                     const sortedKunjungan = json.data.kunjungan.slice().sort((a, b) => (b.register || '').localeCompare(a.register || ''));
                     if (JSON.stringify(adminKunjungan.value) !== JSON.stringify(sortedKunjungan)) {
                       adminKunjungan.value = sortedKunjungan;
@@ -23291,7 +23448,10 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
                   }
 
                   // 2b. Jumat Berkah
-                  if (Array.isArray(json.data.jumatBerkah)) {
+                  if (unchangedMap.jumatberkah || unchangedMap.jumatBerkah) {
+                    unchangedDatasetsCount++;
+                  } else if (Array.isArray(json.data.jumatBerkah)) {
+                    changedDatasetsCount++;
                     const sortedJumat = json.data.jumatBerkah.slice().sort((a, b) => (b.register || '').localeCompare(a.register || ''));
                     if (JSON.stringify(adminJumatBerkah.value) !== JSON.stringify(sortedJumat)) {
                       adminJumatBerkah.value = sortedJumat;
@@ -23300,7 +23460,10 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
                   }
 
                   // 3. Users
-                  if (Array.isArray(json.data.users) && !hasUnsavedUserChanges.value) {
+                  if (unchangedMap.users) {
+                    unchangedDatasetsCount++;
+                  } else if (Array.isArray(json.data.users) && !hasUnsavedUserChanges.value) {
+                    changedDatasetsCount++;
                     adminUsers.value = json.data.users;
                     adminUsersDraft.value = JSON.parse(JSON.stringify(json.data.users));
                     if (json.data.userLayout) adminUsersLayout.value = json.data.userLayout;
@@ -23308,21 +23471,35 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
                   }
 
                   // 4. Settings
-                  if (json.data.settings) {
+                  if (unchangedMap.settings) {
+                    unchangedDatasetsCount++;
+                  } else if (json.data.settings) {
+                    changedDatasetsCount++;
                     applySettingsFromRemote(json.data.settings);
                     saveCacheSnapshot('settings', json.data.settings, trigger);
                   }
 
                   // 5. Galeri
-                  if (Array.isArray(json.data.galeri)) {
+                  if (unchangedMap.galeri) {
+                    unchangedDatasetsCount++;
+                  } else if (Array.isArray(json.data.galeri)) {
+                    changedDatasetsCount++;
                     adminGallery.value = json.data.galeri;
                     saveCacheSnapshot('galeri', json.data.galeri, trigger);
                   }
 
                   // 6. Saran
-                  if (Array.isArray(json.data.saran)) {
+                  if (unchangedMap.saran) {
+                    unchangedDatasetsCount++;
+                  } else if (Array.isArray(json.data.saran)) {
+                    changedDatasetsCount++;
                     adminSaran.value = json.data.saran.slice().reverse();
                     saveCacheSnapshot('saran', json.data.saran, trigger);
+                  }
+
+                  // Simpan hash versi dataset terbaru dari server
+                  if (json.versions) {
+                    saveStoredSyncVersions(json.versions);
                   }
 
                   lastSyncTime.value = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
@@ -23332,12 +23509,39 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
                   const kCount = json.counts ? json.counts.kunjungan : adminKunjungan.value.length;
                   const uCount = json.counts ? json.counts.users : adminUsers.value.length;
 
+                  // Telemetri Cache Server
+                  let cacheHits = 0;
+                  let cacheMisses = 0;
+                  if (json.telemetry && json.telemetry.cache) {
+                    for (const k in json.telemetry.cache) {
+                      if (json.telemetry.cache[k] === 'hit') cacheHits++;
+                      else if (json.telemetry.cache[k] === 'miss') cacheMisses++;
+                    }
+                  }
+
+                  // Delta Sync Status Badge & Estimasi Penghematan
+                  let deltaStatus = null;
+                  let savedBytes = 0;
+                  if (json.delta) {
+                    if (unchangedDatasetsCount > 0 && changedDatasetsCount === 0) {
+                      deltaStatus = 'Tanpa Perubahan (Delta)';
+                    } else if (unchangedDatasetsCount > 0) {
+                      deltaStatus = 'Δ ' + changedDatasetsCount + ' Berubah';
+                    }
+                    savedBytes = unchangedDatasetsCount * 25000;
+                  }
+
                   recordSyncEntry({
                     type: trigger,
                     target: 'semua',
                     status: 'success',
                     durationMs: duration,
-                    message: 'Sinkronisasi terpadu berhasil: ' + bCount + ' booking, ' + kCount + ' kunjungan, ' + uCount + ' akun (' + duration + 'ms)'
+                    payloadBytes: payloadBytes,
+                    deltaStatus: deltaStatus,
+                    cacheHits: cacheHits,
+                    cacheMisses: cacheMisses,
+                    savedBytes: savedBytes,
+                    message: 'Sinkronisasi terpadu berhasil: ' + bCount + ' booking, ' + kCount + ' kunjungan, ' + uCount + ' akun (' + duration + 'ms' + (deltaStatus ? (' • ' + deltaStatus) : '') + ')'
                   });
                 } else if (json.code === 'unauthorized') {
                   forceRelogin(json.message);
@@ -24189,6 +24393,9 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
           filteredSyncHistory,
           avgSyncDurationMs,
           syncSuccessRate,
+          cacheHitRatePercent,
+          avgPayloadTransferred,
+          bandwidthSavingsEstimate,
           copySyncLogsToClipboard,
           exportSyncLogsAsJson,
           clearSyncLogsOnly,

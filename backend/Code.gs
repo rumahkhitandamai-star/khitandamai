@@ -10,6 +10,51 @@ const SPREADSHEET_ID = "1j4oUNDspniMA-rEHrRis6RprLIip63UTCluqeU2YiuA";
 const SHEET_NAME = "BOOKING";
 const USERS_SHEET_NAME = "USERS";
 
+// Memoisasi objek Spreadsheet per-execution cycle Apps Script untuk mengeliminasi pembukaan berulang
+var SPREADSHEET_MEMO_ = null;
+
+/**
+ * Mengambil objek SpreadsheetApp dengan memoisasi per siklus eksekusi
+ */
+function getSpreadsheet_() {
+  if (!SPREADSHEET_MEMO_) {
+    SPREADSHEET_MEMO_ = SpreadsheetApp.openById(SPREADSHEET_ID);
+  }
+  return SPREADSHEET_MEMO_;
+}
+
+// Telemetri Cache Server Apps Script (dicatat per-siklus request)
+var CACHE_TELEMETRY_ = {};
+
+function resetCacheTelemetry_() {
+  CACHE_TELEMETRY_ = {};
+}
+
+function recordCacheTelemetry_(dataset, status) {
+  if (!CACHE_TELEMETRY_) CACHE_TELEMETRY_ = {};
+  CACHE_TELEMETRY_[dataset] = status;
+}
+
+/**
+ * Menghasilkan hash versi ringkas (FNV-1a 32-bit hex + length) dari dataset.
+ * Cepat, deterministik, dan tanpa dependensi library eksternal.
+ */
+function computeDatasetVersion_(data) {
+  if (data === null || data === undefined) return "0";
+  try {
+    var str = typeof data === "string" ? data : JSON.stringify(data);
+    var len = str.length;
+    var hash = 0x811c9dc5;
+    for (var i = 0; i < len; i++) {
+      hash ^= str.charCodeAt(i);
+      hash = (hash * 0x01000193) >>> 0;
+    }
+    return hash.toString(16) + "_" + len;
+  } catch (e) {
+    return "v_" + Date.now();
+  }
+}
+
 const HEADERS = [
   "ID BOOKING",
   "NAMA ANANDA",
@@ -1792,7 +1837,7 @@ function ensureBookingColumns_(sheet) {
  * Mendapatkan atau menginisialisasi sheet BOOKING beserta header-nya
  */
 function getSheet() {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const ss = getSpreadsheet_();
   let sheet = ss.getSheetByName("BOOKING") || ss.getSheetByName(SHEET_NAME) || ss.getSheetByName("Bookings");
   
   if (!sheet) {
@@ -1832,7 +1877,7 @@ function getSheet() {
  * Mendapatkan atau menginisialisasi sheet USERS untuk autentikasi Admin
  */
 function getUsersSheet() {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const ss = getSpreadsheet_();
   let sheet = ss.getSheetByName(USERS_SHEET_NAME);
   
   if (!sheet) {
@@ -1871,9 +1916,11 @@ function readUsersFromSheet(sheet, forceRefresh) {
   if (!forceRefresh) {
     const cached = getChunkedCache(SERVER_CACHE_KEYS.USERS);
     if (cached && cached.users && Array.isArray(cached.users)) {
+      recordCacheTelemetry_("users", "hit");
       return cached;
     }
   }
+  recordCacheTelemetry_("users", "miss");
 
   const targetSheet = sheet || getUsersSheet();
   const lastRow = targetSheet.getLastRow();
@@ -1929,7 +1976,7 @@ function readUsersFromSheet(sheet, forceRefresh) {
  * Mendapatkan atau menginisialisasi sheet SETTINGS untuk konfigurasi sistem
  */
 function getSettingsSheet() {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const ss = getSpreadsheet_();
   let sheet = ss.getSheetByName(SETTINGS_SHEET_NAME);
   
   if (!sheet) {
@@ -1968,9 +2015,11 @@ function readSettings(forceRefresh) {
   if (!forceRefresh) {
     const cached = getChunkedCache(SERVER_CACHE_KEYS.SETTINGS);
     if (cached && typeof cached === "object") {
+      recordCacheTelemetry_("settings", "hit");
       return cached;
     }
   }
+  recordCacheTelemetry_("settings", "miss");
 
   const sheet = getSettingsSheet();
   const lastRow = sheet.getLastRow();
@@ -2679,7 +2728,7 @@ function testMonthlyBackupNow() {
  * Mendapatkan atau menginisialisasi sheet GALERI beserta header-nya
  */
 function getGaleriSheet() {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const ss = getSpreadsheet_();
   let sheet = ss.getSheetByName(GALERI_SHEET_NAME);
 
   if (!sheet) {
@@ -2734,9 +2783,11 @@ function readGaleriFromSheet(forceRefresh) {
   if (!forceRefresh) {
     const cached = getChunkedCache(SERVER_CACHE_KEYS.GALERI);
     if (cached && Array.isArray(cached)) {
+      recordCacheTelemetry_("galeri", "hit");
       return cached;
     }
   }
+  recordCacheTelemetry_("galeri", "miss");
 
   const sheet = getGaleriSheet();
   const lastRow = sheet.getLastRow();
@@ -2834,7 +2885,7 @@ function trashGaleriFile(fileId) {
  * Mendapatkan atau menginisialisasi sheet SARAN beserta header-nya
  */
 function getSaranSheet() {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const ss = getSpreadsheet_();
   let sheet = ss.getSheetByName(SARAN_SHEET_NAME);
 
   if (!sheet) {
@@ -2889,9 +2940,11 @@ function readSaranFromSheet(forceRefresh) {
   if (!forceRefresh) {
     const cached = getChunkedCache(SERVER_CACHE_KEYS.SARAN);
     if (cached && Array.isArray(cached)) {
+      recordCacheTelemetry_("saran", "hit");
       return cached;
     }
   }
+  recordCacheTelemetry_("saran", "miss");
 
   const sheet = getSaranSheet();
   const lastRow = sheet.getLastRow();
@@ -2947,7 +3000,7 @@ function readSaranFromSheet(forceRefresh) {
  * Mendapatkan atau menginisialisasi sheet ALAMAT beserta header-nya
  */
 function getAlamatSheet() {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const ss = getSpreadsheet_();
   let sheet = ss.getSheetByName(ALAMAT_SHEET_NAME);
 
   if (!sheet) {
@@ -3412,7 +3465,7 @@ function migrateBookingsSheet(sheet) {
  * Mendapatkan sheet REFERENSI (auto-create jika belum ada)
  */
 function getReferensiSheet() {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const ss = getSpreadsheet_();
   let sheet = ss.getSheetByName(REFERENSI_SHEET_NAME);
   if (!sheet) {
     sheet = ss.insertSheet(REFERENSI_SHEET_NAME);
@@ -3497,7 +3550,7 @@ function readReferensiOptions() {
  * Mendapatkan atau membuat sheet KUNJUNGAN
  */
 function getKunjunganSheet() {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const ss = getSpreadsheet_();
   let sheet = ss.getSheetByName(KUNJUNGAN_SHEET_NAME);
   if (!sheet) {
     sheet = ss.insertSheet(KUNJUNGAN_SHEET_NAME);
@@ -3669,9 +3722,11 @@ function readKunjunganFromSheet(sheet, forceRefresh) {
   if (!forceRefresh) {
     const cached = getChunkedCache(SERVER_CACHE_KEYS.KUNJUNGAN);
     if (cached && Array.isArray(cached)) {
+      recordCacheTelemetry_("kunjungan", "hit");
       return cached;
     }
   }
+  recordCacheTelemetry_("kunjungan", "miss");
 
   const targetSheet = sheet || getKunjunganSheet();
   const lastRow = targetSheet.getLastRow();
@@ -3760,7 +3815,7 @@ function calculateUsiaTahun_(tanggalKhitan, tanggalLahirPj) {
  * Mendapatkan atau membuat sheet JUMAT BERKAH
  */
 function getJumatBerkahSheet() {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const ss = getSpreadsheet_();
   let sheet = ss.getSheetByName(JUMAT_BERKAH_SHEET_NAME);
   if (!sheet) {
     sheet = ss.insertSheet(JUMAT_BERKAH_SHEET_NAME);
@@ -3931,9 +3986,11 @@ function readJumatBerkahFromSheet(sheet, forceRefresh) {
   if (!forceRefresh) {
     const cached = getChunkedCache(SERVER_CACHE_KEYS.JUMAT_BERKAH);
     if (cached && Array.isArray(cached)) {
+      recordCacheTelemetry_("jumatberkah", "hit");
       return cached;
     }
   }
+  recordCacheTelemetry_("jumatberkah", "miss");
 
   const targetSheet = sheet || getJumatBerkahSheet();
   const lastRow = targetSheet.getLastRow();
@@ -3978,9 +4035,11 @@ function readBookingsFromSheet(sheet, forceRefresh) {
   if (!forceRefresh) {
     const cached = getChunkedCache(SERVER_CACHE_KEYS.BOOKINGS);
     if (cached && Array.isArray(cached)) {
+      recordCacheTelemetry_("bookings", "hit");
       return cached;
     }
   }
+  recordCacheTelemetry_("bookings", "miss");
 
   const targetSheet = sheet || getSheet();
   const lastRow = targetSheet.getLastRow();
@@ -4120,7 +4179,10 @@ function getKuotaJamSummary_(targetDate) {
 
 /**
  * Endpoint Terpadu Sinkronisasi Admin (Single-Flight Sync Engine)
- * Mengambil seluruh data sheet dalam 1 kali round-trip cepat
+ * Mengambil seluruh data sheet dalam 1 kali round-trip cepat dengan dukungan:
+ * - Memoisasi spreadsheet per-execution cycle (1x buka untuk semua sheet)
+ * - Delta sync berdasar hash versi dataset (mengirim hanya dataset yang berubah)
+ * - Telemetri cache hit/miss per dataset untuk diagnostik efektivitas cache
  */
 function handleSyncAdminData(params) {
   const token = params.token || (params.data && params.data.token);
@@ -4131,8 +4193,9 @@ function handleSyncAdminData(params) {
   const forceRefresh = String(params.forceRefresh || "").toLowerCase() === "true" ||
                        (params.data && params.data.forceRefresh === true);
 
+  resetCacheTelemetry_();
   const startTime = Date.now();
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const ss = getSpreadsheet_();
 
   const bookings = readBookingsFromSheet(ss.getSheetByName(SHEET_NAME), forceRefresh);
   const kunjungan = readKunjunganFromSheet(ss.getSheetByName(KUNJUNGAN_SHEET_NAME), forceRefresh);
@@ -4141,6 +4204,107 @@ function handleSyncAdminData(params) {
   const settings = readSettings(forceRefresh);
   const galeri = readGaleriFromSheet(forceRefresh);
   const saran = readSaranFromSheet(forceRefresh);
+
+  // Parsing parameter versions klien (jika dikirim untuk delta sync)
+  var clientVersions = {};
+  var rawVersions = params.versions || (params.data && params.data.versions);
+  if (rawVersions && !forceRefresh) {
+    if (typeof rawVersions === "string") {
+      try {
+        clientVersions = JSON.parse(rawVersions);
+      } catch (e) {
+        clientVersions = {};
+      }
+    } else if (typeof rawVersions === "object") {
+      clientVersions = rawVersions;
+    }
+  }
+
+  // Hitung versi dataset terkini menggunakan hashing FNV-1a ringkas
+  const bVer = computeDatasetVersion_(bookings);
+  const kVer = computeDatasetVersion_(kunjungan);
+  const jVer = computeDatasetVersion_(jumatBerkah);
+  const uVer = computeDatasetVersion_(usersResult.users || []);
+  const sVer = computeDatasetVersion_(settings);
+  const gVer = computeDatasetVersion_(galeri);
+  const rVer = computeDatasetVersion_(saran);
+
+  const versions = {
+    bookings: bVer,
+    kunjungan: kVer,
+    jumatberkah: jVer,
+    jumatBerkah: jVer,
+    users: uVer,
+    settings: sVer,
+    galeri: gVer,
+    saran: rVer
+  };
+
+  // Evaluasi unchanged flag per dataset
+  const unchanged = {
+    bookings: Boolean(!forceRefresh && clientVersions.bookings && clientVersions.bookings === bVer),
+    kunjungan: Boolean(!forceRefresh && clientVersions.kunjungan && clientVersions.kunjungan === kVer),
+    jumatberkah: Boolean(!forceRefresh && (clientVersions.jumatberkah === jVer || clientVersions.jumatBerkah === jVer)),
+    jumatBerkah: Boolean(!forceRefresh && (clientVersions.jumatberkah === jVer || clientVersions.jumatBerkah === jVer)),
+    users: Boolean(!forceRefresh && clientVersions.users && clientVersions.users === uVer),
+    settings: Boolean(!forceRefresh && clientVersions.settings && clientVersions.settings === sVer),
+    galeri: Boolean(!forceRefresh && clientVersions.galeri && clientVersions.galeri === gVer),
+    saran: Boolean(!forceRefresh && clientVersions.saran && clientVersions.saran === rVer)
+  };
+
+  const responseData = {};
+  let unchangedCount = 0;
+  let changedCount = 0;
+
+  if (unchanged.bookings) {
+    unchangedCount++;
+  } else {
+    changedCount++;
+    responseData.bookings = bookings;
+  }
+
+  if (unchanged.kunjungan) {
+    unchangedCount++;
+  } else {
+    changedCount++;
+    responseData.kunjungan = kunjungan;
+  }
+
+  if (unchanged.jumatberkah) {
+    unchangedCount++;
+  } else {
+    changedCount++;
+    responseData.jumatBerkah = jumatBerkah;
+  }
+
+  if (unchanged.users) {
+    unchangedCount++;
+  } else {
+    changedCount++;
+    responseData.users = usersResult.users || [];
+    responseData.userLayout = usersResult.layout || "baru";
+  }
+
+  if (unchanged.settings) {
+    unchangedCount++;
+  } else {
+    changedCount++;
+    responseData.settings = settings;
+  }
+
+  if (unchanged.galeri) {
+    unchangedCount++;
+  } else {
+    changedCount++;
+    responseData.galeri = galeri;
+  }
+
+  if (unchanged.saran) {
+    unchangedCount++;
+  } else {
+    changedCount++;
+    responseData.saran = saran;
+  }
 
   const durationMs = Date.now() - startTime;
   const now = new Date();
@@ -4151,6 +4315,15 @@ function handleSyncAdminData(params) {
     timestamp: now.getTime(),
     serverTime: serverTime,
     durationMs: durationMs,
+    delta: Object.keys(clientVersions).length > 0 && !forceRefresh,
+    unchanged: unchanged,
+    versions: versions,
+    telemetry: {
+      cache: CACHE_TELEMETRY_ || {},
+      durationMs: durationMs,
+      unchangedCount: unchangedCount,
+      changedCount: changedCount
+    },
     counts: {
       bookings: bookings.length,
       kunjungan: kunjungan.length,
@@ -4159,16 +4332,7 @@ function handleSyncAdminData(params) {
       galeri: galeri.length,
       saran: saran.length
     },
-    data: {
-      bookings: bookings,
-      kunjungan: kunjungan,
-      jumatBerkah: jumatBerkah,
-      users: usersResult.users || [],
-      userLayout: usersResult.layout || "baru",
-      settings: settings,
-      galeri: galeri,
-      saran: saran
-    }
+    data: responseData
   });
 }
 
