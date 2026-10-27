@@ -79,7 +79,8 @@ const SERVER_CACHE_DEFAULT_TTL = 600; // 10 Menit
 // ==========================================
 const TELEGRAM_CONFIG = {
   BOT_TOKEN: "8582652009:AAHoB81ErIc_oN4e6Kr7a3sdx2c7z029bpA",
-  ADMIN_CHAT_ID: "8746493929"
+  ADMIN_CHAT_ID: "8746493929",
+  ADMIN_PHONE: "081222531978"
 };
 
 /**
@@ -90,9 +91,10 @@ function getTelegramConfig_() {
     const props = PropertiesService.getScriptProperties();
     const token = (props && props.getProperty("TELEGRAM_BOT_TOKEN")) || TELEGRAM_CONFIG.BOT_TOKEN;
     const chatId = (props && props.getProperty("TELEGRAM_ADMIN_CHAT_ID")) || TELEGRAM_CONFIG.ADMIN_CHAT_ID;
-    return { botToken: token, chatId: chatId };
+    const adminPhone = (props && props.getProperty("TELEGRAM_ADMIN_PHONE")) || TELEGRAM_CONFIG.ADMIN_PHONE;
+    return { botToken: token, chatId: chatId, adminPhone: adminPhone };
   } catch (e) {
-    return { botToken: TELEGRAM_CONFIG.BOT_TOKEN, chatId: TELEGRAM_CONFIG.ADMIN_CHAT_ID };
+    return { botToken: TELEGRAM_CONFIG.BOT_TOKEN, chatId: TELEGRAM_CONFIG.ADMIN_CHAT_ID, adminPhone: TELEGRAM_CONFIG.ADMIN_PHONE };
   }
 }
 
@@ -1083,19 +1085,35 @@ function handleTelegramWebhookUpdate_(update) {
 
     const chatId = String(msg.chat.id);
     const config = getTelegramConfig_();
-    const isAdmin = String(chatId) === String(config.chatId);
+    const props = PropertiesService.getScriptProperties();
+
+    // 1. Otorisasi Admin:
+    // Terverifikasi jika chat.id sesuai config.chatId (8746493929)
+    // ATAU nomor HP yang tersimpan cocok dengan nomor Admin (081222531978)
+    const cleanAdminPhone = cleanPhoneNumber(config.adminPhone || "081222531978");
+    let isAdmin = String(chatId) === String(config.chatId);
+    let verifiedPhone = props.getProperty("tg_auth_" + chatId) || "";
+
+    if (!isAdmin && verifiedPhone && cleanPhoneNumber(verifiedPhone) === cleanAdminPhone) {
+      isAdmin = true;
+    }
+
+    // 2. Otorisasi Pengguna Terdaftar (Keluarga Pasien di Sheet BOOKING):
+    let isRegistered = false;
+    let registeredBooking = null;
+    if (!isAdmin && verifiedPhone) {
+      registeredBooking = findBookingForTelegram_(verifiedPhone);
+      if (registeredBooking) {
+        isRegistered = true;
+      } else {
+        props.deleteProperty("tg_auth_" + chatId);
+        verifiedPhone = "";
+      }
+    }
+
+    const isAuthorized = isAdmin || isRegistered;
 
     // Keyboard Menu Bawah Cepat
-    const publicKeyboard = {
-      keyboard: [
-        [{ text: "📅 Jadwal Mendatang" }, { text: "🔍 Cek Status Booking" }],
-        [{ text: "📅 Hari Ini" }, { text: "⚡ Jadwal Besok" }],
-        [{ text: "ℹ️ Bantuan & Info" }]
-      ],
-      resize_keyboard: true,
-      one_time_keyboard: false
-    };
-
     const adminKeyboard = {
       keyboard: [
         [{ text: "📅 Jadwal Mendatang" }, { text: "🔍 Cek Status Booking" }],
@@ -1106,17 +1124,80 @@ function handleTelegramWebhookUpdate_(update) {
       one_time_keyboard: false
     };
 
-    const mainKeyboard = isAdmin ? adminKeyboard : publicKeyboard;
+    const userKeyboard = {
+      keyboard: [
+        [{ text: "🔍 Status Booking Saya" }, { text: "📅 Jadwal Khitan" }],
+        [{ text: "⚡ Jadwal Besok" }, { text: "ℹ️ Bantuan & Info" }],
+        [{ text: "🚪 Keluar / Ganti Nomor" }]
+      ],
+      resize_keyboard: true,
+      one_time_keyboard: false
+    };
 
-    // Respon jika pesan bukan teks (misal: stiker, gambar, audio, lokasi)
+    const authKeyboard = {
+      keyboard: [
+        [{ text: "📱 Verifikasi Nomor WhatsApp Saya", request_contact: true }],
+        [{ text: "ℹ️ Bantuan & Info" }]
+      ],
+      resize_keyboard: true,
+      one_time_keyboard: false
+    };
+
+    const mainKeyboard = isAdmin ? adminKeyboard : (isRegistered ? userKeyboard : authKeyboard);
+
+    // A. Penanganan Kirim Kontak (Verifikasi Nomor via Tombol Telegram)
+    if (msg.contact && msg.contact.phone_number) {
+      const incomingPhone = String(msg.contact.phone_number || "").trim();
+      const cleanIncoming = cleanPhoneNumber(incomingPhone);
+
+      // Verifikasi Admin
+      if (cleanIncoming === cleanAdminPhone) {
+        props.setProperty("tg_auth_" + chatId, incomingPhone);
+        const welcAdmin = "✅ <b>Verifikasi Admin Berhasil!</b> 👨‍⚕️\n\n" +
+          "Selamat datang, <b>Admin Rumah Khitan Damai</b>.\n" +
+          "Akun Telegram Anda telah terverifikasi dengan nomor <code>" + escapeTelegramHtml_(incomingPhone) + "</code>.\n" +
+          "Seluruh fitur kendali bot dan pengingat jadwal telah diaktifkan.";
+        sendTelegramMessage_(chatId, welcAdmin, adminKeyboard);
+        return HtmlService.createHtmlOutput("OK");
+      }
+
+      // Verifikasi Pasien Terdaftar
+      const found = findBookingForTelegram_(incomingPhone);
+      if (found) {
+        props.setProperty("tg_auth_" + chatId, incomingPhone);
+        const sapaan = resolveSapaanWa_(found.hubunganKeluarga);
+        const welcUser = "✅ <b>Verifikasi Berhasil!</b> 🎉\n\n" +
+          "Selamat datang, " + sapaan + " <b>" + escapeTelegramHtml_(found.namaPenanggungJawab) + "</b>!\n" +
+          "Akun Telegram Anda telah terhubung dengan data pendaftaran Ananda <b>" + escapeTelegramHtml_(found.namaAnanda) + "</b> (ID: <code>" + escapeTelegramHtml_(found.idBooking) + "</code>).\n\n" +
+          "Silakan gunakan menu di bawah untuk memeriksa rincian status booking dan jadwal khitan Anda.";
+        sendTelegramMessage_(chatId, welcUser, userKeyboard);
+        return HtmlService.createHtmlOutput("OK");
+      } else {
+        const notFoundMsg = "⛔ <b>Akses Ditolak: Nomor Belum Terdaftar</b> 🔒\n\n" +
+          "Nomor HP Telegram Anda (<code>" + escapeTelegramHtml_(incomingPhone) + "</code>) tidak terdaftar dalam database pendaftaran khitan kami.\n\n" +
+          "Akses bot ini khusus untuk <b>Admin (081222531978)</b> dan <b>Keluarga Pasien yang Telah Terdaftar</b> di Rumah Khitan Damai.\n\n" +
+          "💡 <i>Jika Anda mendaftar menggunakan nomor WhatsApp yang berbeda, silakan ketik langsung nomor WhatsApp atau ID Booking Anda di chat ini untuk verifikasi manual.</i>\n\n" +
+          "📞 Hubungi Admin jika Anda butuh bantuan: 081222531978";
+        sendTelegramMessage_(chatId, notFoundMsg, authKeyboard);
+        return HtmlService.createHtmlOutput("OK");
+      }
+    }
+
+    // B. Respon jika pesan bukan teks (misal: stiker, gambar, audio, lokasi)
     if (!msg.text) {
+      if (!isAuthorized) {
+        const authGateMsg = "🔒 <b>Layanan Khusus Pasien Terdaftar & Admin</b> 🏥✨\n\n" +
+          "Mohon maaf, Bot Telegram Rumah Khitan Damai saat ini hanya dapat diakses oleh:\n" +
+          "1. 👨‍⚕️ <b>Admin / Pengelola Klinik</b> (081222531978)\n" +
+          "2. 👨‍👩‍👦 <b>Keluarga Pasien yang Telah Terdaftar</b> di sistem pendaftaran kami.\n\n" +
+          "Silakan sentuh tombol <b>'📱 Verifikasi Nomor WhatsApp Saya'</b> di bawah atau ketik nomor WhatsApp yang didaftarkan.";
+        sendTelegramMessage_(chatId, authGateMsg, authKeyboard);
+        return HtmlService.createHtmlOutput("OK");
+      }
+
       const mediaReply = "Halo! Terima kasih telah menghubungi Bot Resmi Rumah Khitan Damai 😊\n\n" +
         "Bot saat ini melayani input berupa teks.\n" +
-        "Silakan sentuh menu di bawah atau kirimkan:\n" +
-        "• <b>/jadwal</b> — Daftar Jadwal Khitan Mendatang\n" +
-        "• <b>/hariini</b> — Jadwal Khitan Hari Ini\n" +
-        "• <b>/besok</b> — Jadwal Khitan Besok\n" +
-        "• Atau ketik <b>ID Booking / No. WhatsApp</b> untuk cek status pendaftaran.";
+        "Silakan sentuh menu di bawah atau kirimkan perintah.";
       sendTelegramMessage_(chatId, mediaReply, mainKeyboard);
       return HtmlService.createHtmlOutput("OK");
     }
@@ -1124,23 +1205,97 @@ function handleTelegramWebhookUpdate_(update) {
     const rawText = String(msg.text).trim();
     const lowerText = rawText.toLowerCase();
 
+    // C. Logout / Keluar Sesi
+    if (lowerText === "/logout" || lowerText === "keluar" || lowerText === "🚪 keluar / ganti nomor") {
+      props.deleteProperty("tg_auth_" + chatId);
+      const logoutMsg = "👋 <b>Anda Telah Keluar</b>\n\n" +
+        "Sesi akses bot untuk akun Telegram ini telah dihentikan.\n" +
+        "Silakan verifikasi nomor kembali sewaktu-waktu jika ingin mengakses layanan bot Rumah Khitan Damai.";
+      sendTelegramMessage_(chatId, logoutMsg, authKeyboard);
+      return HtmlService.createHtmlOutput("OK");
+    }
+
+    // D. Gerbang Akses: Verifikasi untuk pengguna yang belum terverifikasi
+    if (!isAuthorized) {
+      const cleanDigits = cleanPhoneNumber(rawText);
+      const isPhone = cleanDigits.length >= 8 && cleanDigits.length <= 15;
+      const isIdBooking = /^[A-Za-z0-9\-_]{4,20}$/.test(rawText) && !rawText.startsWith("/");
+
+      if (isPhone || isIdBooking) {
+        // Cek apakah nomor/ID terdaftar di BOOKING
+        const found = findBookingForTelegram_(rawText);
+        if (found) {
+          props.setProperty("tg_auth_" + chatId, found.nomorHp || rawText);
+          const sapaan = resolveSapaanWa_(found.hubunganKeluarga);
+          const welcText = "✅ <b>Verifikasi Berhasil!</b> 🎉\n\n" +
+            "Selamat datang, " + sapaan + " <b>" + escapeTelegramHtml_(found.namaPenanggungJawab) + "</b>!\n" +
+            "Akun Anda terhubung dengan pendaftaran Ananda <b>" + escapeTelegramHtml_(found.namaAnanda) + "</b>.\n\n" +
+            formatBookingDetailTelegram_(found, false);
+          sendTelegramMessage_(chatId, welcText, userKeyboard);
+          return HtmlService.createHtmlOutput("OK");
+        } else if (cleanDigits === cleanAdminPhone) {
+          const adminNotice = "🔐 <b>Verifikasi Akun Admin</b>\n\n" +
+            "Untuk keamanan, verifikasi nomor Admin (081222531978) wajib menggunakan tombol <b>'📱 Verifikasi Nomor WhatsApp Saya'</b> di bawah.";
+          sendTelegramMessage_(chatId, adminNotice, authKeyboard);
+          return HtmlService.createHtmlOutput("OK");
+        } else {
+          const deniedMsg = "⛔ <b>Akses Ditolak: Data Tidak Ditemukan</b> 🔒\n\n" +
+            "Data pendaftaran dengan kata kunci: <code>" + escapeTelegramHtml_(rawText) + "</code> tidak ditemukan dalam database pendaftaran khitan kami.\n\n" +
+            "Akses bot ini khusus untuk <b>Admin (081222531978)</b> dan <b>Keluarga Pasien yang Telah Terdaftar</b> di Rumah Khitan Damai.\n\n" +
+            "Silakan pastikan nomor WhatsApp atau ID Booking yang Anda masukkan sesuai saat mendaftar, atau hubungi Admin WhatsApp: 081222531978.";
+          sendTelegramMessage_(chatId, deniedMsg, authKeyboard);
+          return HtmlService.createHtmlOutput("OK");
+        }
+      }
+
+      // Jika mengetik pesan umum / perintah lain saat belum terverifikasi
+      const authGateMsg = "🔒 <b>Layanan Khusus Pasien Terdaftar & Admin</b> 🏥✨\n" +
+        "<i>\"Rumah Khitan Damai — Nyaman, Modern, dan Menyenangkan\"</i>\n\n" +
+        "Mohon maaf, Bot Telegram resmi ini hanya dapat diakses oleh:\n" +
+        "1. 👨‍⚕️ <b>Admin / Pengelola Klinik</b> (081222531978)\n" +
+        "2. 👨‍👩‍👦 <b>Keluarga Pasien yang Telah Mendaftar Khitan</b> di sistem kami.\n\n" +
+        "Untuk membuka akses layanan bot, silakan verifikasi nomor Anda:\n" +
+        "👉 Sentuh tombol <b>'📱 Verifikasi Nomor WhatsApp Saya'</b> di bawah, ATAU\n" +
+        "👉 Ketik <b>Nomor WhatsApp</b> yang didaftarkan / <b>ID Booking</b> Anda di chat ini.\n\n" +
+        "📞 <i>Pusat Bantuan WhatsApp: 081222531978</i>";
+      sendTelegramMessage_(chatId, authGateMsg, authKeyboard);
+      return HtmlService.createHtmlOutput("OK");
+    }
+
+    // E. Tombol "🔍 Status Booking Saya" (Khusus Pengguna Terdaftar)
+    if (lowerText === "🔍 status booking saya" || lowerText === "status booking saya" || lowerText === "status booking") {
+      const myBooking = findBookingForTelegram_(verifiedPhone || chatId);
+      if (myBooking) {
+        const detailText = formatBookingDetailTelegram_(myBooking, isAdmin);
+        sendTelegramMessage_(chatId, detailText, mainKeyboard);
+      } else {
+        sendTelegramMessage_(chatId, "⚠️ Data pendaftaran Anda tidak ditemukan. Silakan hubungi Admin WhatsApp: 081222531978.", mainKeyboard);
+      }
+      return HtmlService.createHtmlOutput("OK");
+    }
+
     // 1. Perintah Start / Bantuan
     if (lowerText === "/start" || lowerText === "/help" || lowerText === "bantuan" || lowerText === "info" || lowerText === "ℹ️ bantuan & info") {
       let welcomeText = "👋 <b>Halo! Selamat Datang di Bot Resmi Rumah Khitan Damai</b> 🏥✨\n" +
-        "<i>\"Aku Berani Khitan — Nyaman, Modern, dan Menyenangkan\"</i>\n\n" +
-        "Silakan pilih menu di bawah atau ketik perintah:\n" +
-        "📅 <b>/jadwal</b> — Lihat Jadwal Khitan Mendatang (atau ketik: <code>/jadwal 2026-10-28</code> untuk tanggal tertentu)\n" +
-        "📅 <b>/hariini</b> — Lihat Jadwal Khitan Khusus Hari Ini\n" +
-        "⚡ <b>/besok</b> — Lihat Jadwal Khitan Khusus Besok\n" +
-        "🔍 <b>Cek Booking</b> — Cukup ketik <b>ID Booking</b> (contoh: <code>KD-202610-001</code> atau <code>6UZA6KM</code>) atau <b>Nomor WhatsApp</b> yang didaftarkan.\n";
-      
+        "<i>\"Aku Berani Khitan — Nyaman, Modern, dan Menyenangkan\"</i>\n\n";
+
       if (isAdmin) {
-        welcomeText += "⏰ <b>/cekreminder</b> — Pindai & kirim pengingat jadwal khitan &lt; 12 jam secara langsung (Khusus Admin)\n" +
-          "💾 <b>/backup</b> — Mulai pencadangan seluruh sheet database ke Google Drive secara instan (Khusus Admin)\n";
+        welcomeText += "Silakan pilih menu di bawah atau ketik perintah:\n" +
+          "📅 <b>/jadwal</b> — Lihat Jadwal Khitan Mendatang\n" +
+          "📅 <b>/hariini</b> — Lihat Jadwal Khitan Hari Ini\n" +
+          "⚡ <b>/besok</b> — Lihat Jadwal Khitan Besok (Lengkap dengan Tombol WhatsApp Reminder)\n" +
+          "⏰ <b>/cekreminder</b> — Pindai & kirim pengingat jadwal khitan &lt; 12 jam (Khusus Admin)\n" +
+          "💾 <b>/backup</b> — Backup seluruh database ke Google Drive (Khusus Admin)\n" +
+          "🔍 <b>Cek Booking</b> — Ketik ID Booking / Nomor WhatsApp pasien.\n";
+      } else {
+        welcomeText += "Silakan pilih menu di bawah untuk melihat informasi pendaftaran khitan Ananda:\n" +
+          "🔍 <b>Status Booking Saya</b> — Informasi lengkap jadwal & status tindakan Ananda\n" +
+          "📅 <b>Jadwal Khitan</b> — Jadwal khitan klinik mendatang\n" +
+          "⚡ <b>Jadwal Besok</b> — Jadwal khitan esok hari\n" +
+          "🚪 <b>Keluar</b> — Ganti nomor WhatsApp akun ini\n";
       }
 
-      welcomeText += "ℹ️ <b>/help</b> — Menampilkan petunjuk layanan bot ini.\n\n" +
-        "📞 <i>Pusat Bantuan WhatsApp: 081222531978</i>";
+      welcomeText += "\n📞 <i>Pusat Bantuan WhatsApp: 081222531978</i>";
       sendTelegramMessage_(chatId, welcomeText, mainKeyboard);
       return HtmlService.createHtmlOutput("OK");
     }
@@ -1222,7 +1377,7 @@ function handleTelegramWebhookUpdate_(update) {
     }
 
     // 2a. Perintah Jadwal Mendatang / Jadwal Spesifik Tanggal
-    if (lowerText === "/jadwal" || lowerText === "/upcoming" || lowerText === "jadwal" || lowerText === "📅 jadwal mendatang" || lowerText.startsWith("/jadwal ") || lowerText.startsWith("jadwal ")) {
+    if (lowerText === "/jadwal" || lowerText === "/upcoming" || lowerText === "jadwal" || lowerText === "📅 jadwal mendatang" || lowerText === "📅 jadwal khitan" || lowerText.startsWith("/jadwal ") || lowerText.startsWith("jadwal ")) {
       let filterArg = "upcoming";
       const parts = rawText.split(/\s+/);
       if (parts.length > 1) {
