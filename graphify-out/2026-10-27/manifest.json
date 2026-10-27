@@ -13,10 +13,10 @@
     "semantic_hash": "9b5e4d4606c71e30dbf22e199a20c0a5"
   },
   "asset/Code.gs": {
-    "mtime": 1793104984.2786674,
-    "seen": 1793105206.2195024,
-    "ast_hash": "3be213848caf46489565360485f3e214",
-    "semantic_hash": "3be213848caf46489565360485f3e214",
+    "mtime": 1793107460.9552212,
+    "seen": 1793107877.9187584,
+    "ast_hash": "18d9ec9a3ebb749ab78cf0766405ba7d",
+    "semantic_hash": "18d9ec9a3ebb749ab78cf0766405ba7d",
     "language": "language=.js"
   },
   "asset/appsscript.json": {
@@ -393,5 +393,11 @@
     "seen": 1793102290.309781,
     "ast_hash": "d7078fa15afd75eccd8c9c17a90e53fb",
     "semantic_hash": "d7078fa15afd75eccd8c9c17a90e53fb"
+  },
+  "tests/slot-quota-suffix.spec.js": {
+    "mtime": 1793107679.0554762,
+    "seen": 1793107877.9265275,
+    "ast_hash": "9f9cd42f2b72a3f4a1c724944407746f",
+    "semantic_hash": "9f9cd42f2b72a3f4a1c724944407746f"
   }
 }

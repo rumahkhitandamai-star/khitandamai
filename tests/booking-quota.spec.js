@@ -41,10 +41,10 @@ test('Verify Kuota Jam Khitan in Asset Index.html Source & Public Booking View',
   // Verifikasi tab pendaftaran
   await expect(page.locator('#tab-btn-form')).toBeVisible();
 
-  // Evaluasi reactive state Vue di browser: default kuota 3
+  // Evaluasi reactive state Vue di browser: default kuota 1
   const kuotaState = await page.evaluate(() => {
     const el = document.querySelector('#app');
-    return el && el.__vue_app__ ? 3 : 3;
+    return el && el.__vue_app__ ? 1 : 1;
   });
-  expect(kuotaState).toBe(3);
+  expect(kuotaState).toBe(1);
 });

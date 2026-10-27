@@ -189,7 +189,7 @@ Sistem memiliki mekanisme pencadangan basis data Spreadsheet utama secara berkal
 ### 9.3 Sistem Kuota Jam Khitan & Peringatan Kapasitas Pasien
 1. **Aturan Kuota Per Slot Dinamis via Sheet REFERENSI**:
    - Kapasitas per slot waktu tindakan khitan (misal: 05:00 WIB, 05:20 WIB, dst.) dapat disesuaikan per item secara langsung di Sheet `REFERENSI` kolom `JAM KHITAN` menggunakan penulisan suffix angka pada sel yang sama (contoh: `05:00 WIB - 5`, `05:00 WIB (5)`, atau `05:00 WIB|5`).
-   - Slot jam yang tidak menuliskan angka kuota spesifik otomatis menggunakan kuota default global (`settings.kuota_jam` / default 3 pasien/slot).
+   - Slot jam yang tidak menuliskan angka kuota spesifik otomatis menggunakan kuota default global (`settings.kuota_jam` / default 1 pasien/slot).
    - Parser backend secara cerdas memisahkan nama slot bersih (misal `05:00 WIB`) untuk menjaga kompatibilitas data booking lama dan dropdown publik, serta menghasilkan peta kuota slot dinamis (`jamKhitanQuota`).
    - Pendaftaran berstatus `Pending`, `Confirmed`, dan `Selesai` mengurangi kuota slot, sedangkan pendaftaran berstatus `Batal` / `Dibatalkan` mengembalikan kuota.
 2. **Manajemen Kuota Default Super Admin**:
