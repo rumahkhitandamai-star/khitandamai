@@ -35,6 +35,7 @@
       "tests_public_header_spec",
       "tests_running_text_info_login_spec",
       "tests_running_text_instant_start_spec",
+      "tests_slot_quota_suffix_spec",
       "tests_social_proof_spec",
       "tests_vector_icons_spec",
       "tests_wa_sambutan_sapaan_spec",
@@ -311,7 +312,7 @@
     ]
   },
   "cohesion": {
-    "0": 0.09581646423751687,
+    "0": 0.09487179487179487,
     "1": 0.08045977011494253,
     "2": 0.08045977011494253,
     "3": 0.09113300492610837,
@@ -336,7 +337,7 @@
     {
       "id": "ref_playwright_test",
       "label": "@playwright/test",
-      "degree": 37
+      "degree": 38
     },
     {
       "id": "asset_code_doget",

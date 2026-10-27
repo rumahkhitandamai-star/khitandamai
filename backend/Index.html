@@ -5093,7 +5093,12 @@
                     Mengecek kuota...
                   </span>
                   <span v-else-if="formBooking.tanggalKhitan" class="text-[10px] text-slate-500">
-                    Maks. {{ kuotaPerSlotConfig }} pasien / slot
+                    <template v-if="selectedJamSlotInfo">
+                      Maks. {{ selectedJamSlotInfo.kuota }} pasien / slot ini
+                    </template>
+                    <template v-else>
+                      Maks. {{ kuotaPerSlotConfig }} pasien / slot
+                    </template>
                   </span>
                 </div>
 
@@ -5110,7 +5115,7 @@
                     Semua Kuota Jam Khitan Penuh
                   </div>
                   <p class="leading-relaxed">
-                    Mohon maaf, seluruh kuota tindakan khitan pada tanggal <b>{{ formatIndonesianDate(formBooking.tanggalKhitan) }}</b> sudah terisi penuh (3 pasien/jam). Silakan pilih tanggal khitan yang lain.
+                    Mohon maaf, seluruh kuota tindakan khitan pada tanggal <b>{{ formatIndonesianDate(formBooking.tanggalKhitan) }}</b> sudah terisi penuh. Silakan pilih tanggal khitan yang lain.
                   </p>
                 </div>
 
@@ -9045,7 +9050,7 @@
                   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="space-y-1.5">
                       <label class="block text-xs font-bold text-slate-700">
-                        KUOTA PASIEN PER SLOT JAM <span class="text-rose-500">*</span>
+                        KUOTA PASIEN PER SLOT JAM (DEFAULT GLOBAL) <span class="text-rose-500">*</span>
                       </label>
                       <div class="flex items-center">
                         <input
@@ -9062,7 +9067,7 @@
                         </span>
                       </div>
                       <p class="text-[11px] text-slate-500">
-                        Default: <b>3 pasien per slot jam</b> (rentang 1 - 50 pasien).
+                        Default fallback: <b>{{ kuotaPerSlotConfig }} pasien per slot jam</b> (rentang 1 - 50 pasien). Kuota per-slot spesifik dapat diatur di Sheet <b>REFERENSI</b> kolom <b>JAM KHITAN</b> (misal: <code>05:00 WIB - 5</code> atau <code>05:00 WIB (5)</code>).
                       </p>
                     </div>
 
@@ -9073,6 +9078,7 @@
                         Cara Kerja Kuota
                       </div>
                       <ul class="list-disc list-inside text-[11px] space-y-0.5 text-slate-600">
+                        <li><b>Prioritas:</b> Kuota per-slot dari Sheet REFERENSI diutamakan (contoh: <code>05:00 WIB - 5</code> = 5 pasien). Slot tanpa suffix memakai kuota default global ini.</li>
                         <li>Dihitung per <b>slot jam</b> (mis. 05:00 WIB, 05:20 WIB, dsb) pada tanggal yang sama.</li>
                         <li>Status <b>Pending</b>, <b>Confirmed</b>, dan <b>Selesai</b> mengurangi kuota.</li>
                         <li>Status <b>Batal / Dibatalkan</b> mengembalikan kuota slot.</li>
@@ -9086,7 +9092,7 @@
                     <div class="flex items-center gap-2">
                       <span class="w-2.5 h-2.5 rounded-full bg-teal-600 animate-pulse"></span>
                       <span class="text-teal-900 font-semibold">
-                        Pengaturan aktif saat ini: <b>{{ kuotaPerSlotConfig }} pasien / slot jam</b>
+                        Pengaturan default aktif: <b>{{ kuotaPerSlotConfig }} pasien / slot jam</b>
                       </span>
                     </div>
                     <span class="text-[11px] text-teal-700">Tersimpan di Sheet SETTINGS</span>
@@ -12223,6 +12229,7 @@
         "17:20 WIB", "17:40 WIB", "19:00 WIB", "19:20 WIB", "19:40 WIB", "20:00 WIB",
         "20:20 WIB", "20:40 WIB", "21:00 WIB"
       ],
+      jamKhitanQuota: {},
       metodeKhitan: [
         "Thermocauter Lem", "Thermocauter Jahit", "Khitan Bayi", "Khitan Gemuk", "Khitan Perbaikan"
       ],
@@ -15597,12 +15604,14 @@
           try {
             if (USE_MOCK) {
               await new Promise(r => setTimeout(r, 150));
-              const kuota = kuotaPerSlotConfig.value || DEFAULT_KUOTA_JAM;
+              const defaultKuota = kuotaPerSlotConfig.value || DEFAULT_KUOTA_JAM;
               const refData = referensiOptionsCache.value || LOCAL_MOCK_REFERENSI;
               const allSlots = (refData && refData.jamKhitan) || [];
+              const refQuotas = (refData && refData.jamKhitanQuota) || {};
               const slotsMap = {};
               allSlots.forEach(s => {
-                slotsMap[s] = { terpakai: 0, kuota: kuota, sisa: kuota, penuh: false };
+                const slotK = (typeof refQuotas[s] === 'number' && refQuotas[s] > 0) ? refQuotas[s] : defaultKuota;
+                slotsMap[s] = { terpakai: 0, kuota: slotK, sisa: slotK, penuh: false };
               });
               LOCAL_MOCK_DATABASE.forEach(b => {
                 const bTgl = b.tanggalKhitan || b.tglKhitan;
@@ -15622,7 +15631,7 @@
               });
               const summary = {
                 tanggal: tanggal,
-                kuotaPerSlot: kuota,
+                kuotaPerSlot: defaultKuota,
                 slots: slotsMap,
                 totalSlots: allSlots.length,
                 semuaPenuh: allSlots.length > 0 && fullCount >= allSlots.length
@@ -15664,13 +15673,14 @@
         // Opsi jam khitan terformat dengan status kuota per slot
         const formattedJamKhitanOptions = computed(() => {
           const rawSlots = (referensiOptionsCache.value && referensiOptionsCache.value.jamKhitan) || [];
+          const refQuotas = (referensiOptionsCache.value && referensiOptionsCache.value.jamKhitanQuota) || {};
           const summary = kuotaSummaryData.value;
-          const kuota = (summary && summary.kuotaPerSlot) || kuotaPerSlotConfig.value || DEFAULT_KUOTA_JAM;
+          const defaultKuota = (summary && summary.kuotaPerSlot) || kuotaPerSlotConfig.value || DEFAULT_KUOTA_JAM;
 
           return rawSlots.map(jam => {
             const slot = summary && summary.slots && summary.slots[jam];
             const terpakai = slot ? slot.terpakai : 0;
-            const slotKuota = slot ? slot.kuota : kuota;
+            const slotKuota = slot ? slot.kuota : ((typeof refQuotas[jam] === 'number' && refQuotas[jam] > 0) ? refQuotas[jam] : defaultKuota);
             const sisa = slot ? slot.sisa : Math.max(0, slotKuota - terpakai);
             const isPenuh = slot ? slot.penuh : (terpakai >= slotKuota);
             const isHampirPenuh = !isPenuh && sisa === 1;
@@ -15853,7 +15863,12 @@
             if (USE_MOCK) {
               await new Promise(resolve => setTimeout(resolve, 800));
               // Cek kuota slot di mode mock
-              const kuota = kuotaPerSlotConfig.value || DEFAULT_KUOTA_JAM;
+              const refData = referensiOptionsCache.value || LOCAL_MOCK_REFERENSI;
+              const refQuotas = (refData && refData.jamKhitanQuota) || {};
+              const defaultKuota = kuotaPerSlotConfig.value || DEFAULT_KUOTA_JAM;
+              const kuota = (typeof refQuotas[payloadData.jamKhitan] === 'number' && refQuotas[payloadData.jamKhitan] > 0)
+                ? refQuotas[payloadData.jamKhitan]
+                : defaultKuota;
               const slotBookings = LOCAL_MOCK_DATABASE.filter(b => {
                 const bTgl = b.tanggalKhitan || b.tglKhitan;
                 const st = String(b.status || '').toLowerCase();

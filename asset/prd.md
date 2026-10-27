@@ -187,15 +187,17 @@ Sistem memiliki mekanisme pencadangan basis data Spreadsheet utama secara berkal
    - Pengembang / Admin dapat menguji fungsi ini kapan saja melalui editor Google Apps Script dengan menjalankan fungsi `testMonthlyBackupNow()`.
 
 ### 9.3 Sistem Kuota Jam Khitan & Peringatan Kapasitas Pasien
-1. **Aturan Kuota Default**:
-   - Setiap slot waktu tindakan khitan (misal: 05:00 WIB, 05:20 WIB, dst.) memiliki batasan kuota default **3 pasien / slot** per tanggal khitan.
+1. **Aturan Kuota Per Slot Dinamis via Sheet REFERENSI**:
+   - Kapasitas per slot waktu tindakan khitan (misal: 05:00 WIB, 05:20 WIB, dst.) dapat disesuaikan per item secara langsung di Sheet `REFERENSI` kolom `JAM KHITAN` menggunakan penulisan suffix angka pada sel yang sama (contoh: `05:00 WIB - 5`, `05:00 WIB (5)`, atau `05:00 WIB|5`).
+   - Slot jam yang tidak menuliskan angka kuota spesifik otomatis menggunakan kuota default global (`settings.kuota_jam` / default 3 pasien/slot).
+   - Parser backend secara cerdas memisahkan nama slot bersih (misal `05:00 WIB`) untuk menjaga kompatibilitas data booking lama dan dropdown publik, serta menghasilkan peta kuota slot dinamis (`jamKhitanQuota`).
    - Pendaftaran berstatus `Pending`, `Confirmed`, dan `Selesai` mengurangi kuota slot, sedangkan pendaftaran berstatus `Batal` / `Dibatalkan` mengembalikan kuota.
-2. **Manajemen Kuota Super Admin**:
+2. **Manajemen Kuota Default Super Admin**:
    - Diatur melalui menu **Admin > Setting > Kuota Jam Khitan** (`kuota_jam` di sheet `SETTINGS`).
-   - Super Admin dapat mengubah batasan kapasitas menjadi 1 s/d 50 pasien per slot secara langsung dari antarmuka web.
+   - Super Admin dapat mengubah batasan kapasitas default menjadi 1 s/d 50 pasien per slot secara langsung dari antarmuka web sebagai fallback bagi slot tanpa kuota khusus di Sheet REFERENSI.
 3. **Peringatan & Proteksi di Form Publik**:
-   - Pilihan jam di dropdown otomatis menampilkan sisa kapasitas (misal: `05:00 WIB (sisa 2 kuota)`).
+   - Pilihan jam di dropdown otomatis menampilkan sisa kapasitas sesuai kuota masing-masing slot (misal: `05:00 WIB (kuota 5)` atau `05:00 WIB (sisa 2 kuota)`).
    - Slot jam yang hampir penuh (sisa 1) menampilkan banner peringatan oranye agar pemesan segera menyelesaikan formulir.
-   - Slot jam yang telah mencapai batas kuota (3/3) berstatus *disabled* dengan label `PENUH (3/3)` sehingga tidak dapat dipilih.
+   - Slot jam yang telah mencapai batas kuota berstatus *disabled* dengan label `PENUH (terpakai/kuota)` sehingga tidak dapat dipilih.
    - Apabila seluruh slot jam pada suatu tanggal telah penuh, muncul peringatan merah bahwa tanggal tersebut sudah tidak menerima pendaftaran baru.
-   - Server Apps Script (`createBooking`) melakukan validasi ulang saat submit. Jika kuota penuh, server mengembalikan kode `QUOTA_PENUH` dan klien menampilkan modal peringatan ramah.
+   - Server Apps Script (`createBooking`) melakukan validasi ulang saat submit berdasarkan kuota slot individual. Jika kuota penuh, server mengembalikan kode `QUOTA_PENUH` dan klien menampilkan modal peringatan ramah.

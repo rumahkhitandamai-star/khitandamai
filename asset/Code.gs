@@ -3432,12 +3432,16 @@ function getReferensiSheet() {
 
 /**
  * Membaca opsi referensi untuk form booking publik
+ * Mendukung penulisan kuota spesifik per slot di Sheet REFERENSI kolom JAM KHITAN:
+ * Contoh: "05:00 WIB - 5", "05:00 WIB (5)", atau "05:00 WIB|5"
+ * Slot tanpa angka kuota otomatis menggunakan kuota default global.
  */
 function readReferensiOptions() {
   const sheet = getReferensiSheet();
   const lastRow = sheet.getLastRow();
   const result = {
     jamKhitan: [],
+    jamKhitanQuota: {},
     metodeKhitan: [],
     ukuranCelana: [],
     obat: [],
@@ -3452,14 +3456,33 @@ function readReferensiOptions() {
 
   for (let i = 0; i < values.length; i++) {
     const row = values[i];
-    const jam = String(row[0] || "").replace(/\u00A0/g, " ").trim();
+    const rawJam = String(row[0] || "").replace(/\u00A0/g, " ").trim();
     const metode = String(row[1] || "").replace(/\u00A0/g, " ").trim();
     const ukuran = String(row[2] || "").replace(/\u00A0/g, " ").trim();
     const obat = String(row[3] || "").replace(/\u00A0/g, " ").trim();
     const pekerjaan = String(row[4] || "").replace(/\u00A0/g, " ").trim();
     const hubungan = String(row[5] || "").replace(/\u00A0/g, " ").trim();
 
-    if (jam && result.jamKhitan.indexOf(jam) === -1) result.jamKhitan.push(jam);
+    if (rawJam) {
+      let cleanJam = rawJam;
+      let slotQuota = null;
+      const parenMatch = cleanJam.match(/\s*\(\s*(\d{1,2})\s*\)$/);
+      const sepMatch = !parenMatch ? cleanJam.match(/\s*[-–—|]\s*(\d{1,2})\s*$/) : null;
+      const quotaMatch = parenMatch || sepMatch;
+
+      if (quotaMatch) {
+        slotQuota = parseInt(quotaMatch[1], 10);
+        cleanJam = cleanJam.substring(0, quotaMatch.index).trim();
+      }
+
+      if (cleanJam && result.jamKhitan.indexOf(cleanJam) === -1) {
+        result.jamKhitan.push(cleanJam);
+        if (slotQuota !== null && !isNaN(slotQuota) && slotQuota > 0) {
+          result.jamKhitanQuota[cleanJam] = slotQuota;
+        }
+      }
+    }
+
     if (metode && result.metodeKhitan.indexOf(metode) === -1) result.metodeKhitan.push(metode);
     if (ukuran && result.ukuranCelana.indexOf(ukuran) === -1) result.ukuranCelana.push(ukuran);
     if (obat && result.obat.indexOf(obat) === -1) result.obat.push(obat);
@@ -4017,18 +4040,22 @@ function readBookingsFromSheet(sheet, forceRefresh) {
 function getKuotaJamSummary_(targetDate) {
   const normDate = normalizeYmd_(targetDate);
   const settings = readSettings();
-  const kuotaPerSlot = (settings && typeof settings.kuota_jam === "number") ? settings.kuota_jam : DEFAULT_KUOTA_JAM;
+  const defaultKuota = (settings && typeof settings.kuota_jam === "number") ? settings.kuota_jam : DEFAULT_KUOTA_JAM;
 
   const ref = readReferensiOptions();
   const allSlots = (ref && Array.isArray(ref.jamKhitan)) ? ref.jamKhitan : [];
+  const refQuotas = (ref && ref.jamKhitanQuota) || {};
 
   const slotsMap = {};
   for (let s = 0; s < allSlots.length; s++) {
     const slotName = allSlots[s];
+    const slotQuota = (typeof refQuotas[slotName] === "number" && refQuotas[slotName] > 0)
+      ? refQuotas[slotName]
+      : defaultKuota;
     slotsMap[slotName] = {
       terpakai: 0,
-      kuota: kuotaPerSlot,
-      sisa: kuotaPerSlot,
+      kuota: slotQuota,
+      sisa: slotQuota,
       penuh: false
     };
   }
@@ -4036,7 +4063,7 @@ function getKuotaJamSummary_(targetDate) {
   if (!normDate) {
     return {
       tanggal: "",
-      kuotaPerSlot: kuotaPerSlot,
+      kuotaPerSlot: defaultKuota,
       slots: slotsMap,
       totalSlots: allSlots.length,
       semuaPenuh: false
@@ -4056,10 +4083,13 @@ function getKuotaJamSummary_(targetDate) {
     if (!bJam) continue;
 
     if (!slotsMap[bJam]) {
+      const slotQuota = (typeof refQuotas[bJam] === "number" && refQuotas[bJam] > 0)
+        ? refQuotas[bJam]
+        : defaultKuota;
       slotsMap[bJam] = {
         terpakai: 0,
-        kuota: kuotaPerSlot,
-        sisa: kuotaPerSlot,
+        kuota: slotQuota,
+        sisa: slotQuota,
         penuh: false
       };
     }
@@ -4081,7 +4111,7 @@ function getKuotaJamSummary_(targetDate) {
 
   return {
     tanggal: normDate,
-    kuotaPerSlot: kuotaPerSlot,
+    kuotaPerSlot: defaultKuota,
     slots: slotsMap,
     totalSlots: total,
     semuaPenuh: semuaPenuh
@@ -5062,16 +5092,19 @@ function doGet(e) {
 
     if (action === "getReferensi") {
       const cacheKey = "referensi:all";
+      const isForceRefresh = (e && e.parameter && (e.parameter.refresh === "true" || e.parameter.forceRefresh === "true"));
       try {
-        const cache = CacheService.getScriptCache();
-        const cached = cache.get(cacheKey);
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          return createJsonResponse({
-            status: "success",
-            cached: true,
-            data: parsed
-          });
+        if (!isForceRefresh) {
+          const cache = CacheService.getScriptCache();
+          const cached = cache.get(cacheKey);
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            return createJsonResponse({
+              status: "success",
+              cached: true,
+              data: parsed
+            });
+          }
         }
       } catch (cacheErr) {
         Logger.log("CacheService referensi get error: " + cacheErr.toString());
@@ -5083,7 +5116,7 @@ function doGet(e) {
         const cache = CacheService.getScriptCache();
         const jsonStr = JSON.stringify(options);
         if (jsonStr.length < 100000) {
-          cache.put(cacheKey, jsonStr, 3600); // 1 jam
+          cache.put(cacheKey, jsonStr, 600); // 10 menit agar update kuota cepat tersinkron
         }
       } catch (cachePutErr) {
         Logger.log("CacheService referensi put error: " + cachePutErr.toString());
@@ -6688,13 +6721,15 @@ function doPost(e) {
       if (jamKhitan) {
         const quotaSummary = getKuotaJamSummary_(tanggalKhitan);
         const slotInfo = quotaSummary.slots && quotaSummary.slots[jamKhitan];
-        const kuotaPerSlot = quotaSummary.kuotaPerSlot || DEFAULT_KUOTA_JAM;
+        const kuotaSlot = (slotInfo && typeof slotInfo.kuota === "number")
+          ? slotInfo.kuota
+          : (quotaSummary.kuotaPerSlot || DEFAULT_KUOTA_JAM);
         const currentTerpakai = slotInfo ? slotInfo.terpakai : 0;
-        if (currentTerpakai >= kuotaPerSlot) {
+        if (currentTerpakai >= kuotaSlot) {
           return createJsonResponse({
             status: "error",
             code: "QUOTA_PENUH",
-            message: "Maaf, kuota khitan untuk jam " + jamKhitan + " pada tanggal " + formatIndonesianDateStr_(tanggalKhitan) + " sudah penuh (" + currentTerpakai + "/" + kuotaPerSlot + " pasien). Silakan pilih jam atau tanggal lain."
+            message: "Maaf, kuota khitan untuk jam " + jamKhitan + " pada tanggal " + formatIndonesianDateStr_(tanggalKhitan) + " sudah penuh (" + currentTerpakai + "/" + kuotaSlot + " pasien). Silakan pilih jam atau tanggal lain."
           });
         }
       }

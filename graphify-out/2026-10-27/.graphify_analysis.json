@@ -315,7 +315,7 @@
     "1": 0.08045977011494253,
     "2": 0.08045977011494253,
     "3": 0.09113300492610837,
-    "4": 0.23684210526315788,
+    "4": 0.24210526315789474,
     "5": 0.1,
     "6": 0.1,
     "7": 0.3523809523809524,
@@ -346,7 +346,7 @@
     {
       "id": "asset_code_handletelegramwebhookupdate",
       "label": "handleTelegramWebhookUpdate_()",
-      "degree": 18
+      "degree": 19
     },
     {
       "id": "asset_code_normalizeymd",
