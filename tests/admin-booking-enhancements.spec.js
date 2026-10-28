@@ -13,6 +13,9 @@ test('Verify Admin Booking Enhancements: Status Filter Dropdown, Quick Status Ch
     }
   });
 
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const futureDate = new Date(Date.now() + 86400000 * 2).toISOString().slice(0, 10);
+
   const mockBookings = [
     {
       id: "KD26001",
@@ -23,8 +26,8 @@ test('Verify Admin Booking Enhancements: Status Filter Dropdown, Quick Status Ch
       tempatLahir: "Subang",
       tanggalLahir: "2018-05-12",
       beratBadan: "25",
-      tglKhitan: "2026-10-26",
-      tanggalKhitan: "2026-10-26",
+      tglKhitan: todayStr,
+      tanggalKhitan: todayStr,
       jamKhitan: "05:00 WIB",
       metodeKhitan: "Thermocauter Lem",
       ukuranCelana: "M",
@@ -52,8 +55,8 @@ test('Verify Admin Booking Enhancements: Status Filter Dropdown, Quick Status Ch
       tempatLahir: "Bandung",
       tanggalLahir: "2019-08-20",
       beratBadan: "22",
-      tglKhitan: "2026-10-27",
-      tanggalKhitan: "2026-10-27",
+      tglKhitan: futureDate,
+      tanggalKhitan: futureDate,
       jamKhitan: "05:20 WIB",
       metodeKhitan: "Thermocauter Jahit",
       ukuranCelana: "S",
@@ -97,6 +100,25 @@ test('Verify Admin Booking Enhancements: Status Filter Dropdown, Quick Status Ch
               nama: 'Super Admin',
               role: 'Super Admin',
               token: 'mock-valid-token'
+            }
+          })
+        });
+      }
+
+      if (payload.action === 'syncAdminData' || payload.action === 'syncAll') {
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            status: 'success',
+            data: {
+              bookings: mockBookings,
+              kunjungan: [],
+              users: [],
+              jumatBerkah: [],
+              saran: [],
+              settings: {},
+              referensi: {}
             }
           })
         });

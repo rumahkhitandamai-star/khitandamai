@@ -10,6 +10,7 @@
       "tests_admin_bottom_nav_spec",
       "tests_admin_dark_mode_toggle_spec",
       "tests_admin_hero_card_setting_spec",
+      "tests_admin_kunjungan_auto_delete_booking_spec",
       "tests_admin_kunjungan_enhancements_spec",
       "tests_admin_menu_order_spec",
       "tests_admin_mobile_text_readability_spec",
@@ -80,7 +81,6 @@
       "asset_code_allowed_running_text_fonts",
       "asset_code_authorizedriveaccess",
       "asset_code_authorizeexternalrequests",
-      "asset_code_clearallservercaches",
       "asset_code_default_hero_card",
       "asset_code_default_metode",
       "asset_code_default_program",
@@ -88,27 +88,59 @@
       "asset_code_default_slideshow",
       "asset_code_default_testimoni",
       "asset_code_galeri_headers",
+      "asset_code_getalamatsheet",
       "asset_code_headers",
       "asset_code_jumat_berkah_headers",
       "asset_code_kunjungan_headers",
       "asset_code_migratebookingssheet",
+      "asset_code_readalamatoptions",
+      "asset_code_readandwarmalamatoptions",
       "asset_code_referensi_headers",
-      "asset_code_removechunkedcache",
+      "asset_code_safeputallcache",
       "asset_code_saran_headers",
       "asset_code_server_cache_keys",
       "asset_code_settings_headers",
       "asset_code_telegram_config",
       "asset_code_testsendemail",
-      "asset_code_user_headers"
+      "asset_code_user_headers",
+      "asset_code_warmalamatprovince"
     ],
     "3": [
+      "asset_code_checkloginratelimit",
+      "asset_code_clearallservercaches",
+      "asset_code_clearloginattempts",
+      "asset_code_dopost",
+      "asset_code_dopost_deletebookingrowbyid",
+      "asset_code_generategaleriid",
+      "asset_code_generatesaranid",
+      "asset_code_gettelegramhooksecret",
+      "asset_code_issuesessiontoken",
+      "asset_code_readsettings",
+      "asset_code_recordfailedloginattempt",
+      "asset_code_removechunkedcache",
+      "asset_code_sanitizeherocard",
+      "asset_code_sanitizekuotajam",
+      "asset_code_sanitizemetode",
+      "asset_code_sanitizeprogram",
+      "asset_code_sanitizerunningtext",
+      "asset_code_sanitizeslideshow",
+      "asset_code_sanitizetestimoni",
+      "asset_code_settelegramwebhookurl",
+      "asset_code_trashgalerifile",
+      "asset_code_trashremovedmetodefiles",
+      "asset_code_trashremovedprogramfiles",
+      "asset_code_trashremovedslideshowfiles",
+      "asset_code_trashremovedtestimonifiles",
+      "asset_code_upsertsettingrow"
+    ],
+    "4": [
+      "asset_code_cleanphonenumber",
       "asset_code_computedatasetversion",
       "asset_code_createjsonresponse",
       "asset_code_doget",
       "asset_code_fetchsuratmerokoktemplateblob",
       "asset_code_formatdisplayphone",
       "asset_code_getchunkedcache",
-      "asset_code_getgalerisheet",
       "asset_code_getsaransheet",
       "asset_code_handlesyncadmindata",
       "asset_code_listdatabasebackups",
@@ -126,31 +158,6 @@
       "asset_code_setuphourlyremindertrigger",
       "asset_code_unauthorizedresponse",
       "asset_code_validatesessiontoken"
-    ],
-    "4": [
-      "asset_code_checkloginratelimit",
-      "asset_code_clearloginattempts",
-      "asset_code_dopost",
-      "asset_code_generategaleriid",
-      "asset_code_generatejumatberkahregister",
-      "asset_code_generatekunjunganregister",
-      "asset_code_generatesaranid",
-      "asset_code_getjumatberkahsheet",
-      "asset_code_getkunjungansheet",
-      "asset_code_gettelegramhooksecret",
-      "asset_code_issuesessiontoken",
-      "asset_code_recordfailedloginattempt",
-      "asset_code_sanitizekuotajam",
-      "asset_code_sanitizerunningtext",
-      "asset_code_settelegramwebhookurl",
-      "asset_code_trashgalerifile",
-      "asset_code_trashremovedmetodefiles",
-      "asset_code_trashremovedprogramfiles",
-      "asset_code_trashremovedslideshowfiles",
-      "asset_code_trashremovedtestimonifiles",
-      "asset_code_upsertsettingrow",
-      "asset_code_writejumatberkahrowstosheet",
-      "asset_code_writekunjunganrowstosheet"
     ],
     "5": [
       "asset_code_buildwareminderinlinekeyboard",
@@ -251,20 +258,6 @@
       "ref_playwright"
     ],
     "10": [
-      "asset_code_calculateusiatahun",
-      "asset_code_cleanphonenumber",
-      "asset_code_ensurebookingcolumns",
-      "asset_code_findbookingfortelegram",
-      "asset_code_generateuniquebookingid",
-      "asset_code_getsheet",
-      "asset_code_getupcomingbookingsgroupedbydate",
-      "asset_code_jumatberkahobjecttorow",
-      "asset_code_kunjunganobjecttorow",
-      "asset_code_normalizeymd",
-      "asset_code_sanitizespreadsheetformula",
-      "asset_code_topropercase"
-    ],
-    "11": [
       "asset_code_checkupcomingkhitanreminders",
       "asset_code_executedatabasebackup",
       "asset_code_mayberunmonthlybackup",
@@ -278,7 +271,33 @@
       "prd_9_3_sistem_kuota_jam_khitan_peringatan_kapasitas_pasien",
       "prd_9_panduan_operasional_integrasi"
     ],
+    "11": [
+      "asset_code_calculateusiatahun",
+      "asset_code_ensurebookingcolumns",
+      "asset_code_findbookingfortelegram",
+      "asset_code_generateuniquebookingid",
+      "asset_code_getsheet",
+      "asset_code_getupcomingbookingsgroupedbydate",
+      "asset_code_jumatberkahobjecttorow",
+      "asset_code_kunjunganobjecttorow",
+      "asset_code_normalizeymd",
+      "asset_code_sanitizespreadsheetformula",
+      "asset_code_topropercase"
+    ],
     "12": [
+      "asset_code_generatejumatberkahregister",
+      "asset_code_generatekunjunganregister",
+      "asset_code_getgalerisheet",
+      "asset_code_getjumatberkahsheet",
+      "asset_code_getkunjungansheet",
+      "asset_code_getkuotajamsummary",
+      "asset_code_getreferensisheet",
+      "asset_code_getspreadsheet",
+      "asset_code_readreferensioptions",
+      "asset_code_writejumatberkahrowstosheet",
+      "asset_code_writekunjunganrowstosheet"
+    ],
+    "13": [
       "asset_appsscript",
       "asset_appsscript_dependencies",
       "asset_appsscript_exceptionlogging",
@@ -289,63 +308,43 @@
       "asset_appsscript_webapp_access",
       "asset_appsscript_webapp_executeas"
     ],
-    "13": [
-      "asset_code_getkuotajamsummary",
-      "asset_code_getreferensisheet",
-      "asset_code_readreferensioptions",
-      "asset_code_readsettings",
-      "asset_code_sanitizeherocard",
-      "asset_code_sanitizemetode",
-      "asset_code_sanitizeprogram",
-      "asset_code_sanitizeslideshow",
-      "asset_code_sanitizetestimoni"
-    ],
     "14": [
       "asset_code_authenticateuser",
       "asset_code_getjakartatimestamp",
       "asset_code_getsettingssheet",
-      "asset_code_getspreadsheet",
       "asset_code_getuserssheet",
       "asset_code_handleforgotpassword",
       "asset_code_testsendtelegramalert",
       "asset_code_verifypassword"
-    ],
-    "15": [
-      "asset_code_getalamatsheet",
-      "asset_code_readalamatoptions",
-      "asset_code_readandwarmalamatoptions",
-      "asset_code_safeputallcache",
-      "asset_code_warmalamatprovince"
     ]
   },
   "cohesion": {
-    "0": 0.09390243902439024,
+    "0": 0.09175377468060394,
     "1": 0.09113300492610837,
-    "2": 0.08333333333333333,
-    "3": 0.18478260869565216,
-    "4": 0.1067193675889328,
+    "2": 0.08465608465608465,
+    "3": 0.10153846153846154,
+    "4": 0.18840579710144928,
     "5": 0.24210526315789474,
     "6": 0.1,
     "7": 0.1,
     "8": 0.13333333333333333,
     "9": 0.16666666666666666,
-    "10": 0.24242424242424243,
-    "11": 0.2878787878787879,
-    "12": 0.2222222222222222,
+    "10": 0.2878787878787879,
+    "11": 0.2545454545454545,
+    "12": 0.18181818181818182,
     "13": 0.2222222222222222,
-    "14": 0.2857142857142857,
-    "15": 0.5
+    "14": 0.2857142857142857
   },
   "gods": [
     {
       "id": "asset_code_dopost",
       "label": "doPost()",
-      "degree": 72
+      "degree": 73
     },
     {
       "id": "ref_playwright_test",
       "label": "@playwright/test",
-      "degree": 39
+      "degree": 40
     },
     {
       "id": "asset_code_doget",
@@ -373,13 +372,13 @@
       "degree": 14
     },
     {
-      "id": "asset_code_getspreadsheet",
-      "label": "getSpreadsheet_()",
+      "id": "asset_code_getsheet",
+      "label": "getSheet()",
       "degree": 11
     },
     {
-      "id": "asset_code_sendtelegramremindernotification",
-      "label": "sendTelegramReminderNotification_()",
+      "id": "asset_code_getspreadsheet",
+      "label": "getSpreadsheet_()",
       "degree": 11
     },
     {
@@ -424,7 +423,7 @@
     },
     {
       "source": "Architecture",
-      "target": "doGet()",
+      "target": "doPost()",
       "source_files": [
         "AGENTS.md",
         "asset/Code.gs"
@@ -435,7 +434,7 @@
     },
     {
       "source": "Architecture",
-      "target": "doPost()",
+      "target": "doGet()",
       "source_files": [
         "AGENTS.md",
         "asset/Code.gs"

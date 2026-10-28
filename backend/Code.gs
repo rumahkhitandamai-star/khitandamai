@@ -5802,6 +5802,36 @@ function doPost(e) {
       });
     }
 
+/**
+ * Menghapus satu baris data dari sheet BOOKING berdasarkan ID Booking
+ * Menghapus cache SERVER_CACHE_KEYS.BOOKINGS jika baris berhasil dihapus
+ * @param {string} bookingId
+ * @return {string|null} ID booking yang terhapus atau null jika tidak ditemukan
+ */
+function deleteBookingRowById_(bookingId) {
+  const cleanId = String(bookingId || "").trim().toUpperCase();
+  if (!cleanId) return null;
+
+  const sheet = getSheet();
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return null;
+
+  const idValues = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+  let rowIndexToDelete = -1;
+  for (let i = 0; i < idValues.length; i++) {
+    if (String(idValues[i][0] || "").trim().toUpperCase() === cleanId) {
+      rowIndexToDelete = i + 2;
+      break;
+    }
+  }
+
+  if (rowIndexToDelete < 2) return null;
+
+  sheet.deleteRow(rowIndexToDelete);
+  removeChunkedCache(SERVER_CACHE_KEYS.BOOKINGS);
+  return cleanId;
+}
+
     // 2c. Aksi HAPUS DATA BOOKING (ADMIN)
     if (action === "deleteBooking") {
       const token = payload.token || (payload.data && payload.data.token);
@@ -5819,33 +5849,13 @@ function doPost(e) {
         });
       }
 
-      const sheet = getSheet();
-      const lastRow = sheet.getLastRow();
-      if (lastRow <= 1) {
-        return createJsonResponse({
-          status: "error",
-          message: "Database booking masih kosong."
-        });
-      }
-
-      const idValues = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
-      let rowIndexToDelete = -1;
-      for (let i = 0; i < idValues.length; i++) {
-        if (String(idValues[i][0] || "").trim() === bookingId) {
-          rowIndexToDelete = i + 2;
-          break;
-        }
-      }
-
-      if (rowIndexToDelete < 2) {
+      const deletedId = deleteBookingRowById_(bookingId);
+      if (!deletedId) {
         return createJsonResponse({
           status: "error",
           message: "Kode booking " + bookingId + " tidak ditemukan di database."
         });
       }
-
-      sheet.deleteRow(rowIndexToDelete);
-      removeChunkedCache(SERVER_CACHE_KEYS.BOOKINGS);
 
       return createJsonResponse({
         status: "success",
@@ -7287,11 +7297,25 @@ function doPost(e) {
       writeKunjunganRowsToSheet_(sheet, allRows);
       removeChunkedCache(SERVER_CACHE_KEYS.KUNJUNGAN);
 
+      // Otomatis hapus baris booking sumber jika data berasal dari pendaftaran booking
+      let deletedBookingId = null;
+      const rawBookingId = String(itemData.idBooking || "").trim().toUpperCase();
+      const shouldDeleteBooking = payload.deleteSourceBooking === true || 
+                                  (payload.data && payload.data.deleteSourceBooking === true) || 
+                                  (rawBookingId && rawBookingId !== "-" && rawBookingId !== "MANUAL");
+      if (shouldDeleteBooking && rawBookingId && rawBookingId !== "-" && rawBookingId !== "MANUAL") {
+        deletedBookingId = deleteBookingRowById_(rawBookingId);
+      }
+
+      const successMsg = "Data kunjungan berhasil ditambahkan dengan nomor register " + newRegister +
+        (deletedBookingId ? (" (Data booking " + deletedBookingId + " telah dihapus dari menu Booking)") : "");
+
       return createJsonResponse({
         status: "success",
-        message: "Data kunjungan berhasil ditambahkan dengan nomor register " + newRegister,
+        message: successMsg,
         data: {
-          register: newRegister
+          register: newRegister,
+          deletedBooking: deletedBookingId
         }
       });
     }

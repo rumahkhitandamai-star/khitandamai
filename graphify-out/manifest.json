@@ -13,10 +13,10 @@
     "semantic_hash": "9b5e4d4606c71e30dbf22e199a20c0a5"
   },
   "asset/Code.gs": {
-    "mtime": 1793109825.8079748,
-    "seen": 1793110643.7435653,
-    "ast_hash": "8252c83b090b2f0f22c081eecc5d7cb2",
-    "semantic_hash": "8252c83b090b2f0f22c081eecc5d7cb2",
+    "mtime": 1793190750.825753,
+    "seen": 1793191762.250683,
+    "ast_hash": "817da9e3f837c4f75ae18eaf60e49f73",
+    "semantic_hash": "817da9e3f837c4f75ae18eaf60e49f73",
     "language": "language=.js"
   },
   "asset/appsscript.json": {
@@ -383,16 +383,16 @@
     "semantic_hash": ""
   },
   "tests/admin-booking-enhancements.spec.js": {
-    "mtime": 1793027558.06853,
-    "seen": 1793102290.3077745,
-    "ast_hash": "f2e3ca7da611ae4103fb6eecc8fec73f",
-    "semantic_hash": "f2e3ca7da611ae4103fb6eecc8fec73f"
+    "mtime": 1793190686.9791825,
+    "seen": 1793191762.2522693,
+    "ast_hash": "1b21d5f6b3c12217537fe095d753d25f",
+    "semantic_hash": "1b21d5f6b3c12217537fe095d753d25f"
   },
   "tests/admin-kunjungan-enhancements.spec.js": {
-    "mtime": 1793029297.138743,
-    "seen": 1793102290.309781,
-    "ast_hash": "d7078fa15afd75eccd8c9c17a90e53fb",
-    "semantic_hash": "d7078fa15afd75eccd8c9c17a90e53fb"
+    "mtime": 1793196740.6391594,
+    "seen": 1793197418.9079132,
+    "ast_hash": "e3c774aba50c5071b7eed3bf49635ee2",
+    "semantic_hash": "e3c774aba50c5071b7eed3bf49635ee2"
   },
   "tests/slot-quota-suffix.spec.js": {
     "mtime": 1793107679.0554762,
@@ -405,5 +405,11 @@
     "seen": 1793110643.75841,
     "ast_hash": "6ed21a7845965895c580c4431a950b56",
     "semantic_hash": "6ed21a7845965895c580c4431a950b56"
+  },
+  "tests/admin-kunjungan-auto-delete-booking.spec.js": {
+    "mtime": 1793191122.7337081,
+    "seen": 1793191762.2522693,
+    "ast_hash": "01b02eb4e559bbc13485c3ea93dc6e67",
+    "semantic_hash": "01b02eb4e559bbc13485c3ea93dc6e67"
   }
 }

@@ -2497,6 +2497,9 @@
                     placeholder="Dari booking" 
                     class="w-full text-xs px-2.5 py-1 rounded-xl border border-slate-200 bg-slate-100 text-slate-600 font-mono font-bold cursor-not-allowed select-all uppercase"
                   >
+                  <p v-if="kunjunganModalMode === 'create' && kunjunganForm.idBooking && kunjunganForm.idBooking !== '-'" class="text-[9px] text-teal-700 mt-0.5 font-medium leading-tight">
+                    *Baris data booking ini akan otomatis dihapus dari menu Booking saat kunjungan tersimpan.
+                  </p>
                 </div>
 
                 <!-- Status Pembayaran -->
@@ -2516,8 +2519,10 @@
                 <div>
                   <label class="block font-bold text-slate-700 mb-0.5 text-[10px]">JUMLAH BAYAR (RP)</label>
                   <input 
-                    v-model.trim="kunjunganForm.jumlahBayar" 
-                    type="number" 
+                    :value="formatAngkaRibuan(kunjunganForm.jumlahBayar)" 
+                    @input="onKunjunganNominalInput('jumlahBayar', $event)" 
+                    type="text" 
+                    inputmode="numeric" 
                     placeholder="0" 
                     class="w-full text-xs px-2.5 py-1 rounded-xl border border-teal-300 bg-teal-50/50 focus:outline-none focus:ring-2 focus:ring-tosca-600 focus:border-tosca-600 font-mono font-bold text-teal-900"
                   >
@@ -2530,8 +2535,8 @@
                     <span class="text-[9px] text-slate-400">Otomatis</span>
                   </div>
                   <input 
-                    v-model.trim="kunjunganForm.zakat" 
-                    type="number" 
+                    :value="formatAngkaRibuan(kunjunganForm.zakat)" 
+                    type="text" 
                     readonly 
                     class="w-full text-xs px-2.5 py-1 rounded-xl border border-slate-200 bg-slate-100 text-slate-600 font-mono font-bold cursor-not-allowed select-all"
                   >
@@ -2541,8 +2546,10 @@
                 <div>
                   <label class="block font-bold text-slate-700 mb-0.5 text-[10px]">OPERATOR (RP)</label>
                   <input 
-                    v-model.trim="kunjunganForm.operator" 
-                    type="number" 
+                    :value="formatAngkaRibuan(kunjunganForm.operator)" 
+                    @input="onKunjunganNominalInput('operator', $event)" 
+                    type="text" 
+                    inputmode="numeric" 
                     placeholder="0" 
                     class="w-full text-xs px-2.5 py-1 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-tosca-600 focus:border-tosca-600 font-mono font-medium"
                   >
@@ -2552,8 +2559,10 @@
                 <div>
                   <label class="block font-bold text-slate-700 mb-0.5 text-[10px]">BMHP / OBAT (RP)</label>
                   <input 
-                    v-model.trim="kunjunganForm.bmhpObat" 
-                    type="number" 
+                    :value="formatAngkaRibuan(kunjunganForm.bmhpObat)" 
+                    @input="onKunjunganNominalInput('bmhpObat', $event)" 
+                    type="text" 
+                    inputmode="numeric" 
                     placeholder="0" 
                     class="w-full text-xs px-2.5 py-1 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-tosca-600 focus:border-tosca-600 font-mono font-medium"
                   >
@@ -2563,8 +2572,10 @@
                 <div>
                   <label class="block font-bold text-slate-700 mb-0.5 text-[10px]">LEM (RP)</label>
                   <input 
-                    v-model.trim="kunjunganForm.lem" 
-                    type="number" 
+                    :value="formatAngkaRibuan(kunjunganForm.lem)" 
+                    @input="onKunjunganNominalInput('lem', $event)" 
+                    type="text" 
+                    inputmode="numeric" 
                     placeholder="0" 
                     class="w-full text-xs px-2.5 py-1 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-tosca-600 focus:border-tosca-600 font-mono font-medium"
                   >
@@ -2574,8 +2585,10 @@
                 <div>
                   <label class="block font-bold text-slate-700 mb-0.5 text-[10px]">FEE (RP)</label>
                   <input 
-                    v-model.trim="kunjunganForm.fee" 
-                    type="number" 
+                    :value="formatAngkaRibuan(kunjunganForm.fee)" 
+                    @input="onKunjunganNominalInput('fee', $event)" 
+                    type="text" 
+                    inputmode="numeric" 
                     placeholder="0" 
                     class="w-full text-xs px-2.5 py-1 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-tosca-600 focus:border-tosca-600 font-mono font-medium"
                   >
@@ -2588,8 +2601,8 @@
                     <span class="text-[9px] text-teal-700 font-semibold">Otomatis</span>
                   </div>
                   <input 
-                    v-model.trim="kunjunganForm.total" 
-                    type="number" 
+                    :value="formatAngkaRibuan(kunjunganForm.total)" 
+                    type="text" 
                     readonly 
                     class="w-full text-xs px-2.5 py-1 rounded-xl border border-teal-300 bg-teal-50 font-mono font-extrabold text-tosca-900 cursor-not-allowed select-all"
                   >
@@ -8129,18 +8142,18 @@
                 <div v-else class="space-y-4">
                   <div class="hidden md:block bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
                     <div class="overflow-x-auto overflow-y-auto max-h-[70vh]">
-                      <table :class="kunjunganViewMode === 'compact' ? 'min-w-[1350px]' : 'min-w-[3400px]'" class="text-xs text-left border-collapse transition-all">
+                      <table :class="kunjunganViewMode === 'compact' ? 'min-w-[1435px]' : 'min-w-[3485px]'" class="text-xs text-left border-collapse transition-all">
                         <thead class="sticky top-0 bg-slate-100/95 backdrop-blur-xs text-slate-700 font-bold border-b border-slate-200 z-30">
                           <!-- Baris 1: Header Nama Kolom & Sorting -->
                           <tr>
                             <!-- 1. Aksi (Sticky Left) -->
-                            <th class="sticky left-0 bg-slate-100 z-40 p-2.5 text-center min-w-[125px] w-[125px] border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)] whitespace-nowrap">
+                            <th class="sticky left-0 bg-slate-100 z-40 p-2.5 text-center min-w-[210px] w-[210px] border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)] whitespace-nowrap">
                               AKSI
                             </th>
                             <!-- 2. REGISTER (Sticky Left) -->
                             <th 
                               @click="toggleKunjunganSort('register')"
-                              class="sticky left-[125px] bg-teal-100 text-tosca-900 z-40 p-2.5 min-w-[150px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] whitespace-nowrap cursor-pointer hover:bg-teal-200 transition select-none"
+                              class="sticky left-[210px] bg-teal-100 text-tosca-900 z-40 p-2.5 min-w-[150px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] whitespace-nowrap cursor-pointer hover:bg-teal-200 transition select-none"
                               title="Klik untuk mengubah urutan REGISTER"
                             >
                               <div class="inline-flex items-center gap-1">
@@ -8168,7 +8181,7 @@
                           <!-- Baris 2: Filter di Semua Header Kolom -->
                           <tr class="bg-slate-50 border-t border-slate-200 text-[11px] font-normal">
                             <!-- Filter AKSI (Tombol Reset Filter) -->
-                            <th class="sticky left-0 bg-slate-100 z-40 p-1.5 text-center min-w-[125px] w-[125px] border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)] whitespace-nowrap">
+                            <th class="sticky left-0 bg-slate-100 z-40 p-1.5 text-center min-w-[210px] w-[210px] border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)] whitespace-nowrap">
                               <button 
                                 type="button" 
                                 @click="clearKunjunganColFilters"
@@ -8179,7 +8192,7 @@
                               </button>
                             </th>
                             <!-- Filter REGISTER (Sticky Left) -->
-                            <th class="sticky left-[125px] bg-teal-50 z-40 p-1.5 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] whitespace-nowrap">
+                            <th class="sticky left-[210px] bg-teal-50 z-40 p-1.5 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] whitespace-nowrap">
                               <input 
                                 v-model.trim="kunjunganColFilters.register"
                                 type="text"
@@ -8219,20 +8232,21 @@
                             :key="'kunj-row-' + item.register"
                             :class="[kunjunganRowTone(item), 'transition']"
                           >
-                            <!-- 1. Aksi Kompak (Sticky Left, Hemat Ruang Horizontal) -->
+                            <!-- 1. Aksi (Sticky Left, Semua Tombol Tampil Langsung) -->
                             <td 
-                              :class="[activeKunjunganMenuRegister === item.register ? 'z-50' : 'z-20', kunjunganRowCellTone(item)]" 
-                              class="sticky left-0 py-2.5 px-2 text-center min-w-[125px] w-[125px] whitespace-nowrap border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)]"
+                              :class="['z-20', kunjunganRowCellTone(item)]" 
+                              class="sticky left-0 py-2.5 px-2 text-center min-w-[210px] w-[210px] whitespace-nowrap border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)]"
                             >
                               <div class="inline-flex items-center gap-1">
                                 <!-- 1. Tombol Edit Utama -->
                                 <button 
                                   type="button" 
                                   @click="openKunjunganModal('edit', item)"
-                                  class="btn-press p-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition shadow-2xs"
+                                  class="btn-press p-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition shadow-2xs inline-flex items-center justify-center"
                                   title="Edit Rekam Kunjungan"
                                 >
                                   <v-icon name="pen-to-square" class="text-xs"></v-icon>
+                                  <span class="sr-only">Edit Rekam Kunjungan</span>
                                 </button>
 
                                 <!-- 2. Pintasan WhatsApp (Jika Ada Nomor HP) -->
@@ -8244,88 +8258,61 @@
                                   title="Whatsapp Ucapan"
                                 >
                                   <v-icon name="whatsapp" class="text-xs"></v-icon>
+                                  <span class="sr-only">Whatsapp Ucapan</span>
                                 </button>
 
-                                <!-- 3. Tombol Dropdown Menu Aksi Lainnya -->
-                                <div class="relative inline-block text-left">
-                                  <button 
-                                    type="button" 
-                                    @click.stop="toggleKunjunganActionMenu(item.register)"
-                                    class="btn-press p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg border border-slate-200 transition shadow-2xs font-black text-xs px-2"
-                                    title="Menu Aksi Dokumen & Lainnya"
-                                  >
-                                    •••
-                                  </button>
+                                <!-- 3. Cetak Form Word A4 (4 Hal) -->
+                                <button 
+                                  type="button" 
+                                  @click="openCetakWordKunjungan(item)"
+                                  :disabled="isPrintingKunjungan === item.register"
+                                  class="btn-press p-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition shadow-2xs disabled:opacity-50 inline-flex items-center justify-center"
+                                  title="Cetak Form Word A4 (4 Hal)"
+                                >
+                                  <svg v-if="isPrintingKunjungan === item.register" class="animate-spin h-3 w-3 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                                  <v-icon v-else name="print" class="text-xs"></v-icon>
+                                  <span class="sr-only">Cetak Form Word A4 (4 Hal)</span>
+                                </button>
 
-                                  <!-- Popover Dropdown Menu Kunjungan -->
-                                  <div 
-                                    v-if="activeKunjunganMenuRegister === item.register"
-                                    @click.stop
-                                    class="absolute left-0 mt-1 w-56 bg-white rounded-2xl shadow-xl border border-slate-200 py-1.5 z-50 text-left font-medium text-xs divide-y divide-slate-100"
-                                  >
-                                    <div class="py-1">
-                                      <button 
-                                        type="button" 
-                                        v-if="item.nomorHp" 
-                                        @click="openWaUcapanModal(item); closeKunjunganActionMenu()"
-                                        class="w-full text-left px-3 py-2 hover:bg-emerald-50 hover:text-emerald-800 text-slate-700 flex items-center gap-2.5 transition"
-                                      >
-                                        <v-icon name="whatsapp" class="text-emerald-600 shrink-0"></v-icon>
-                                        <span>Whatsapp Ucapan</span>
-                                      </button>
-                                      <button 
-                                        type="button" 
-                                        @click="openCetakWordKunjungan(item); closeKunjunganActionMenu()"
-                                        :disabled="isPrintingKunjungan === item.register"
-                                        class="w-full text-left px-3 py-2 hover:bg-emerald-50 hover:text-emerald-800 text-slate-700 flex items-center gap-2.5 transition"
-                                      >
-                                        <v-icon name="print" class="text-emerald-600 shrink-0"></v-icon>
-                                        <span>Cetak Form Word A4 (4 Hal)</span>
-                                      </button>
-                                      <button 
-                                        type="button" 
-                                        @click="openCetakSertifikat(item); closeKunjunganActionMenu()"
-                                        :disabled="isPrintingSertifikat === item.register"
-                                        class="w-full text-left px-3 py-2 hover:bg-amber-50 hover:text-amber-800 text-slate-700 flex items-center gap-2.5 transition"
-                                      >
-                                        <v-icon name="scroll" class="text-amber-500 shrink-0"></v-icon>
-                                        <span>Cetak Sertifikat Khitan A4</span>
-                                      </button>
-                                      <button 
-                                        type="button" 
-                                        @click="copyReviewReplyTemplate(item); closeKunjunganActionMenu()"
-                                        class="w-full text-left px-3 py-2 hover:bg-purple-50 hover:text-purple-800 text-slate-700 flex items-center gap-2.5 transition"
-                                      >
-                                        <v-icon name="star" class="text-amber-400 shrink-0"></v-icon>
-                                        <span>Salin Review Google</span>
-                                      </button>
-                                      <button 
-                                        type="button" 
-                                        v-if="item.idBooking && item.idBooking !== '-'"
-                                        @click="openLihatBooking(item); closeKunjunganActionMenu()"
-                                        class="w-full text-left px-3 py-2 hover:bg-indigo-50 hover:text-indigo-800 text-slate-700 flex items-center gap-2.5 transition"
-                                      >
-                                        <v-icon name="file-lines" class="text-indigo-600 shrink-0"></v-icon>
-                                        <span>Lihat Booking Terkait</span>
-                                      </button>
-                                    </div>
-                                    <div class="py-1">
-                                      <button 
-                                        type="button" 
-                                        @click="deleteKunjunganConfirm(item); closeKunjunganActionMenu()"
-                                        class="w-full text-left px-3 py-2 hover:bg-rose-50 text-rose-600 flex items-center gap-2.5 transition font-semibold"
-                                      >
-                                        <v-icon name="trash-can" class="text-rose-500 shrink-0"></v-icon>
-                                        <span>Hapus Data Kunjungan</span>
-                                      </button>
-                                    </div>
-                                  </div>
-                                </div>
+                                <!-- 4. Cetak Sertifikat Khitan A4 -->
+                                <button 
+                                  type="button" 
+                                  @click="openCetakSertifikat(item)"
+                                  :disabled="isPrintingSertifikat === item.register"
+                                  class="btn-press p-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition shadow-2xs disabled:opacity-50 inline-flex items-center justify-center"
+                                  title="Cetak Sertifikat Khitan A4"
+                                >
+                                  <svg v-if="isPrintingSertifikat === item.register" class="animate-spin h-3 w-3 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                                  <v-icon v-else name="scroll" class="text-xs"></v-icon>
+                                  <span class="sr-only">Cetak Sertifikat Khitan A4</span>
+                                </button>
+
+                                <!-- 5. Salin Review Google -->
+                                <button 
+                                  type="button" 
+                                  @click="copyReviewReplyTemplate(item)"
+                                  class="btn-press p-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition shadow-2xs inline-flex items-center justify-center"
+                                  title="Salin Review Google"
+                                >
+                                  <v-icon name="star" class="text-xs"></v-icon>
+                                  <span class="sr-only">Salin Review Google</span>
+                                </button>
+
+                                <!-- 6. Hapus Data Kunjungan -->
+                                <button 
+                                  type="button" 
+                                  @click="deleteKunjunganConfirm(item)"
+                                  class="btn-press p-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition shadow-2xs inline-flex items-center justify-center"
+                                  title="Hapus Data Kunjungan"
+                                >
+                                  <v-icon name="trash-can" class="text-xs"></v-icon>
+                                  <span class="sr-only">Hapus Data Kunjungan</span>
+                                </button>
                               </div>
                             </td>
 
                             <!-- 2. REGISTER (Sticky Left) -->
-                            <td class="sticky left-[125px] bg-teal-50/90 hover:bg-teal-100/90 z-20 p-2 font-mono font-bold text-tosca-900 border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] whitespace-nowrap">
+                            <td class="sticky left-[210px] bg-teal-50/90 hover:bg-teal-100/90 z-20 p-2 font-mono font-bold text-tosca-900 border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] whitespace-nowrap">
                               {{ item.register }}
                             </td>
 
@@ -8388,13 +8375,13 @@
                               </div>
                             </td>
 
-                            <td v-if="isKunjunganColVisible('jumlahBayar')" class="p-2 text-right font-mono text-slate-700">{{ item.jumlahBayar || '0' }}</td>
-                            <td v-if="isKunjunganColVisible('zakat')" class="p-2 text-right font-mono text-slate-500">{{ item.zakat || '0' }}</td>
-                            <td v-if="isKunjunganColVisible('operator')" class="p-2 text-right font-mono text-slate-700">{{ item.operator || '0' }}</td>
-                            <td v-if="isKunjunganColVisible('bmhpObat')" class="p-2 text-right font-mono text-slate-500">{{ item.bmhpObat || '0' }}</td>
-                            <td v-if="isKunjunganColVisible('lem')" class="p-2 text-right font-mono text-slate-500">{{ item.lem || '0' }}</td>
-                            <td v-if="isKunjunganColVisible('fee')" class="p-2 text-right font-mono text-slate-500">{{ item.fee || '0' }}</td>
-                            <td v-if="isKunjunganColVisible('total')" class="p-2 text-right font-mono font-bold text-tosca-800">{{ item.total || '0' }}</td>
+                            <td v-if="isKunjunganColVisible('jumlahBayar')" class="p-2 text-right font-mono text-slate-700">{{ formatAngkaRibuan(item.jumlahBayar) || '0' }}</td>
+                            <td v-if="isKunjunganColVisible('zakat')" class="p-2 text-right font-mono text-slate-500">{{ formatAngkaRibuan(item.zakat) || '0' }}</td>
+                            <td v-if="isKunjunganColVisible('operator')" class="p-2 text-right font-mono text-slate-700">{{ formatAngkaRibuan(item.operator) || '0' }}</td>
+                            <td v-if="isKunjunganColVisible('bmhpObat')" class="p-2 text-right font-mono text-slate-500">{{ formatAngkaRibuan(item.bmhpObat) || '0' }}</td>
+                            <td v-if="isKunjunganColVisible('lem')" class="p-2 text-right font-mono text-slate-500">{{ formatAngkaRibuan(item.lem) || '0' }}</td>
+                            <td v-if="isKunjunganColVisible('fee')" class="p-2 text-right font-mono text-slate-500">{{ formatAngkaRibuan(item.fee) || '0' }}</td>
+                            <td v-if="isKunjunganColVisible('total')" class="p-2 text-right font-mono font-bold text-tosca-800">{{ formatAngkaRibuan(item.total) || '0' }}</td>
                           </tr>
                         </tbody>
                       </table>
@@ -8469,107 +8456,82 @@
                         </div>
                         <div class="col-span-2">
                           <span class="text-slate-500 block text-xs font-bold uppercase tracking-wider">Total Bayar</span>
-                          <strong class="font-mono font-black text-sm sm:text-base text-tosca-900 mt-0.5 block">Rp {{ item.total || '0' }}</strong>
+                          <strong class="font-mono font-black text-sm sm:text-base text-tosca-900 mt-0.5 block">Rp {{ formatAngkaRibuan(item.total) || '0' }}</strong>
                         </div>
                       </div>
 
-                      <!-- Tombol Aksi Mobile (Dikelompokkan Rapi & Dropdown Aksi Lainnya) -->
-                      <div class="pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap">
-                        <div class="flex items-center gap-2 flex-wrap">
-                          <button 
-                            type="button" 
-                            @click="openKunjunganModal('edit', item)"
-                            class="btn-press inline-flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow-2xs"
-                            title="Edit Rekam Kunjungan"
-                          >
-                            <v-icon name="pen-to-square" class="mr-1"></v-icon> Edit
-                          </button>
-                          <button 
-                            type="button"
-                            v-if="item.nomorHp"
-                            @click="openWaUcapanModal(item)"
-                            class="btn-press inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow-2xs"
-                            title="Whatsapp Ucapan"
-                          >
-                            <v-icon name="whatsapp" class="mr-1"></v-icon> Ucapan
-                          </button>
-                        </div>
+                      <!-- Tombol Aksi Mobile (Seluruh Aksi Tampil Lengkap) -->
+                      <div class="pt-2.5 border-t border-slate-100 flex items-center gap-1.5 flex-wrap">
+                        <!-- 1. Edit -->
+                        <button 
+                          type="button" 
+                          @click="openKunjunganModal('edit', item)"
+                          class="btn-press inline-flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg transition shadow-2xs"
+                          title="Edit Rekam Kunjungan"
+                        >
+                          <v-icon name="pen-to-square" class="text-xs mr-0.5"></v-icon>
+                          <span>Edit</span>
+                        </button>
 
-                        <!-- Tombol Dropdown / Menu Aksi Lainnya Mobile -->
-                        <div class="relative inline-block text-left">
-                          <button 
-                            type="button" 
-                            @click.stop="toggleKunjunganActionMenu('m-' + item.register)"
-                            class="btn-press inline-flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-200 transition shadow-2xs"
-                          >
-                            <span>Aksi Lainnya</span>
-                            <svg class="w-3 h-3 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                          </button>
+                        <!-- 2. Whatsapp Ucapan -->
+                        <button 
+                          type="button"
+                          v-if="item.nomorHp"
+                          @click="openWaUcapanModal(item)"
+                          class="btn-press inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg transition shadow-2xs"
+                          title="Whatsapp Ucapan"
+                        >
+                          <v-icon name="whatsapp" class="text-xs mr-0.5"></v-icon>
+                          <span>Ucapan</span>
+                        </button>
 
-                          <!-- Dropdown Menu Mobile -->
-                          <div 
-                            v-if="activeKunjunganMenuRegister === 'm-' + item.register"
-                            @click.stop
-                            class="absolute right-0 bottom-full mb-1 w-56 bg-white rounded-2xl shadow-xl border border-slate-200 py-1.5 z-50 text-left font-medium text-xs divide-y divide-slate-100"
-                          >
-                            <div class="py-1">
-                              <button 
-                                type="button" 
-                                v-if="item.nomorHp" 
-                                @click="openWaUcapanModal(item); closeKunjunganActionMenu()"
-                                class="w-full text-left px-3 py-2 hover:bg-emerald-50 hover:text-emerald-800 text-slate-700 flex items-center gap-2.5 transition"
-                              >
-                                <v-icon name="whatsapp" class="text-emerald-600 shrink-0"></v-icon>
-                                <span>Whatsapp Ucapan</span>
-                              </button>
-                              <button 
-                                type="button" 
-                                @click="openCetakWordKunjungan(item); closeKunjunganActionMenu()"
-                                :disabled="isPrintingKunjungan === item.register"
-                                class="w-full text-left px-3 py-2 hover:bg-emerald-50 hover:text-emerald-800 text-slate-700 flex items-center gap-2.5 transition"
-                              >
-                                <v-icon name="print" class="text-emerald-600 shrink-0"></v-icon>
-                                <span>Cetak Form Word A4</span>
-                              </button>
-                              <button 
-                                type="button" 
-                                @click="openCetakSertifikat(item); closeKunjunganActionMenu()"
-                                :disabled="isPrintingSertifikat === item.register"
-                                class="w-full text-left px-3 py-2 hover:bg-amber-50 hover:text-amber-800 text-slate-700 flex items-center gap-2.5 transition"
-                              >
-                                <v-icon name="scroll" class="text-amber-500 shrink-0"></v-icon>
-                                <span>Cetak Sertifikat Khitan</span>
-                              </button>
-                              <button 
-                                type="button" 
-                                @click="copyReviewReplyTemplate(item); closeKunjunganActionMenu()"
-                                class="w-full text-left px-3 py-2 hover:bg-purple-50 hover:text-purple-800 text-slate-700 flex items-center gap-2.5 transition"
-                              >
-                                <v-icon name="star" class="text-amber-400 shrink-0"></v-icon>
-                                <span>Salin Template Review</span>
-                              </button>
-                              <button 
-                                type="button" 
-                                v-if="item.idBooking && item.idBooking !== '-'"
-                                @click="openLihatBooking(item); closeKunjunganActionMenu()"
-                                class="w-full text-left px-3 py-2 hover:bg-indigo-50 hover:text-indigo-800 text-slate-700 flex items-center gap-2.5 transition"
-                              >
-                                <v-icon name="file-lines" class="text-indigo-600 shrink-0"></v-icon>
-                                <span>Lihat Booking Terkait</span>
-                              </button>
-                            </div>
-                            <div class="py-1">
-                              <button 
-                                type="button" 
-                                @click="deleteKunjunganConfirm(item); closeKunjunganActionMenu()"
-                                class="w-full text-left px-3 py-2 hover:bg-rose-50 text-rose-600 flex items-center gap-2.5 transition font-semibold"
-                              >
-                                <v-icon name="trash-can" class="text-rose-500 shrink-0"></v-icon>
-                                <span>Hapus Data Kunjungan</span>
-                              </button>
-                            </div>
-                          </div>
-                        </div>
+                        <!-- 3. Cetak Form Word -->
+                        <button 
+                          type="button" 
+                          @click="openCetakWordKunjungan(item)"
+                          :disabled="isPrintingKunjungan === item.register"
+                          class="btn-press inline-flex items-center gap-1 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg transition shadow-2xs disabled:opacity-50"
+                          title="Cetak Form Word A4 (4 Hal)"
+                        >
+                          <svg v-if="isPrintingKunjungan === item.register" class="animate-spin h-3 w-3 mr-0.5 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                          <v-icon v-else name="print" class="text-xs mr-0.5"></v-icon>
+                          <span>Word A4</span>
+                        </button>
+
+                        <!-- 4. Cetak Sertifikat -->
+                        <button 
+                          type="button" 
+                          @click="openCetakSertifikat(item)"
+                          :disabled="isPrintingSertifikat === item.register"
+                          class="btn-press inline-flex items-center gap-1 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg transition shadow-2xs disabled:opacity-50"
+                          title="Cetak Sertifikat Khitan A4"
+                        >
+                          <svg v-if="isPrintingSertifikat === item.register" class="animate-spin h-3 w-3 mr-0.5 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                          <v-icon v-else name="scroll" class="text-xs mr-0.5"></v-icon>
+                          <span>Sertifikat</span>
+                        </button>
+
+                        <!-- 5. Salin Review -->
+                        <button 
+                          type="button" 
+                          @click="copyReviewReplyTemplate(item)"
+                          class="btn-press inline-flex items-center gap-1 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg transition shadow-2xs"
+                          title="Salin Review Google"
+                        >
+                          <v-icon name="star" class="text-xs mr-0.5"></v-icon>
+                          <span>Review</span>
+                        </button>
+
+                        <!-- 6. Hapus Data Kunjungan -->
+                        <button 
+                          type="button" 
+                          @click="deleteKunjunganConfirm(item)"
+                          class="btn-press inline-flex items-center gap-1 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg transition shadow-2xs"
+                          title="Hapus Data Kunjungan"
+                        >
+                          <v-icon name="trash-can" class="text-xs mr-0.5"></v-icon>
+                          <span>Hapus</span>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -20275,6 +20237,43 @@
           }
         );
 
+        const formatAngkaRibuan = (val) => {
+          if (val === null || val === undefined || val === '') return '';
+          const s = String(val).trim();
+          if (!s) return '';
+          const isNegative = s.startsWith('-');
+          const digits = s.replace(/[^\d]/g, '');
+          if (!digits) return isNegative ? '-' : s;
+          const parsed = Math.round(Number(digits) || 0);
+          return (isNegative ? '-' : '') + parsed.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        };
+        const formatNominal = formatAngkaRibuan;
+
+        const onKunjunganNominalInput = (field, e) => {
+          const el = e.target;
+          const oldVal = el.value || '';
+          const selStart = el.selectionStart;
+          const raw = oldVal.replace(/[^\d]/g, '');
+          kunjunganForm[field] = raw;
+          const formatted = formatAngkaRibuan(raw);
+          el.value = formatted;
+
+          if (selStart !== null) {
+            const digitsBefore = oldVal.slice(0, selStart).replace(/[^\d]/g, '').length;
+            let newPos = 0;
+            let countedDigits = 0;
+            while (newPos < formatted.length && countedDigits < digitsBefore) {
+              if (/\d/.test(formatted[newPos])) {
+                countedDigits++;
+              }
+              newPos++;
+            }
+            try {
+              el.setSelectionRange(newPos, newPos);
+            } catch (err) {}
+          }
+        };
+
         const kunjunganAlamatModel = computed({
           get: () => ({
             provinsi: kunjunganForm.provinsi,
@@ -20807,6 +20806,8 @@
           try {
             const isEdit = kunjunganModalMode.value === 'edit';
             const action = isEdit ? 'updateKunjungan' : 'createKunjungan';
+            const rawBookingId = String(kunjunganForm.idBooking || '').trim().toUpperCase();
+            const sourceBookingId = (!isEdit && rawBookingId && rawBookingId !== '-' && rawBookingId !== 'MANUAL') ? rawBookingId : '';
 
             // Kirim nomor HP dengan format +62 (atau 0) agar kompatibel
             const dataToSave = {
@@ -20824,8 +20825,19 @@
               } else {
                 const fakeReg = 'KD' + todayYmdStr.value.slice(2).replace(/-/g, '') + '9999';
                 adminKunjungan.value.unshift({ ...dataToSave, register: fakeReg });
+                if (sourceBookingId) {
+                  adminBookings.value = adminBookings.value.filter(b => String(b.idBooking || b.id || '').trim().toUpperCase() !== sourceBookingId);
+                  saveCacheSnapshot('bookings', adminBookings.value);
+                  if (typeof LOCAL_MOCK_DATABASE !== 'undefined' && Array.isArray(LOCAL_MOCK_DATABASE)) {
+                    const mIdx = LOCAL_MOCK_DATABASE.findIndex(b => String(b.idBooking || b.id || '').trim().toUpperCase() === sourceBookingId);
+                    if (mIdx !== -1) LOCAL_MOCK_DATABASE.splice(mIdx, 1);
+                  }
+                }
               }
-              showToastNotification("Data kunjungan berhasil " + (isEdit ? 'diperbarui' : 'ditambahkan') + " (Mock).");
+              const mockMsg = isEdit 
+                ? "Data kunjungan berhasil diperbarui (Mock)." 
+                : ("Data kunjungan berhasil ditambahkan (Mock)" + (sourceBookingId ? (" · Data booking " + sourceBookingId + " telah dihapus dari menu Booking.") : "."));
+              showToastNotification(mockMsg);
               closeKunjunganModal();
               return;
             }
@@ -20833,6 +20845,7 @@
             const payload = {
               action: action,
               token: adminUser.value.token,
+              deleteSourceBooking: Boolean(sourceBookingId),
               data: dataToSave
             };
 
@@ -20845,6 +20858,16 @@
             const json = await parseApiResponse(res);
 
             if (json.status === 'success') {
+              const deletedBId = (json.data && json.data.deletedBooking) || (sourceBookingId && !isEdit ? sourceBookingId : null);
+              if (deletedBId) {
+                const upperBId = String(deletedBId).trim().toUpperCase();
+                adminBookings.value = adminBookings.value.filter(b => String(b.idBooking || b.id || '').trim().toUpperCase() !== upperBId);
+                saveCacheSnapshot('bookings', adminBookings.value);
+                if (typeof LOCAL_MOCK_DATABASE !== 'undefined' && Array.isArray(LOCAL_MOCK_DATABASE)) {
+                  const mIdx = LOCAL_MOCK_DATABASE.findIndex(b => String(b.idBooking || b.id || '').trim().toUpperCase() === upperBId);
+                  if (mIdx !== -1) LOCAL_MOCK_DATABASE.splice(mIdx, 1);
+                }
+              }
               showToastNotification("" + (json.message || 'Data kunjungan berhasil disimpan.'));
               closeKunjunganModal();
               await fetchAdminKunjungan('manual');
@@ -22951,11 +22974,6 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
           return isNaN(val) ? 0 : Math.round(val);
         };
 
-        const formatAngkaRibuan = (val) => {
-          const parsed = Math.round(Number(val) || 0);
-          return parsed.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-        };
-
         const dashboardMonthFilter = ref(currentRunningMonth);
         const dashboardBulanYearFilter = ref(currentRunningYear);
 
@@ -24055,6 +24073,8 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
           dashboardDetailBulanBerjalan,
           dashboardDetailFooter,
           formatAngkaRibuan,
+          formatNominal,
+          onKunjunganNominalInput,
           dashboardRekapYearFilter,
           dashboardRekapYearOptions,
           dashboardRekapBulanan,

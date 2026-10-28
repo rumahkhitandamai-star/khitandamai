@@ -192,31 +192,20 @@ test('Verify Admin Kunjungan Enhancements: Status Bayar options, Quick Status Ch
   });
   expect(updatedStatus).toBe('Bayar');
 
-  // 4. Verifikasi Tombol "Lihat Booking Terkait"
-  // Pasien KD2610260001 memiliki idBooking "KD26001", buka menu aksi "•••"
-  const actionBtn1 = page.locator('tr:has-text("KD2610260001") button[title="Menu Aksi Dokumen & Lainnya"]');
-  await actionBtn1.click();
-  await page.waitForTimeout(300);
+  // 4. Verifikasi Seluruh Tombol Aksi Tampil Langsung di Kolom Aksi
+  const row1 = page.locator('tr:has-text("KD2610260001")');
+  await expect(row1.locator('button[title="Edit Rekam Kunjungan"]')).toBeVisible();
+  await expect(row1.locator('button[title="Whatsapp Ucapan"]')).toBeVisible();
+  await expect(row1.locator('button[title="Cetak Form Word A4 (4 Hal)"]')).toBeVisible();
+  await expect(row1.locator('button[title="Cetak Sertifikat Khitan A4"]')).toBeVisible();
+  await expect(row1.locator('button[title="Salin Review Google"]')).toBeVisible();
+  await expect(row1.locator('button[title="Hapus Data Kunjungan"]')).toBeVisible();
 
-  const menuLihatBooking1 = page.locator('button:has-text("Lihat Booking Terkait")');
-  await expect(menuLihatBooking1).toBeVisible();
+  // Tombol "Lihat Booking Terkait" telah dihapus dari kolom aksi Kunjungan
+  await expect(row1.locator('button[title="Lihat Booking Terkait"]')).toHaveCount(0);
 
-  // Tutup menu
-  await actionBtn1.click();
-  await page.waitForTimeout(200);
-
-  // Pasien KD2610250002 memiliki idBooking "-", buka menu aksi "•••"
-  const actionBtn2 = page.locator('tr:has-text("KD2610250002") button[title="Menu Aksi Dokumen & Lainnya"]');
-  await actionBtn2.click();
-  await page.waitForTimeout(300);
-
-  // Menu "Lihat Booking Terkait" TIDAK boleh muncul untuk pasien walk-in tanpa idBooking
-  const menuLihatBooking2Count = await page.locator('button:has-text("Lihat Booking Terkait")').count();
-  expect(menuLihatBooking2Count).toBe(0);
-
-  // Tutup menu
-  await actionBtn2.click();
-  await page.waitForTimeout(200);
+  const row2 = page.locator('tr:has-text("KD2610250002")');
+  await expect(row2.locator('button[title="Lihat Booking Terkait"]')).toHaveCount(0);
 
   // 5. Verifikasi Opsi "Belum" dan Watcher Free di Modal Formulir Kunjungan
   const btnTambah = page.locator('button:has-text("Tambah Kunjungan")').first();
@@ -254,6 +243,15 @@ test('Verify Admin Kunjungan Enhancements: Status Bayar options, Quick Status Ch
   expect(formValues.statusBayar).toBe('Free');
   expect(formValues.jumlahBayar).toBe('0');
   expect(formValues.zakat).toBe('0');
+
+  // Uji formatting ribuan pada input nominal (misal BMHP diisi 50000 tampil 50.000)
+  const inputBmhp = page.locator('div:has(> label:has-text("BMHP / OBAT (RP)")) input');
+  await inputBmhp.fill('50000');
+  await page.waitForTimeout(200);
+  const bmhpDisplayVal = await inputBmhp.inputValue();
+  expect(bmhpDisplayVal).toBe('50.000');
+  const bmhpModelVal = await page.evaluate(() => window.__kdKunjunganForm.bmhpObat);
+  expect(bmhpModelVal).toBe('50000');
 
   // Tutup modal
   const btnKembali = page.locator('button[title="Kembali ke Daftar Kunjungan"]');
