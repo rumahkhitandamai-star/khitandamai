@@ -47,40 +47,6 @@
       "tests_whatsapp_fab_spec"
     ],
     "1": [
-      "asset_code",
-      "asset_code_alamat_headers",
-      "asset_code_allowed_running_text_fonts",
-      "asset_code_authorizedriveaccess",
-      "asset_code_authorizeexternalrequests",
-      "asset_code_default_hero_card",
-      "asset_code_default_metode",
-      "asset_code_default_program",
-      "asset_code_default_running_text",
-      "asset_code_default_slideshow",
-      "asset_code_default_testimoni",
-      "asset_code_formatbackupsizetext",
-      "asset_code_galeri_headers",
-      "asset_code_getalamatsheet",
-      "asset_code_headers",
-      "asset_code_history_headers",
-      "asset_code_jumat_berkah_headers",
-      "asset_code_kunjungan_headers",
-      "asset_code_migratebookingssheet",
-      "asset_code_parsedatequery",
-      "asset_code_pruneexpiredreminderproperties",
-      "asset_code_readalamatoptions",
-      "asset_code_readandwarmalamatoptions",
-      "asset_code_referensi_headers",
-      "asset_code_safeputallcache",
-      "asset_code_saran_headers",
-      "asset_code_server_cache_keys",
-      "asset_code_settings_headers",
-      "asset_code_telegram_config",
-      "asset_code_testsendemail",
-      "asset_code_user_headers",
-      "asset_code_warmalamatprovince"
-    ],
-    "2": [
       "agents",
       "agents_agents_md",
       "agents_api_network_quirks_google_apps_script",
@@ -111,15 +77,15 @@
       "scripts_upload_docs_to_drive_saveclaspcredentials",
       "scripts_upload_docs_to_drive_updatefilecontent"
     ],
-    "3": [
+    "2": [
       "asset_code_answertelegramcallbackquery",
+      "asset_code_buildbookingactioninlinekeyboard",
       "asset_code_buildwareminderinlinekeyboard",
       "asset_code_buildwaremindertext",
       "asset_code_buildwasambutantext",
-      "asset_code_checkandsendupcomingreminders",
       "asset_code_cleanphoneforwa",
       "asset_code_cleanphonenumber",
-      "asset_code_ensurebookingcolumns",
+      "asset_code_ensuretelegramwebhookregistered",
       "asset_code_escapetelegramhtml",
       "asset_code_findbookingfortelegram",
       "asset_code_formatbookingdetailtelegram",
@@ -127,63 +93,69 @@
       "asset_code_formatjamdisplay",
       "asset_code_formatstatusbadgetelegram",
       "asset_code_formatupcomingschedulemessage",
-      "asset_code_generateuniquebookingid",
-      "asset_code_getsheet",
       "asset_code_gettelegramconfig",
-      "asset_code_getupcomingbookingsgroupedbydate",
+      "asset_code_gettelegramhooksecret",
       "asset_code_handletelegramwebhookupdate",
       "asset_code_istelegramadmin",
       "asset_code_notifypatienttelegram",
+      "asset_code_parsedatequery",
       "asset_code_resolvesapaanwa",
       "asset_code_sendtelegrambackupnotification",
       "asset_code_sendtelegrambookingnotification",
       "asset_code_sendtelegrammessage",
       "asset_code_sendtelegramremindernotification",
+      "asset_code_settelegramwebhookurl",
       "asset_code_updatebookingstatusfromtelegram"
     ],
-    "4": [
-      "asset_code_computedatasetversion",
-      "asset_code_createjsonresponse",
-      "asset_code_doget",
-      "asset_code_fetchsuratmerokoktemplateblob",
-      "asset_code_formatdisplayphone",
-      "asset_code_getchunkedcache",
-      "asset_code_getsaransheet",
-      "asset_code_getstoreddatasetversions",
-      "asset_code_getuserrole",
-      "asset_code_handleforgotpassword",
-      "asset_code_handlesyncadmindata",
-      "asset_code_listdatabasebackups",
-      "asset_code_maskphonenumber",
-      "asset_code_putchunkedcache",
-      "asset_code_readbookingsfromsheet",
-      "asset_code_readgalerifromsheet",
-      "asset_code_readjumatberkahfromsheet",
-      "asset_code_readkunjunganfromsheet",
-      "asset_code_readsaranfromsheet",
-      "asset_code_readusersfromsheet",
-      "asset_code_recordcachetelemetry",
-      "asset_code_resetcachetelemetry",
-      "asset_code_rowtojumatberkahobject",
-      "asset_code_setuphourlyremindertrigger",
-      "asset_code_unauthorizedresponse",
-      "asset_code_updatedatasetversionmeta",
-      "asset_code_validatesessiontoken"
+    "3": [
+      "asset_code",
+      "asset_code_alamat_headers",
+      "asset_code_allowed_running_text_fonts",
+      "asset_code_authorizedriveaccess",
+      "asset_code_authorizeexternalrequests",
+      "asset_code_clearallservercaches",
+      "asset_code_default_hero_card",
+      "asset_code_default_metode",
+      "asset_code_default_program",
+      "asset_code_default_running_text",
+      "asset_code_default_slideshow",
+      "asset_code_default_testimoni",
+      "asset_code_formatbackupsizetext",
+      "asset_code_galeri_headers",
+      "asset_code_headers",
+      "asset_code_history_headers",
+      "asset_code_jumat_berkah_headers",
+      "asset_code_kunjungan_headers",
+      "asset_code_migratebookingssheet",
+      "asset_code_referensi_headers",
+      "asset_code_removechunkedcache",
+      "asset_code_saran_headers",
+      "asset_code_server_cache_keys",
+      "asset_code_settings_headers",
+      "asset_code_telegram_config",
+      "asset_code_testsendemail",
+      "asset_code_user_headers"
     ],
-    "5": [
+    "4": [
       "asset_code_checkloginratelimit",
       "asset_code_clearloginattempts",
       "asset_code_dopost",
+      "asset_code_fetchsuratmerokoktemplateblob",
       "asset_code_generategaleriid",
       "asset_code_generatejumatberkahregister",
       "asset_code_generatesaranid",
       "asset_code_getjumatberkahsheet",
-      "asset_code_gettelegramhooksecret",
       "asset_code_issuesessiontoken",
+      "asset_code_listdatabasebackups",
+      "asset_code_readsettings",
       "asset_code_recordfailedloginattempt",
+      "asset_code_sanitizeherocard",
       "asset_code_sanitizekuotajam",
+      "asset_code_sanitizemetode",
+      "asset_code_sanitizeprogram",
       "asset_code_sanitizerunningtext",
-      "asset_code_settelegramwebhookurl",
+      "asset_code_sanitizeslideshow",
+      "asset_code_sanitizetestimoni",
       "asset_code_trashgalerifile",
       "asset_code_trashremovedmetodefiles",
       "asset_code_trashremovedprogramfiles",
@@ -192,7 +164,7 @@
       "asset_code_upsertsettingrow",
       "asset_code_writejumatberkahrowstosheet"
     ],
-    "6": [
+    "5": [
       "asset_prd",
       "asset_prd_1_problem_statements",
       "asset_prd_2_goals_success_metrics",
@@ -214,7 +186,7 @@
       "asset_prd_technical_constraints",
       "asset_prd_ux_design"
     ],
-    "7": [
+    "6": [
       "prd",
       "prd_1_problem_statements",
       "prd_2_goals_success_metrics",
@@ -235,6 +207,26 @@
       "prd_security",
       "prd_technical_constraints",
       "prd_ux_design"
+    ],
+    "7": [
+      "asset_code_checkandsendupcomingreminders",
+      "asset_code_doget",
+      "asset_code_ensurebookingcolumns",
+      "asset_code_formatdisplayphone",
+      "asset_code_generatekunjunganregister",
+      "asset_code_generateuniquebookingid",
+      "asset_code_getkunjungansheet",
+      "asset_code_getkuotajamsummary",
+      "asset_code_getsheet",
+      "asset_code_getupcomingbookingsgroupedbydate",
+      "asset_code_maskphonenumber",
+      "asset_code_normalizeymd",
+      "asset_code_pruneexpiredreminderproperties",
+      "asset_code_readbookingsfromsheet",
+      "asset_code_readkunjunganfromsheet",
+      "asset_code_readreferensioptions",
+      "asset_code_setuphourlyremindertrigger",
+      "asset_code_writekunjunganrowstosheet"
     ],
     "8": [
       "github_workflows_deploy",
@@ -284,6 +276,31 @@
       "ref_playwright"
     ],
     "11": [
+      "asset_code_calculateusiatahun",
+      "asset_code_clearhistorysheet",
+      "asset_code_dopost_deletebookingrowbyid",
+      "asset_code_gethistorysheet",
+      "asset_code_invalidatedataset",
+      "asset_code_jumatberkahobjecttorow",
+      "asset_code_kunjunganobjecttorow",
+      "asset_code_loghistory",
+      "asset_code_readhistoryfromsheet",
+      "asset_code_sanitizespreadsheetformula",
+      "asset_code_topropercase"
+    ],
+    "12": [
+      "asset_code_getchunkedcache",
+      "asset_code_getgalerisheet",
+      "asset_code_getuserrole",
+      "asset_code_putchunkedcache",
+      "asset_code_readgalerifromsheet",
+      "asset_code_readjumatberkahfromsheet",
+      "asset_code_readsaranfromsheet",
+      "asset_code_readusersfromsheet",
+      "asset_code_recordcachetelemetry",
+      "asset_code_rowtojumatberkahobject"
+    ],
+    "13": [
       "asset_appsscript",
       "asset_appsscript_dependencies",
       "asset_appsscript_exceptionlogging",
@@ -294,69 +311,54 @@
       "asset_appsscript_webapp_access",
       "asset_appsscript_webapp_executeas"
     ],
-    "12": [
-      "asset_code_getkuotajamsummary",
-      "asset_code_getreferensisheet",
-      "asset_code_readreferensioptions",
-      "asset_code_readsettings",
-      "asset_code_sanitizeherocard",
-      "asset_code_sanitizemetode",
-      "asset_code_sanitizeprogram",
-      "asset_code_sanitizeslideshow",
-      "asset_code_sanitizetestimoni"
-    ],
-    "13": [
+    "14": [
       "asset_code_authenticateuser",
-      "asset_code_getgalerisheet",
       "asset_code_getjakartatimestamp",
+      "asset_code_getreferensisheet",
+      "asset_code_getsaransheet",
       "asset_code_getsettingssheet",
       "asset_code_getspreadsheet",
       "asset_code_getuserssheet",
       "asset_code_testsendtelegramalert",
       "asset_code_verifypassword"
     ],
-    "14": [
-      "asset_code_clearallservercaches",
-      "asset_code_clearhistorysheet",
-      "asset_code_dopost_deletebookingrowbyid",
-      "asset_code_gethistorysheet",
-      "asset_code_invalidatedataset",
-      "asset_code_loghistory",
-      "asset_code_readhistoryfromsheet",
-      "asset_code_removechunkedcache"
-    ],
     "15": [
-      "asset_code_calculateusiatahun",
-      "asset_code_jumatberkahobjecttorow",
-      "asset_code_kunjunganobjecttorow",
-      "asset_code_normalizeymd",
-      "asset_code_sanitizespreadsheetformula",
-      "asset_code_topropercase"
+      "asset_code_computedatasetversion",
+      "asset_code_createjsonresponse",
+      "asset_code_getstoreddatasetversions",
+      "asset_code_handleforgotpassword",
+      "asset_code_handlesyncadmindata",
+      "asset_code_resetcachetelemetry",
+      "asset_code_unauthorizedresponse",
+      "asset_code_updatedatasetversionmeta",
+      "asset_code_validatesessiontoken"
     ],
     "16": [
-      "asset_code_generatekunjunganregister",
-      "asset_code_getkunjungansheet",
-      "asset_code_writekunjunganrowstosheet"
+      "asset_code_getalamatsheet",
+      "asset_code_readalamatoptions",
+      "asset_code_readandwarmalamatoptions",
+      "asset_code_safeputallcache",
+      "asset_code_warmalamatprovince"
     ]
   },
   "cohesion": {
     "0": 0.08879492600422834,
-    "1": 0.07258064516129033,
-    "2": 0.09113300492610837,
-    "3": 0.17724867724867724,
-    "4": 0.1623931623931624,
-    "5": 0.11578947368421053,
+    "1": 0.09113300492610837,
+    "2": 0.17724867724867724,
+    "3": 0.07692307692307693,
+    "4": 0.09846153846153846,
+    "5": 0.1,
     "6": 0.1,
-    "7": 0.1,
+    "7": 0.21568627450980393,
     "8": 0.13333333333333333,
     "9": 0.2564102564102564,
     "10": 0.16666666666666666,
-    "11": 0.2222222222222222,
-    "12": 0.2222222222222222,
-    "13": 0.2857142857142857,
-    "14": 0.2857142857142857,
-    "15": 0.5333333333333333,
-    "16": 0.6666666666666666
+    "11": 0.21818181818181817,
+    "12": 0.3333333333333333,
+    "13": 0.2222222222222222,
+    "14": 0.25,
+    "15": 0.2777777777777778,
+    "16": 0.5
   },
   "gods": [
     {
@@ -405,8 +407,8 @@
       "degree": 12
     },
     {
-      "id": "asset_code_sendtelegramremindernotification",
-      "label": "sendTelegramReminderNotification_()",
+      "id": "asset_code_gettelegramconfig",
+      "label": "getTelegramConfig_()",
       "degree": 11
     }
   ],
@@ -435,7 +437,7 @@
     },
     {
       "source": "Architecture",
-      "target": "doGet()",
+      "target": "doPost()",
       "source_files": [
         "AGENTS.md",
         "asset/Code.gs"
@@ -446,7 +448,7 @@
     },
     {
       "source": "Architecture",
-      "target": "doPost()",
+      "target": "doGet()",
       "source_files": [
         "AGENTS.md",
         "asset/Code.gs"
@@ -470,8 +472,8 @@
   "questions": [
     {
       "type": "bridge_node",
-      "question": "Why does `doPost()` connect `prd.md` to `upload-docs-to-drive.js`, `Code.gs`, `doPost`, `asset/prd.md`, `handleSyncAdminData`, `appsscript.json`, `jumatBerkahObjectToRow_`, `readAndWarmAlamatOptions`, `normalizeYmd_`, `getKunjunganSheet`?",
-      "why": "High betweenness centrality (0.308) - this node is a cross-community bridge."
+      "question": "Why does `doPost()` connect `asset/prd.md` to `upload-docs-to-drive.js`, `Code.gs`, `doPost`, `doGet`, `handleSyncAdminData`, `checkUpcomingKhitanReminders`, `appsscript.json`, `readAndWarmAlamatOptions`, `normalizeYmd_`?",
+      "why": "High betweenness centrality (0.306) - this node is a cross-community bridge."
     },
     {
       "type": "verify_inferred",
@@ -485,8 +487,8 @@
     },
     {
       "type": "bridge_node",
-      "question": "Why does `Architecture` connect `Code.gs` to `asset/prd.md`, `prd.md`?",
-      "why": "High betweenness centrality (0.179) - this node is a cross-community bridge."
+      "question": "Why does `Architecture` connect `upload-docs-to-drive.js` to `asset/prd.md`, `doGet`?",
+      "why": "High betweenness centrality (0.178) - this node is a cross-community bridge."
     },
     {
       "type": "verify_inferred",
@@ -496,12 +498,12 @@
     {
       "type": "low_cohesion",
       "question": "Should `upload-docs-to-drive.js` be split into smaller, more focused modules?",
-      "why": "Cohesion score 0.07258064516129033 - nodes in this community are weakly interconnected."
+      "why": "Cohesion score 0.09113300492610837 - nodes in this community are weakly interconnected."
     },
     {
       "type": "low_cohesion",
-      "question": "Should `Code.gs` be split into smaller, more focused modules?",
-      "why": "Cohesion score 0.09113300492610837 - nodes in this community are weakly interconnected."
+      "question": "Should `doPost` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.07692307692307693 - nodes in this community are weakly interconnected."
     }
   ]
 }

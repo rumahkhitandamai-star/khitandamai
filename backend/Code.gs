@@ -771,6 +771,11 @@ function checkUpcomingKhitanReminders() {
   } catch (backupErr) {
     Logger.log("Peringatan: Gagal memproses backup bulanan otomatis: " + backupErr.toString());
   }
+  try {
+    ensureTelegramWebhookRegistered_();
+  } catch (whErr) {
+    Logger.log("Peringatan: Gagal menyinkronkan webhook Telegram otomatis: " + whErr.toString());
+  }
   return checkAndSendUpcomingReminders_();
 }
 
@@ -1280,6 +1285,8 @@ function formatBookingDetailTelegram_(b, isAdmin) {
  * Memperbarui status booking langsung dari antarmuka Bot Telegram (Khusus Admin)
  */
 function updateBookingStatusFromTelegram_(bookingId, newStatus) {
+  const lock = LockService.getScriptLock();
+  const hasLock = lock.tryLock(5000);
   try {
     const id = String(bookingId || "").trim().toUpperCase();
     if (!id) return { success: false, message: "⚠️ ID Booking tidak valid." };
@@ -1335,7 +1342,42 @@ function updateBookingStatusFromTelegram_(bookingId, newStatus) {
     return { success: true, message: feedback };
   } catch (err) {
     return { success: false, message: "❌ Gagal memperbarui status: " + escapeTelegramHtml_(err.toString()) };
+  } finally {
+    if (hasLock) {
+      lock.releaseLock();
+    }
   }
+}
+
+/**
+ * Membangun Inline Keyboard untuk aksi cepat Admin pada data booking (WA & ubah status)
+ */
+function buildBookingActionInlineKeyboard_(booking) {
+  if (!booking) return null;
+  const rows = [];
+  if (booking.nomorHp) {
+    const cleanPhone = cleanPhoneForWa_(booking.nomorHp);
+    if (cleanPhone) {
+      const sambutanUrl = "https://api.whatsapp.com/send?phone=" + cleanPhone + "&text=" + encodeURIComponent(buildWaSambutanText_(booking));
+      const reminderUrl = "https://api.whatsapp.com/send?phone=" + cleanPhone + "&text=" + encodeURIComponent(buildWaReminderText_(booking));
+      rows.push([
+        { text: "💬 WA Sambutan", url: sambutanUrl },
+        { text: "🔔 WA Reminder", url: reminderUrl }
+      ]);
+    }
+  }
+  const curStatus = String(booking.status || "").toLowerCase();
+  const actionRow = [];
+  if (curStatus !== "selesai") {
+    actionRow.push({ text: "🏁 Tandai Selesai", callback_data: "cb_selesai:" + booking.idBooking });
+  }
+  if (curStatus !== "terkonfirmasi") {
+    actionRow.push({ text: "✅ Konfirmasi", callback_data: "cb_konfirmasi:" + booking.idBooking });
+  }
+  if (actionRow.length > 0) {
+    rows.push(actionRow);
+  }
+  return rows.length > 0 ? { inline_keyboard: rows } : null;
 }
 
 /**
@@ -1348,12 +1390,43 @@ function handleTelegramWebhookUpdate_(update) {
     const config = getTelegramConfig_();
     const props = PropertiesService.getScriptProperties();
 
+    // Dapatkan sender chat ID untuk rate limiting & otorisasi
+    let senderChatId = "";
+    if (update.callback_query) {
+      const cb = update.callback_query;
+      senderChatId = cb.message && cb.message.chat ? String(cb.message.chat.id) : String(cb.from.id);
+    } else if (update.message) {
+      senderChatId = String(update.message.chat.id);
+    } else if (update.edited_message) {
+      senderChatId = String(update.edited_message.chat.id);
+    }
+
+    if (!senderChatId) return HtmlService.createHtmlOutput("OK");
+
+    // Rate Limiting per Chat ID (maks 25 permintaan per menit)
+    try {
+      const cache = CacheService.getScriptCache();
+      if (cache) {
+        const rlKey = "tg_rl_" + senderChatId;
+        const curReq = parseInt(cache.get(rlKey) || "0", 10);
+        if (curReq > 25) {
+          if (update.callback_query) {
+            answerTelegramCallbackQuery_(update.callback_query.id, "⏳ Terlalu banyak permintaan. Mohon tunggu sejenak.", true);
+          } else {
+            sendTelegramMessage_(senderChatId, "⏳ Terlalu banyak permintaan dalam waktu singkat. Mohon tunggu beberapa saat sebelum mengirim pesan lagi.");
+          }
+          return HtmlService.createHtmlOutput("OK");
+        }
+        cache.put(rlKey, String(curReq + 1), 60);
+      }
+    } catch (rlErr) {}
+
     // 0. Penanganan Callback Query dari tombol Inline Telegram
     if (update.callback_query) {
       const cb = update.callback_query;
       const cbId = cb.id;
       const cbData = String(cb.data || "").trim();
-      const cbChatId = cb.message && cb.message.chat ? String(cb.message.chat.id) : String(cb.from.id);
+      const cbChatId = senderChatId;
       const verifiedPhone = props ? (props.getProperty("tg_auth_" + cbChatId) || "") : "";
       const isAdmin = isTelegramAdmin_(cbChatId, verifiedPhone, config);
 
@@ -1391,7 +1464,8 @@ function handleTelegramWebhookUpdate_(update) {
         answerTelegramCallbackQuery_(cbId, "Mencari " + bId + "...");
         const b = findBookingForTelegram_(bId);
         if (b) {
-          sendTelegramMessage_(cbChatId, formatBookingDetailTelegram_(b, isAdmin));
+          const actionBtn = isAdmin ? buildBookingActionInlineKeyboard_(b) : null;
+          sendTelegramMessage_(cbChatId, formatBookingDetailTelegram_(b, isAdmin), actionBtn);
         } else {
           sendTelegramMessage_(cbChatId, "⚠️ Data ID " + bId + " tidak ditemukan.");
         }
@@ -1407,7 +1481,12 @@ function handleTelegramWebhookUpdate_(update) {
         const targetStatus = isSelesai ? "Selesai" : "Terkonfirmasi";
         answerTelegramCallbackQuery_(cbId, "Mengubah status " + bId + "...");
         const updRes = updateBookingStatusFromTelegram_(bId, targetStatus);
-        sendTelegramMessage_(cbChatId, updRes.message);
+        const detailBtn = {
+          inline_keyboard: [
+            [{ text: "🔍 Lihat Rincian Data", callback_data: "cb_status:" + bId }]
+          ]
+        };
+        sendTelegramMessage_(cbChatId, updRes.message, detailBtn);
         return HtmlService.createHtmlOutput("OK");
       }
 
@@ -1420,21 +1499,7 @@ function handleTelegramWebhookUpdate_(update) {
       return HtmlService.createHtmlOutput("OK");
     }
 
-    const chatId = String(msg.chat.id);
-
-    // Rate Limiting per Chat ID (maks 25 permintaan per menit)
-    try {
-      const cache = CacheService.getScriptCache();
-      if (cache) {
-        const rlKey = "tg_rl_" + chatId;
-        const curReq = parseInt(cache.get(rlKey) || "0", 10);
-        if (curReq > 25) {
-          sendTelegramMessage_(chatId, "⏳ Terlalu banyak permintaan dalam waktu singkat. Mohon tunggu beberapa saat sebelum mengirim pesan lagi.");
-          return HtmlService.createHtmlOutput("OK");
-        }
-        cache.put(rlKey, String(curReq + 1), 60);
-      }
-    } catch (rlErr) {}
+    const chatId = senderChatId;
 
     // 1. Otorisasi Pengguna & Admin
     const cleanAdminPhone = cleanPhoneNumber(config.adminPhone || "081222531978");
@@ -1612,7 +1677,15 @@ function handleTelegramWebhookUpdate_(update) {
       }
 
       welcomeText += "\n📞 <i>Pusat Bantuan WhatsApp: 081222531978</i>";
-      sendTelegramMessage_(chatId, welcomeText, mainKeyboard);
+      const startInlineButtons = isAuthorized ? {
+        inline_keyboard: [
+          [
+            { text: "📅 Jadwal Hari Ini", callback_data: "cb_jadwal_today" },
+            { text: "⚡ Jadwal Besok", callback_data: "cb_jadwal_besok" }
+          ]
+        ]
+      } : null;
+      sendTelegramMessage_(chatId, welcomeText, startInlineButtons || mainKeyboard);
       return HtmlService.createHtmlOutput("OK");
     }
 
@@ -1981,25 +2054,7 @@ function handleTelegramWebhookUpdate_(update) {
       const booking = findBookingForTelegram_(searchQuery);
       if (booking) {
         const detailText = formatBookingDetailTelegram_(booking, isAdmin);
-        let inlineButtons = null;
-
-        // Jika pengirim adalah Admin, sertakan tombol interaktif WhatsApp Sambutan & Reminder
-        if (isAdmin && booking.nomorHp) {
-          const cleanPhone = cleanPhoneForWa_(booking.nomorHp);
-          if (cleanPhone) {
-            const sambutanUrl = "https://api.whatsapp.com/send?phone=" + cleanPhone + "&text=" + encodeURIComponent(buildWaSambutanText_(booking));
-            const reminderUrl = "https://api.whatsapp.com/send?phone=" + cleanPhone + "&text=" + encodeURIComponent(buildWaReminderText_(booking));
-            inlineButtons = {
-              inline_keyboard: [
-                [
-                  { text: "💬 WhatsApp Sambutan", url: sambutanUrl },
-                  { text: "🔔 WhatsApp Reminder", url: reminderUrl }
-                ]
-              ]
-            };
-          }
-        }
-
+        const inlineButtons = isAdmin ? buildBookingActionInlineKeyboard_(booking) : null;
         sendTelegramMessage_(chatId, detailText, inlineButtons || mainKeyboard);
       } else {
         const notFoundText = "⚠️ <b>Data Booking Tidak Ditemukan</b>\n\n" +
@@ -2047,9 +2102,40 @@ function setTelegramWebhookUrl_(customUrl) {
     const res = UrlFetchApp.fetch(endpoint, { muteHttpExceptions: true });
     const code = res.getResponseCode();
     const body = res.getContentText();
+    if (code === 200) {
+      try {
+        const props = PropertiesService.getScriptProperties();
+        if (props) props.setProperty("TG_WEBHOOK_MIGRATED", "true");
+      } catch (pErr) {}
+    }
     return { success: code === 200, code: code, response: body, webhookUrl: targetUrl };
   } catch (e) {
     return { success: false, error: e.toString() };
+  }
+}
+
+/**
+ * Memeriksa dan memastikan Webhook Telegram terdaftar ke URL Apps Script aktif
+ */
+function ensureTelegramWebhookRegistered_() {
+  try {
+    const config = getTelegramConfig_();
+    if (!config.botToken) return;
+    const secret = getTelegramHookSecret_();
+    let expectedUrl = "https://script.google.com/macros/s/AKfycbwauluf8oZX58tJl14StNtwzknkB5jY8jI4Gofk_ssmhgXrBw7V-aNjYtYdPu-6yZs/exec";
+    if (secret && !expectedUrl.includes("hook=")) {
+      expectedUrl += "?hook=" + encodeURIComponent(secret);
+    }
+    const res = UrlFetchApp.fetch("https://api.telegram.org/bot" + config.botToken + "/getWebhookInfo", { muteHttpExceptions: true });
+    if (res.getResponseCode() === 200) {
+      const wInfo = JSON.parse(res.getContentText()).result;
+      if (wInfo && wInfo.url !== expectedUrl) {
+        Logger.log("Penyelarasan Webhook: " + (wInfo.url || "kosong") + " -> " + expectedUrl);
+        setTelegramWebhookUrl_(expectedUrl);
+      }
+    }
+  } catch (e) {
+    Logger.log("ensureTelegramWebhookRegistered_ error: " + e.toString());
   }
 }
 
@@ -6515,10 +6601,19 @@ function doPost(e) {
       if (configuredSecret) {
         const incomingHook = (e && e.parameter && e.parameter.hook) ? e.parameter.hook : "";
         if (incomingHook !== configuredSecret) {
-          return createJsonResponse({
-            status: "error",
-            message: "Akses webhook Telegram tidak diizinkan."
-          });
+          // Jika parameter hook belum dikirim oleh Telegram (URL webhook lama tanpa ?hook=)
+          if (!incomingHook) {
+            try {
+              setTelegramWebhookUrl_();
+            } catch (whErr) {
+              Logger.log("Peringatan auto-set webhook: " + whErr.toString());
+            }
+          } else {
+            return createJsonResponse({
+              status: "error",
+              message: "Akses webhook Telegram tidak diizinkan."
+            });
+          }
         }
       }
       return handleTelegramWebhookUpdate_(payload);
