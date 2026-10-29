@@ -545,6 +545,14 @@ function parseGoogleReviewMessage_(msg, fallbackUrl) {
     const htmlBody = String(msg.getBody() || "");
     const date = msg.getDate() || new Date();
 
+    // Verifikasi awal apakah email ini berkaitan dengan Google Review / Ulasan Bisnis
+    const isGoogleReview = /ulasan|review|bintang|star|rating/i.test(subject) ||
+      /google\s*(?:bisnisku|business|maps)/i.test(subject) ||
+      /ulasan\s*baru|new\s*review|memberi\s*ulasan|left\s*a\s*review/i.test(plainBody);
+    if (!isGoogleReview) {
+      return null;
+    }
+
     let reviewerName = "";
     let rating = 0;
     let comment = "";
@@ -555,7 +563,7 @@ function parseGoogleReviewMessage_(msg, fallbackUrl) {
     if (m && m[1]) {
       reviewerName = m[1].trim();
     } else {
-      m = subject.match(/^(.+?)\s+(?:memberi ulasan|memberikan ulasan|left a review|menulis ulasan)/i);
+      m = subject.match(/^(.+?)\s+(?:memberi ulasan|memberikan ulasan|mengulas|left a review|menulis ulasan)/i);
       if (m && m[1]) {
         reviewerName = m[1].trim();
       }
@@ -563,6 +571,13 @@ function parseGoogleReviewMessage_(msg, fallbackUrl) {
 
     if (!reviewerName) {
       m = plainBody.match(/(?:ulasan baru dari|new review from)\s+([^\n\r]+)/i);
+      if (m && m[1]) {
+        reviewerName = m[1].trim();
+      }
+    }
+
+    if (!reviewerName) {
+      m = plainBody.match(/^([A-Z][a-zA-Z0-9\s\.\'\-]{2,40})\s+(?:memberi ulasan|memberikan ulasan|mengulas|left a review)/m);
       if (m && m[1]) {
         reviewerName = m[1].trim();
       }
@@ -602,7 +617,7 @@ function parseGoogleReviewMessage_(msg, fallbackUrl) {
     }
 
     if (!rating) {
-      const starMatches = plainBody.match(/[★⭐]/g);
+      const starMatches = (plainBody || htmlBody).match(/[★⭐]/g);
       if (starMatches && starMatches.length >= 1 && starMatches.length <= 5) {
         rating = starMatches.length;
       }
@@ -617,9 +632,23 @@ function parseGoogleReviewMessage_(msg, fallbackUrl) {
     if (m && m[1]) {
       comment = m[1].trim();
     } else {
-      m = htmlBody.match(/(?:<blockquote[^>]*>|<div class="[^"]*comment[^"]*"[^>]*>)([\s\S]*?)(?:<\/blockquote>|<\/div>)/i);
+      m = htmlBody.match(/(?:<blockquote[^>]*>|<div class="[^"]*(?:comment|review|snippet)[^"]*"[^>]*>)([\s\S]*?)(?:<\/blockquote>|<\/div>)/i);
       if (m && m[1]) {
         comment = m[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+      }
+    }
+
+    if (!comment) {
+      const plainLines = plainBody.split(/\r?\n/).map(function(l) { return l.trim(); }).filter(Boolean);
+      for (let i = 0; i < plainLines.length; i++) {
+        const line = plainLines[i];
+        if (line.match(/(?:bintang|stars?|★|⭐)/i) && i + 1 < plainLines.length) {
+          const nextLine = plainLines[i + 1];
+          if (!nextLine.match(/(?:balas|tanggapi|lihat ulasan|reply|google)/i) && nextLine.length > 3) {
+            comment = nextLine;
+            break;
+          }
+        }
       }
     }
 
@@ -685,11 +714,19 @@ function checkGoogleReviewsAndNotify_() {
       processedIds = [];
     }
 
-    const query = '(from:(google-my-business-noreply@google.com OR googlemybusiness-noreply@google.com OR googlebusinessprofile-noreply@google.com OR noreply-business@google.com) OR subject:("ulasan baru" OR "new review" OR "memberi ulasan" OR "left a review")) is:unread';
+    // 1. Cari pesan unread terlebih dahulu
+    // 2. Jika unread tidak ditemukan, cari ulasan Google 14 hari terakhir agar ulasan yang sudah terlanjur dibuka di Gmail tetap terdeteksi
+    const queries = [
+      '(from:(google-my-business-noreply@google.com OR googlemybusiness-noreply@google.com OR googlebusinessprofile-noreply@google.com OR noreply-business@google.com) OR subject:("ulasan baru" OR "new review" OR "memberi ulasan" OR "left a review")) is:unread',
+      '("google-my-business" OR "googlebusinessprofile" OR "businessprofile" OR "Google Bisnisku" OR "Google Business Profile" OR "Google Maps" OR subject:"ulasan" OR subject:"review") (ulasan OR review) newer_than:14d'
+    ];
 
     let threads = [];
     try {
-      threads = GmailApp.search(query, 0, 15);
+      threads = GmailApp.search(queries[0], 0, 10);
+      if (!threads || threads.length === 0) {
+        threads = GmailApp.search(queries[1], 0, 10);
+      }
     } catch (searchErr) {
       Logger.log("Peringatan: Gagal mencari email di Gmail: " + searchErr.toString());
       return { success: false, error: searchErr.toString(), count: 0 };
@@ -704,11 +741,11 @@ function checkGoogleReviewsAndNotify_() {
 
       for (let j = 0; j < messages.length; j++) {
         const msg = messages[j];
-        if (!msg.isUnread()) continue;
-
         const msgId = msg.getId();
+
+        // Lewati jika sudah pernah dinotifikasikan ke Telegram
         if (processedIds.indexOf(msgId) !== -1) {
-          msg.markRead();
+          if (msg.isUnread()) msg.markRead();
           continue;
         }
 
@@ -719,14 +756,21 @@ function checkGoogleReviewsAndNotify_() {
             notifiedCount++;
             processedIds.push(msgId);
           }
+        } else {
+          processedIds.push(msgId);
         }
-        msg.markRead();
+
+        if (msg.isUnread()) {
+          msg.markRead();
+        }
       }
-      thread.markRead();
+      if (thread.isUnread()) {
+        thread.markRead();
+      }
     }
 
-    if (processedIds.length > 50) {
-      processedIds = processedIds.slice(-50);
+    if (processedIds.length > 60) {
+      processedIds = processedIds.slice(-60);
     }
     if (props) {
       props.setProperty("KD_PROCESSED_REVIEW_MSG_IDS", JSON.stringify(processedIds));
@@ -2161,17 +2205,37 @@ function handleTelegramWebhookUpdate_(update) {
       if (revRes.locked) {
         sendTelegramMessage_(chatId, "⏳ <i>Pengecekan ulasan sedang berjalan oleh proses lain. Silakan coba sesaat lagi.</i>", mainKeyboard);
       } else if (!revRes.success) {
-        sendTelegramMessage_(chatId, "⚠️ <b>Gagal Memeriksa Google Review:</b>\n" + escapeTelegramHtml_(revRes.error || revRes.message), mainKeyboard);
+        const errMsg = String(revRes.error || revRes.message || "");
+        if (errMsg.indexOf("does not have permission") !== -1 || errMsg.indexOf("Required permissions") !== -1) {
+          const authNotice = "🔐 <b>DIPERLUKAN OTORISASI GMAIL (SEKALI SAJA)</b> 📧\n\n" +
+            "Google mewajibkan izin akses Gmail pada akun pemilik script untuk membaca ulasan baru.\n\n" +
+            "👉 <b>Langkah Cepat (Hanya 10 Detik):</b>\n" +
+            "1. Buka editor: <a href=\"https://script.google.com/d/1kQELrNR8XG8ukJYxJOI74uv3n9SPvw_uveBpesLi-eslPo2b49b6J7_A/edit\">Buka Apps Script Editor</a>\n" +
+            "2. Pada pilihan fungsi di toolbar atas (sebelah tombol Debug), pilih <b>authorizeGmailAccess</b>.\n" +
+            "3. Klik tombol <b>▷ Jalankan</b> (Run).\n" +
+            "4. Klik <b>Tinjau Izin</b> (Review Permissions) -> Pilih Akun Google -> <b>Lanjutan</b> -> <b>Buka Khitan Damai</b> -> <b>Izinkan</b>.\n\n" +
+            "Setelah itu, ketik kembali <code>/cekreview</code> di sini!";
+          const authBtn = {
+            inline_keyboard: [
+              [
+                { text: "🔗 Buka Apps Script untuk Otorisasi", url: "https://script.google.com/d/1kQELrNR8XG8ukJYxJOI74uv3n9SPvw_uveBpesLi-eslPo2b49b6J7_A/edit" }
+              ]
+            ]
+          };
+          sendTelegramMessage_(chatId, authNotice, authBtn);
+        } else {
+          sendTelegramMessage_(chatId, "⚠️ <b>Gagal Memeriksa Google Review:</b>\n" + escapeTelegramHtml_(errMsg), mainKeyboard);
+        }
       } else if (revRes.found > 0) {
         sendTelegramMessage_(chatId, "✅ <b>Pemeriksaan Selesai!</b>\n" + revRes.found + " ulasan baru berhasil ditemukan dan dinotifikasikan.", mainKeyboard);
       } else {
         const lastCheck = (props && props.getProperty("KD_LAST_CHECK_REVIEW_TIME")) || Utilities.formatDate(new Date(), "Asia/Jakarta", "yyyy-MM-dd HH:mm:ss");
         const noReviewMsg = "⭐ <b>PEMERIKSAAN GOOGLE REVIEW</b> 📋\n" +
           "━━━━━━━━━━━━━━━━━━\n" +
-          "ℹ️ Tidak ada email ulasan Google baru yang belum dibaca di Gmail.\n" +
+          "ℹ️ Tidak ditemukan email ulasan Google baru yang belum dinotifikasikan di Gmail (14 hari terakhir).\n" +
           "🕒 Waktu periksa: " + escapeTelegramHtml_(lastCheck) + " WIB\n" +
           "━━━━━━━━━━━━━━━━━━\n" +
-          "💡 <i>Gunakan perintah <code>/tesreview</code> jika Anda ingin menguji coba format notifikasi Telegram.</i>";
+          "💡 <i>Pastikan email notifikasi ulasan dari Google masuk ke akun Gmail pemilik Google Apps Script ini. Gunakan <code>/tesreview</code> untuk mencoba simulasi notifikasi.</i>";
         const reviewBtn = {
           inline_keyboard: [
             [
@@ -9413,6 +9477,28 @@ function authorizeExternalRequests() {
   } catch (err) {
     Logger.log("==================================================");
     Logger.log("GAGAL OTORISASI EXTERNAL REQUEST: " + err.message);
+    Logger.log("==================================================");
+    throw err;
+  }
+}
+
+/**
+ * Jalankan fungsi ini SEKALI dari Apps Script Editor (toolbar Run)
+ * untuk memberikan izin scope Gmail (https://www.googleapis.com/auth/gmail.modify)
+ * pada akun pemilik script agar fitur Google Review Telegram Bot aktif.
+ */
+function authorizeGmailAccess() {
+  try {
+    const unreadCount = GmailApp.getInboxUnreadCount();
+    Logger.log("Akses Gmail OK! Jumlah email belum dibaca di Inbox: " + unreadCount);
+    const successMsg = "SUKSES: Otorisasi Gmail Berhasil! Sekarang /cekreview di Telegram sudah dapat digunakan.";
+    Logger.log("==================================================");
+    Logger.log(successMsg);
+    Logger.log("==================================================");
+    return successMsg;
+  } catch (err) {
+    Logger.log("==================================================");
+    Logger.log("GAGAL OTORISASI GMAIL: " + err.message);
     Logger.log("==================================================");
     throw err;
   }
