@@ -407,9 +407,15 @@
     "semantic_hash": "6ed21a7845965895c580c4431a950b56"
   },
   "tests/admin-kunjungan-auto-delete-booking.spec.js": {
-    "mtime": 1793191122.7337081,
-    "seen": 1793191762.2522693,
-    "ast_hash": "01b02eb4e559bbc13485c3ea93dc6e67",
-    "semantic_hash": "01b02eb4e559bbc13485c3ea93dc6e67"
+    "mtime": 1793231724.897608,
+    "seen": 1793231858.2310483,
+    "ast_hash": "118ab084133655c53495defcfa8a2094",
+    "semantic_hash": "118ab084133655c53495defcfa8a2094"
+  },
+  "tests/admin-kunjungan-view-modes.spec.js": {
+    "mtime": 1793231559.3303454,
+    "seen": 1793231858.2310483,
+    "ast_hash": "2bee02bf72a1f3b9268c58474d5c45d0",
+    "semantic_hash": "2bee02bf72a1f3b9268c58474d5c45d0"
   }
 }

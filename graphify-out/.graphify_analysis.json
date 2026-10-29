@@ -12,6 +12,7 @@
       "tests_admin_hero_card_setting_spec",
       "tests_admin_kunjungan_auto_delete_booking_spec",
       "tests_admin_kunjungan_enhancements_spec",
+      "tests_admin_kunjungan_view_modes_spec",
       "tests_admin_menu_order_spec",
       "tests_admin_mobile_text_readability_spec",
       "tests_admin_ui_ux_enhancements_spec",
@@ -319,7 +320,7 @@
     ]
   },
   "cohesion": {
-    "0": 0.09175377468060394,
+    "0": 0.08970099667774087,
     "1": 0.09113300492610837,
     "2": 0.08465608465608465,
     "3": 0.10153846153846154,
@@ -344,7 +345,7 @@
     {
       "id": "ref_playwright_test",
       "label": "@playwright/test",
-      "degree": 40
+      "degree": 41
     },
     {
       "id": "asset_code_doget",
@@ -397,7 +398,7 @@
       ],
       "confidence": "INFERRED",
       "relation": "references",
-      "why": "inferred connection - not explicitly stated in source; crosses file types (code \u2194 doc); connects across different repos/directories; peripheral node `Commands` unexpectedly reaches hub `main()`"
+      "why": "inferred connection - not explicitly stated in source; crosses file types (code ↔ doc); connects across different repos/directories; peripheral node `Commands` unexpectedly reaches hub `main()`"
     },
     {
       "source": "Commands",
@@ -408,7 +409,7 @@
       ],
       "confidence": "INFERRED",
       "relation": "references",
-      "why": "inferred connection - not explicitly stated in source; crosses file types (code \u2194 doc); connects across different repos/directories; peripheral node `Commands` unexpectedly reaches hub `main()`"
+      "why": "inferred connection - not explicitly stated in source; crosses file types (code ↔ doc); connects across different repos/directories; peripheral node `Commands` unexpectedly reaches hub `main()`"
     },
     {
       "source": "9.1 Panduan Setup Time-Driven Trigger Pengingat Jadwal (< 12 Jam) di Google Apps Script",
@@ -444,8 +445,41 @@
       "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; bridges separate communities"
     }
   ],
-  "tokens": {
-    "input": 0,
-    "output": 0
-  }
+  "questions": [
+    {
+      "type": "bridge_node",
+      "question": "Why does `doPost()` connect `doPost` to `upload-docs-to-drive.js`, `Code.gs`, `asset/prd.md`, `prd.md`, `package.json`, `checkUpcomingKhitanReminders`, `appsscript.json`, `readAndWarmAlamatOptions`?",
+      "why": "High betweenness centrality (0.313) - this node is a cross-community bridge."
+    },
+    {
+      "type": "verify_inferred",
+      "question": "Are the 2 inferred relationships involving `doPost()` (e.g. with `Architecture` and `Architecture`) actually correct?",
+      "why": "`doPost()` has 2 INFERRED edges - model-reasoned connections that need verification."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `@playwright/test` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.08970099667774087 - nodes in this community are weakly interconnected."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `Architecture` connect `upload-docs-to-drive.js` to `doPost`, `asset/prd.md`?",
+      "why": "High betweenness centrality (0.182) - this node is a cross-community bridge."
+    },
+    {
+      "type": "verify_inferred",
+      "question": "Are the 2 inferred relationships involving `doGet()` (e.g. with `Architecture` and `Architecture`) actually correct?",
+      "why": "`doGet()` has 2 INFERRED edges - model-reasoned connections that need verification."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `upload-docs-to-drive.js` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.09113300492610837 - nodes in this community are weakly interconnected."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `Code.gs` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.08465608465608465 - nodes in this community are weakly interconnected."
+    }
+  ]
 }

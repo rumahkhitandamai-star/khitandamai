@@ -2151,15 +2151,25 @@
               </div>
             </div>
 
-            <!-- SEGMENTED TAB NAVIGASI FORMULIR 32 KOLOM (Langkah 1, 2, 3 & Semua) -->
-            <div class="col-span-1 lg:col-span-12 bg-white border border-slate-200/90 rounded-2xl p-2 sm:p-2.5 shadow-2xs">
-              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div class="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200 gap-1 flex-wrap">
+            <!-- SEGMENTED TAB NAVIGASI FORMULIR (1 Halaman Utuh & Tab Cepat) -->
+            <div class="col-span-1 lg:col-span-12 bg-white border border-slate-200/90 rounded-2xl p-1.5 sm:p-2 shadow-2xs">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                <div class="inline-flex rounded-xl bg-slate-100 p-0.5 border border-slate-200 gap-1 flex-wrap">
+                  <button 
+                    type="button" 
+                    @click="kunjunganModalTab = 'all'"
+                    :class="kunjunganModalTab === 'all' ? 'bg-tosca-700 text-white font-extrabold shadow-sm' : 'text-slate-600 hover:text-slate-900 font-semibold'"
+                    class="px-2.5 py-1 rounded-lg text-xs transition flex items-center gap-1 cursor-pointer"
+                    title="Tampilkan seluruh bagian formulir dalam satu halaman utuh"
+                  >
+                    <v-icon name="table-cells" class="text-xs"></v-icon>
+                    <span>Semua Bagian (1 Halaman Utuh)</span>
+                  </button>
                   <button 
                     type="button" 
                     @click="kunjunganModalTab = 'biodata'"
                     :class="kunjunganModalTab === 'biodata' ? 'bg-tosca-700 text-white font-extrabold shadow-sm' : 'text-slate-600 hover:text-slate-900 font-semibold'"
-                    class="px-2.5 sm:px-3 py-1.5 rounded-lg text-xs transition flex items-center gap-1.5 cursor-pointer"
+                    class="px-2.5 py-1 rounded-lg text-xs transition flex items-center gap-1.5 cursor-pointer"
                   >
                     <v-icon name="child"></v-icon>
                     <span>1. Biodata &amp; Alamat</span>
@@ -2168,7 +2178,7 @@
                     type="button" 
                     @click="kunjunganModalTab = 'tindakan'"
                     :class="kunjunganModalTab === 'tindakan' ? 'bg-tosca-700 text-white font-extrabold shadow-sm' : 'text-slate-600 hover:text-slate-900 font-semibold'"
-                    class="px-2.5 sm:px-3 py-1.5 rounded-lg text-xs transition flex items-center gap-1.5 cursor-pointer"
+                    class="px-2.5 py-1 rounded-lg text-xs transition flex items-center gap-1.5 cursor-pointer"
                   >
                     <v-icon name="calendar-days"></v-icon>
                     <span>2. Tindakan Medis</span>
@@ -2177,28 +2187,19 @@
                     type="button" 
                     @click="kunjunganModalTab = 'biaya'"
                     :class="kunjunganModalTab === 'biaya' ? 'bg-tosca-700 text-white font-extrabold shadow-sm' : 'text-slate-600 hover:text-slate-900 font-semibold'"
-                    class="px-2.5 sm:px-3 py-1.5 rounded-lg text-xs transition flex items-center gap-1.5 cursor-pointer"
+                    class="px-2.5 py-1 rounded-lg text-xs transition flex items-center gap-1.5 cursor-pointer"
                   >
                     <v-icon name="money-bill-wave"></v-icon>
                     <span>3. Administrasi &amp; Biaya</span>
                   </button>
-                  <button 
-                    type="button" 
-                    @click="kunjunganModalTab = 'all'"
-                    :class="kunjunganModalTab === 'all' ? 'bg-slate-700 text-white font-extrabold shadow-sm' : 'text-slate-500 hover:text-slate-800 font-semibold'"
-                    class="px-2 sm:px-2.5 py-1.5 rounded-lg text-xs transition flex items-center gap-1 cursor-pointer"
-                    title="Tampilkan seluruh bagian formulir dalam satu halaman"
-                  >
-                    <span>Semua Bagian</span>
-                  </button>
                 </div>
 
                 <!-- Indikator Langkah Aktif -->
-                <div class="text-[11px] font-bold text-tosca-800 bg-teal-50 border border-teal-200 px-2.5 py-1 rounded-lg self-start sm:self-auto">
+                <div class="text-[11px] font-bold text-tosca-800 bg-teal-50 border border-teal-200 px-2.5 py-0.5 rounded-lg self-start sm:self-auto">
                   <span v-if="kunjunganModalTab === 'biodata'">Langkah 1/3: Identitas Anak, Orang Tua &amp; Alamat</span>
                   <span v-else-if="kunjunganModalTab === 'tindakan'">Langkah 2/3: Tanggal, Metode, Obat &amp; Klamp</span>
                   <span v-else-if="kunjunganModalTab === 'biaya'">Langkah 3/3: Status Pembayaran, BMHP &amp; Fee</span>
-                  <span v-else>Menampilkan Seluruh Bagian Formulir</span>
+                  <span v-else>1 Halaman Utuh: Menampilkan Seluruh Formulir (5 Bagian)</span>
                 </div>
               </div>
             </div>
@@ -2206,7 +2207,7 @@
             <!-- BAGIAN 1: IDENTITAS PASIEN -->
             <section 
               v-show="kunjunganModalTab === 'biodata' || kunjunganModalTab === 'all'"
-              class="col-span-1 lg:col-span-6 xl:col-span-4 bg-white border border-slate-200/90 hover:border-teal-300 rounded-2xl p-2.5 sm:p-3 shadow-2xs transition-colors space-y-1.5"
+              class="col-span-1 lg:col-span-4 bg-white border border-slate-200/90 hover:border-teal-300 rounded-2xl p-2.5 sm:p-3 shadow-2xs transition-colors space-y-1.5"
             >
               <div class="flex items-center justify-between border-b border-slate-100 pb-1">
                 <h4 class="font-extrabold text-slate-800 flex items-center gap-1.5 text-xs">
@@ -2282,7 +2283,7 @@
             <!-- BAGIAN 2: DETAIL TINDAKAN KHITAN -->
             <section 
               v-show="kunjunganModalTab === 'tindakan' || kunjunganModalTab === 'all'"
-              :class="kunjunganModalTab === 'tindakan' ? 'col-span-1 lg:col-span-12' : 'col-span-1 lg:col-span-6 xl:col-span-4'"
+              :class="kunjunganModalTab === 'tindakan' ? 'col-span-1 lg:col-span-12' : 'col-span-1 lg:col-span-4'"
               class="bg-white border border-slate-200/90 hover:border-teal-300 rounded-2xl p-2.5 sm:p-3 shadow-2xs transition-colors space-y-1.5"
             >
               <div class="flex items-center justify-between border-b border-slate-100 pb-1">
@@ -2355,7 +2356,8 @@
             <!-- BAGIAN 3: DATA PENANGGUNG JAWAB -->
             <section 
               v-show="kunjunganModalTab === 'biodata' || kunjunganModalTab === 'all'"
-              class="col-span-1 lg:col-span-12 xl:col-span-4 bg-white border border-slate-200/90 hover:border-teal-300 rounded-2xl p-2.5 sm:p-3 shadow-2xs transition-colors space-y-1.5"
+              :class="kunjunganModalTab === 'biodata' ? 'col-span-1 lg:col-span-6 xl:col-span-4' : 'col-span-1 lg:col-span-4'"
+              class="bg-white border border-slate-200/90 hover:border-teal-300 rounded-2xl p-2.5 sm:p-3 shadow-2xs transition-colors space-y-1.5"
             >
               <div class="flex items-center justify-between border-b border-slate-100 pb-1">
                 <h4 class="font-extrabold text-slate-800 flex items-center gap-1.5 text-xs">
@@ -2441,7 +2443,8 @@
             <!-- BAGIAN 4: WILAYAH & ALAMAT LENGKAP (KOLOM LEBAR) -->
             <section 
               v-show="kunjunganModalTab === 'biodata' || kunjunganModalTab === 'all'"
-              class="col-span-1 lg:col-span-12 xl:col-span-6 bg-white border border-slate-200/90 hover:border-teal-300 rounded-2xl p-2.5 sm:p-3 shadow-2xs transition-colors space-y-1.5"
+              :class="kunjunganModalTab === 'biodata' ? 'col-span-1 lg:col-span-6 xl:col-span-12' : 'col-span-1 lg:col-span-6'"
+              class="bg-white border border-slate-200/90 hover:border-teal-300 rounded-2xl p-2.5 sm:p-3 shadow-2xs transition-colors space-y-1.5"
             >
               <div class="flex items-center justify-between border-b border-slate-100 pb-1">
                 <h4 class="font-extrabold text-slate-800 flex items-center gap-1.5 text-xs">
@@ -2477,7 +2480,7 @@
             <!-- BAGIAN 5: ADMINISTRASI, PEMBAYARAN & RINCIAN BIAYA -->
             <section 
               v-show="kunjunganModalTab === 'biaya' || kunjunganModalTab === 'all'"
-              :class="kunjunganModalTab === 'biaya' ? 'col-span-1 lg:col-span-12' : 'col-span-1 lg:col-span-12 xl:col-span-6'"
+              :class="kunjunganModalTab === 'biaya' ? 'col-span-1 lg:col-span-12' : 'col-span-1 lg:col-span-6'"
               class="bg-white border border-slate-200/90 hover:border-teal-300 rounded-2xl p-2.5 sm:p-3 shadow-2xs transition-colors space-y-1.5"
             >
               <div class="flex items-center justify-between border-b border-slate-100 pb-1">
@@ -8141,19 +8144,20 @@
                 <!-- Data Table Kunjungan (Desktop / Tablet) -->
                 <div v-else class="space-y-4">
                   <div class="hidden md:block bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
-                    <div class="overflow-x-auto overflow-y-auto max-h-[70vh]">
-                      <table :class="kunjunganViewMode === 'compact' ? 'min-w-[1435px]' : 'min-w-[3485px]'" class="text-xs text-left border-collapse transition-all">
+                    <!-- MODE 1: Tabel Ringkas (10 Kolom) -->
+                    <div v-if="kunjunganViewMode === 'compact'" class="overflow-x-auto overflow-y-auto max-h-[70vh]">
+                      <table class="w-full min-w-[1150px] text-xs text-left border-collapse transition-all">
                         <thead class="sticky top-0 bg-slate-100/95 backdrop-blur-xs text-slate-700 font-bold border-b border-slate-200 z-30">
                           <!-- Baris 1: Header Nama Kolom & Sorting -->
                           <tr>
                             <!-- 1. Aksi (Sticky Left) -->
-                            <th class="sticky left-0 bg-slate-100 z-40 p-2.5 text-center min-w-[210px] w-[210px] border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)] whitespace-nowrap">
+                            <th class="sticky left-0 bg-slate-100 z-40 p-2 text-center min-w-[170px] w-[170px] border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)] whitespace-nowrap">
                               AKSI
                             </th>
                             <!-- 2. REGISTER (Sticky Left) -->
                             <th 
                               @click="toggleKunjunganSort('register')"
-                              class="sticky left-[210px] bg-teal-100 text-tosca-900 z-40 p-2.5 min-w-[150px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] whitespace-nowrap cursor-pointer hover:bg-teal-200 transition select-none"
+                              class="sticky left-[170px] bg-teal-100 text-tosca-900 z-40 p-2 min-w-[130px] w-[130px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] whitespace-nowrap cursor-pointer hover:bg-teal-200 transition select-none"
                               title="Klik untuk mengubah urutan REGISTER"
                             >
                               <div class="inline-flex items-center gap-1">
@@ -8161,12 +8165,12 @@
                                 <span class="text-[10px] text-tosca-700 font-bold">{{ kunjunganSort.key === 'register' ? (kunjunganSort.dir === 'asc' ? '▲' : '▼') : '↕' }}</span>
                               </div>
                             </th>
-                            <!-- Kolom Lainnya (Sesuai Mode Tampilan) -->
+                            <!-- Kolom Lainnya (Mode Ringkas) -->
                             <th 
                               v-for="col in visibleKunjunganColumns.slice(1)" 
                               :key="'th-' + col.key"
                               @click="toggleKunjunganSort(col.key)"
-                              :class="['p-2.5 whitespace-nowrap cursor-pointer hover:bg-slate-200 transition select-none', col.min, col.align || '']"
+                              :class="['p-2 whitespace-nowrap cursor-pointer hover:bg-slate-200 transition select-none', col.min, col.align || '']"
                               :title="'Klik untuk mengubah urutan ' + col.label"
                             >
                               <div class="inline-flex items-center gap-1">
@@ -8178,10 +8182,10 @@
                             </th>
                           </tr>
 
-                          <!-- Baris 2: Filter di Semua Header Kolom -->
+                          <!-- Baris 2: Filter di Semua Header Kolom Ringkas -->
                           <tr class="bg-slate-50 border-t border-slate-200 text-[11px] font-normal">
                             <!-- Filter AKSI (Tombol Reset Filter) -->
-                            <th class="sticky left-0 bg-slate-100 z-40 p-1.5 text-center min-w-[210px] w-[210px] border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)] whitespace-nowrap">
+                            <th class="sticky left-0 bg-slate-100 z-40 p-1.5 text-center min-w-[170px] w-[170px] border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)] whitespace-nowrap">
                               <button 
                                 type="button" 
                                 @click="clearKunjunganColFilters"
@@ -8192,7 +8196,7 @@
                               </button>
                             </th>
                             <!-- Filter REGISTER (Sticky Left) -->
-                            <th class="sticky left-[210px] bg-teal-50 z-40 p-1.5 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] whitespace-nowrap">
+                            <th class="sticky left-[170px] bg-teal-50 z-40 p-1.5 min-w-[130px] w-[130px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] whitespace-nowrap">
                               <input 
                                 v-model.trim="kunjunganColFilters.register"
                                 type="text"
@@ -8200,7 +8204,7 @@
                                 class="w-full text-[11px] px-2 py-1 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-tosca-600 font-mono"
                               >
                             </th>
-                            <!-- Filter Kolom Lainnya (Sesuai Mode Tampilan) -->
+                            <!-- Filter Kolom Lainnya -->
                             <th 
                               v-for="col in visibleKunjunganColumns.slice(1)" 
                               :key="'filter-' + col.key"
@@ -8235,7 +8239,7 @@
                             <!-- 1. Aksi (Sticky Left, Semua Tombol Tampil Langsung) -->
                             <td 
                               :class="['z-20', kunjunganRowCellTone(item)]" 
-                              class="sticky left-0 py-2.5 px-2 text-center min-w-[210px] w-[210px] whitespace-nowrap border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)]"
+                              class="sticky left-0 py-2 px-1.5 text-center min-w-[170px] w-[170px] whitespace-nowrap border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)]"
                             >
                               <div class="inline-flex items-center gap-1">
                                 <!-- 1. Tombol Edit Utama -->
@@ -8251,7 +8255,7 @@
 
                                 <!-- 2. Pintasan WhatsApp (Jika Ada Nomor HP) -->
                                 <button 
-                                  type="button"
+                                  type="button" 
                                   v-if="item.nomorHp"
                                   @click="openWaUcapanModal(item)"
                                   class="btn-press p-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition shadow-2xs inline-flex items-center justify-center"
@@ -8260,6 +8264,7 @@
                                   <v-icon name="whatsapp" class="text-xs"></v-icon>
                                   <span class="sr-only">Whatsapp Ucapan</span>
                                 </button>
+                                <span v-else class="w-6 h-6 inline-block"></span>
 
                                 <!-- 3. Cetak Form Word A4 (4 Hal) -->
                                 <button 
@@ -8312,7 +8317,7 @@
                             </td>
 
                             <!-- 2. REGISTER (Sticky Left) -->
-                            <td class="sticky left-[210px] bg-teal-50/90 hover:bg-teal-100/90 z-20 p-2 font-mono font-bold text-tosca-900 border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] whitespace-nowrap">
+                            <td class="sticky left-[170px] bg-teal-50/90 hover:bg-teal-100/90 z-20 p-2 min-w-[130px] w-[130px] font-mono font-bold text-tosca-900 border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] whitespace-nowrap">
                               {{ item.register }}
                             </td>
 
@@ -8382,6 +8387,340 @@
                             <td v-if="isKunjunganColVisible('lem')" class="p-2 text-right font-mono text-slate-500">{{ formatAngkaRibuan(item.lem) || '0' }}</td>
                             <td v-if="isKunjunganColVisible('fee')" class="p-2 text-right font-mono text-slate-500">{{ formatAngkaRibuan(item.fee) || '0' }}</td>
                             <td v-if="isKunjunganColVisible('total')" class="p-2 text-right font-mono font-bold text-tosca-800">{{ formatAngkaRibuan(item.total) || '0' }}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <!-- MODE 2: Semua Kolom (30 Kolom - Bertumpuk per-Grup Satu Layar Penuh) -->
+                    <div v-else class="overflow-y-auto max-h-[75vh]">
+                      <!-- Bar Kontrol Sorting Cepat Mode Bertumpuk -->
+                      <div class="bg-slate-50 dark:bg-slate-800 px-4 py-2 border-b border-slate-200 dark:border-slate-700 flex flex-wrap items-center justify-between gap-2 text-xs">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                          <span class="text-slate-600 dark:text-slate-300 font-bold flex items-center gap-1 shrink-0">
+                            <v-icon name="arrow-down-wide-short" class="text-xs"></v-icon> Urutkan:
+                          </span>
+                          <button 
+                            v-for="sortOption in [
+                              { key: 'register', label: 'Register' },
+                              { key: 'namaAnanda', label: 'Nama Pasien' },
+                              { key: 'tanggalKhitan', label: 'Tgl Khitan' },
+                              { key: 'total', label: 'Total Bayar' },
+                              { key: 'statusBayar', label: 'Status' }
+                            ]"
+                            :key="'sort-full-' + sortOption.key"
+                            type="button"
+                            @click="toggleKunjunganSort(sortOption.key)"
+                            :class="kunjunganSort.key === sortOption.key ? 'bg-tosca-700 text-white font-bold shadow-2xs' : 'bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-medium border border-slate-200 dark:border-slate-600'"
+                            class="px-2.5 py-1 rounded-lg text-xs transition inline-flex items-center gap-1 cursor-pointer"
+                          >
+                            <span>{{ sortOption.label }}</span>
+                            <span class="text-[10px]">{{ kunjunganSort.key === sortOption.key ? (kunjunganSort.dir === 'asc' ? '▲' : '▼') : '↕' }}</span>
+                          </button>
+                        </div>
+                        <div class="flex items-center gap-2">
+                          <button 
+                            type="button" 
+                            @click="clearKunjunganColFilters"
+                            class="btn-press px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 transition"
+                            title="Reset Semua Filter"
+                          >
+                            <v-icon name="broom" class="mr-1"></v-icon> Reset Filter
+                          </button>
+                        </div>
+                      </div>
+
+                      <!-- Tabel Bertumpuk Semua 30 Kolom (Satu Layar Penuh Tanpa Scroll Horizontal) -->
+                      <table class="w-full text-xs text-left border-collapse">
+                        <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
+                          <tr 
+                            v-for="item in pagedKunjungan" 
+                            :key="'kunj-full-' + item.register"
+                            :class="[kunjunganRowTone(item), 'transition border-b border-slate-200 dark:border-slate-700']"
+                          >
+                            <!-- Panel Kiri: AKSI, REGISTER & STATUS BAYAR -->
+                            <td class="p-3 w-56 sm:w-60 align-top border-r border-slate-200 dark:border-slate-700 shrink-0 bg-slate-50/60 dark:bg-slate-800/60">
+                              <div class="space-y-2.5">
+                                <!-- Register & ID Booking -->
+                                <div>
+                                  <div class="flex items-center justify-between gap-1">
+                                    <span class="font-mono text-xs font-black text-tosca-900 bg-teal-100/90 dark:bg-teal-900/80 dark:text-teal-200 px-2 py-0.5 rounded border border-teal-300 dark:border-teal-700">
+                                      {{ item.register }}
+                                    </span>
+                                    <span v-if="item.idBooking && item.idBooking !== '-'" class="font-mono text-[10px] text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-700 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-600" title="ID Booking">
+                                      {{ item.idBooking }}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <!-- Status Bayar Quick Dropdown -->
+                                <div>
+                                  <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block mb-0.5 uppercase tracking-wider">Status Bayar</label>
+                                  <div class="relative inline-flex items-center w-full">
+                                    <select 
+                                      :value="item.statusBayar || 'Bayar'"
+                                      @change="handleKunjunganStatusBayarChange(item.register, $event.target.value)"
+                                      :disabled="updatingKunjunganStatusRegister === item.register"
+                                      :class="item.statusBayar === 'Bayar' ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/80 dark:text-emerald-200 dark:border-emerald-700' : (item.statusBayar === 'Free' ? 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/80 dark:text-blue-200 dark:border-blue-700' : 'bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-900/80 dark:text-rose-200 dark:border-rose-700')"
+                                      class="w-full text-xs font-bold px-2 py-1 rounded-lg border uppercase tracking-wider shadow-2xs cursor-pointer focus:outline-none focus:ring-2 focus:ring-tosca-600 transition disabled:opacity-50 appearance-none text-center"
+                                      title="Klik untuk mengubah status pembayaran"
+                                    >
+                                      <option value="Bayar" class="bg-white text-emerald-800 font-bold">Bayar</option>
+                                      <option value="Free" class="bg-white text-blue-800 font-bold">Free</option>
+                                      <option value="Belum" class="bg-white text-rose-800 font-bold">Belum</option>
+                                    </select>
+                                    <span v-if="updatingKunjunganStatusRegister === item.register" class="absolute right-2">
+                                      <svg class="animate-spin h-3 w-3 text-tosca-700" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <!-- 6 Tombol Aksi Lengkap -->
+                                <div>
+                                  <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block mb-1 uppercase tracking-wider">Aksi Cepat</label>
+                                  <div class="grid grid-cols-3 gap-1">
+                                    <!-- 1. Edit -->
+                                    <button 
+                                      type="button" 
+                                      @click="openKunjunganModal('edit', item)"
+                                      class="btn-press p-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition shadow-2xs flex items-center justify-center"
+                                      title="Edit Rekam Kunjungan"
+                                    >
+                                      <v-icon name="pen-to-square" class="text-xs"></v-icon>
+                                      <span class="sr-only">Edit Rekam Kunjungan</span>
+                                    </button>
+
+                                    <!-- 2. WhatsApp Ucapan -->
+                                    <button 
+                                      type="button" 
+                                      v-if="item.nomorHp"
+                                      @click="openWaUcapanModal(item)"
+                                      class="btn-press p-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition shadow-2xs flex items-center justify-center"
+                                      title="Whatsapp Ucapan"
+                                    >
+                                      <v-icon name="whatsapp" class="text-xs"></v-icon>
+                                      <span class="sr-only">Whatsapp Ucapan</span>
+                                    </button>
+                                    <div v-else class="p-1.5 bg-slate-100 dark:bg-slate-700 text-slate-300 dark:text-slate-500 rounded-lg flex items-center justify-center cursor-not-allowed" title="Nomor HP kosong">
+                                      <v-icon name="whatsapp" class="text-xs"></v-icon>
+                                    </div>
+
+                                    <!-- 3. Cetak Form Word -->
+                                    <button 
+                                      type="button" 
+                                      @click="openCetakWordKunjungan(item)"
+                                      :disabled="isPrintingKunjungan === item.register"
+                                      class="btn-press p-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition shadow-2xs disabled:opacity-50 flex items-center justify-center"
+                                      title="Cetak Form Word A4 (4 Hal)"
+                                    >
+                                      <svg v-if="isPrintingKunjungan === item.register" class="animate-spin h-3 w-3 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                                      <v-icon v-else name="print" class="text-xs"></v-icon>
+                                      <span class="sr-only">Cetak Form Word A4 (4 Hal)</span>
+                                    </button>
+
+                                    <!-- 4. Cetak Sertifikat -->
+                                    <button 
+                                      type="button" 
+                                      @click="openCetakSertifikat(item)"
+                                      :disabled="isPrintingSertifikat === item.register"
+                                      class="btn-press p-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition shadow-2xs disabled:opacity-50 flex items-center justify-center"
+                                      title="Cetak Sertifikat Khitan A4"
+                                    >
+                                      <svg v-if="isPrintingSertifikat === item.register" class="animate-spin h-3 w-3 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                                      <v-icon v-else name="scroll" class="text-xs"></v-icon>
+                                      <span class="sr-only">Cetak Sertifikat Khitan A4</span>
+                                    </button>
+
+                                    <!-- 5. Salin Review -->
+                                    <button 
+                                      type="button" 
+                                      @click="copyReviewReplyTemplate(item)"
+                                      class="btn-press p-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition shadow-2xs flex items-center justify-center"
+                                      title="Salin Review Google"
+                                    >
+                                      <v-icon name="star" class="text-xs"></v-icon>
+                                      <span class="sr-only">Salin Review Google</span>
+                                    </button>
+
+                                    <!-- 6. Hapus Data -->
+                                    <button 
+                                      type="button" 
+                                      @click="deleteKunjunganConfirm(item)"
+                                      class="btn-press p-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition shadow-2xs flex items-center justify-center"
+                                      title="Hapus Data Kunjungan"
+                                    >
+                                      <v-icon name="trash-can" class="text-xs"></v-icon>
+                                      <span class="sr-only">Hapus Data Kunjungan</span>
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+
+                            <!-- Panel Kanan: Rincian 29 Kolom Tergrup Rapi (1 Halaman Penuh, Terbaca Jelas) -->
+                            <td class="p-3 align-top">
+                              <div class="space-y-2">
+                                <!-- Baris Grup 1 & 2: Pasien & Tindakan Medis -->
+                                <div class="grid grid-cols-1 xl:grid-cols-2 gap-2">
+                                  <!-- Grup 1: Pasien (6 kolom) -->
+                                  <div class="bg-white/90 dark:bg-slate-800/90 rounded-xl p-2.5 border border-slate-200/90 dark:border-slate-700/80 shadow-2xs space-y-1.5">
+                                    <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-1">
+                                      <span class="text-[10px] font-extrabold uppercase tracking-wider text-teal-800 dark:text-teal-300 flex items-center gap-1">
+                                        <v-icon name="child" class="text-xs text-teal-600 dark:text-teal-400"></v-icon> Identitas Pasien
+                                      </span>
+                                      <span class="text-[10px] font-mono text-slate-500 dark:text-slate-400">ID: {{ item.idBooking || '-' }}</span>
+                                    </div>
+                                    <div class="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-xs">
+                                      <div>
+                                        <span class="text-slate-600 dark:text-slate-300 font-medium">Nama:</span>
+                                        <strong class="text-slate-900 dark:text-white text-sm ml-1 font-bold">{{ item.namaAnanda }}</strong>
+                                      </div>
+                                      <div>
+                                        <span class="text-slate-600 dark:text-slate-300 font-medium">Tempat/Tgl Lahir:</span>
+                                        <span class="text-slate-800 dark:text-slate-100 font-semibold ml-1">{{ item.tempatLahir || '-' }}, {{ formatIndonesianDate(item.tanggalLahir) }}</span>
+                                      </div>
+                                      <div>
+                                        <span class="text-slate-600 dark:text-slate-300 font-medium">BB:</span>
+                                        <span class="text-slate-800 dark:text-slate-100 font-semibold ml-1">{{ item.beratBadan ? item.beratBadan + ' Kg' : '-' }}</span>
+                                      </div>
+                                      <div>
+                                        <span class="text-slate-600 dark:text-slate-300 font-medium">Ukuran Celana:</span>
+                                        <span class="text-slate-800 dark:text-slate-100 font-semibold ml-1">{{ item.ukuranCelana || '-' }}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <!-- Grup 2: Tindakan & Medis (5 kolom) -->
+                                  <div class="bg-white/90 dark:bg-slate-800/90 rounded-xl p-2.5 border border-slate-200/90 dark:border-slate-700/80 shadow-2xs space-y-1.5">
+                                    <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-1">
+                                      <span class="text-[10px] font-extrabold uppercase tracking-wider text-blue-800 dark:text-blue-300 flex items-center gap-1">
+                                        <v-icon name="kit-medical" class="text-xs text-blue-600 dark:text-blue-400"></v-icon> Tindakan Medis
+                                      </span>
+                                      <span class="text-[11px] font-bold text-tosca-800 dark:text-teal-300 inline-flex items-center gap-1">
+                                        <v-icon name="calendar-days" class="text-xs"></v-icon> {{ formatIndonesianDate(item.tanggalKhitan) }} • {{ item.jamKhitan || '-' }}
+                                      </span>
+                                    </div>
+                                    <div class="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-xs">
+                                      <div>
+                                        <span class="text-slate-600 dark:text-slate-300 font-medium">Metode:</span>
+                                        <strong class="text-slate-900 dark:text-white font-bold ml-1">{{ item.metodeKhitan || '-' }}</strong>
+                                      </div>
+                                      <div>
+                                        <span class="text-slate-600 dark:text-slate-300 font-medium">Obat:</span>
+                                        <span class="text-slate-800 dark:text-slate-100 font-semibold ml-1">{{ item.obat || '-' }}</span>
+                                      </div>
+                                      <div>
+                                        <span class="text-slate-600 dark:text-slate-300 font-medium">Ukuran Klamp:</span>
+                                        <span class="text-slate-800 dark:text-slate-100 font-semibold ml-1">{{ item.ukuranKlamp || '-' }}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <!-- Baris Grup 3 & 4: Penanggung Jawab & Alamat -->
+                                <div class="grid grid-cols-1 xl:grid-cols-2 gap-2">
+                                  <!-- Grup 3: Orang Tua / PJ (5 kolom) -->
+                                  <div class="bg-white/90 dark:bg-slate-800/90 rounded-xl p-2.5 border border-slate-200/90 dark:border-slate-700/80 shadow-2xs space-y-1.5">
+                                    <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-1">
+                                      <span class="text-[10px] font-extrabold uppercase tracking-wider text-purple-800 dark:text-purple-300 flex items-center gap-1">
+                                        <v-icon name="user" class="text-xs text-purple-600 dark:text-purple-400"></v-icon> Orang Tua / Penanggung Jawab
+                                      </span>
+                                      <a v-if="item.nomorHp" href="javascript:void(0)" @click.prevent="openWaUcapanModal(item)" class="text-xs font-mono font-bold text-emerald-700 dark:text-emerald-300 hover:underline inline-flex items-center gap-1 cursor-pointer" title="Klik kirim WhatsApp">
+                                        <v-icon name="whatsapp" class="text-xs text-emerald-600 dark:text-emerald-400"></v-icon>
+                                        <span>{{ item.nomorHp }}</span>
+                                      </a>
+                                      <span v-else class="text-[10px] text-slate-400 font-mono">No HP: -</span>
+                                    </div>
+                                    <div class="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-xs">
+                                      <div>
+                                        <span class="text-slate-600 dark:text-slate-300 font-medium">Nama PJ:</span>
+                                        <strong class="text-slate-800 dark:text-slate-100 font-bold ml-1">{{ item.namaPenanggungJawab || '-' }}</strong>
+                                      </div>
+                                      <div>
+                                        <span class="text-slate-600 dark:text-slate-300 font-medium">Hubungan:</span>
+                                        <span class="text-slate-800 dark:text-slate-100 font-semibold ml-1">{{ item.hubunganKeluarga || '-' }}</span>
+                                      </div>
+                                      <div>
+                                        <span class="text-slate-600 dark:text-slate-300 font-medium">Usia:</span>
+                                        <span class="text-slate-800 dark:text-slate-100 font-semibold ml-1">{{ item.usiaPenanggungJawab ? item.usiaPenanggungJawab + ' Tahun' : '-' }}</span>
+                                      </div>
+                                      <div>
+                                        <span class="text-slate-600 dark:text-slate-300 font-medium">Pekerjaan:</span>
+                                        <span class="text-slate-800 dark:text-slate-100 font-semibold ml-1">{{ item.pekerjaan || '-' }}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <!-- Grup 4: Alamat Domisili (5 kolom) -->
+                                  <div class="bg-white/90 dark:bg-slate-800/90 rounded-xl p-2.5 border border-slate-200/90 dark:border-slate-700/80 shadow-2xs space-y-1.5">
+                                    <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-1">
+                                      <span class="text-[10px] font-extrabold uppercase tracking-wider text-amber-800 dark:text-amber-300 flex items-center gap-1">
+                                        <v-icon name="location-dot" class="text-xs text-amber-600 dark:text-amber-400"></v-icon> Alamat Lengkap &amp; Wilayah
+                                      </span>
+                                    </div>
+                                    <div class="text-xs space-y-0.5">
+                                      <div class="text-slate-800 dark:text-slate-100 font-medium leading-snug">
+                                        {{ item.alamat || '-' }}
+                                      </div>
+                                      <div class="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                                        <span v-if="item.kelurahan">Kel. {{ item.kelurahan }}, </span>
+                                        <span v-if="item.kecamatan">Kec. {{ item.kecamatan }}, </span>
+                                        <span v-if="item.kabupaten">{{ item.kabupaten }}, </span>
+                                        <span v-if="item.provinsi">Prov. {{ item.provinsi }}</span>
+                                        <span v-if="!item.kelurahan && !item.kecamatan && !item.kabupaten && !item.provinsi">-</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <!-- Baris Grup 5: Keuangan & Biaya Lengkap (8 kolom) -->
+                                <div class="bg-emerald-50/60 dark:bg-slate-800/90 rounded-xl p-2.5 border border-emerald-200/80 dark:border-emerald-800/60 shadow-2xs space-y-1.5">
+                                  <div class="flex items-center justify-between border-b border-emerald-100 dark:border-slate-700 pb-1">
+                                    <span class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-900 dark:text-emerald-300 flex items-center gap-1">
+                                      <v-icon name="receipt" class="text-xs text-emerald-700 dark:text-emerald-400"></v-icon> Rincian Biaya &amp; Keuangan
+                                    </span>
+                                    <div class="flex items-center gap-1.5">
+                                      <span class="text-[11px] font-bold text-slate-600 dark:text-slate-300">Total:</span>
+                                      <strong class="font-mono text-sm font-black text-emerald-900 dark:text-emerald-200 bg-white dark:bg-slate-700 px-2.5 py-0.5 rounded border border-emerald-300 dark:border-emerald-700 shadow-2xs">
+                                        Rp {{ formatAngkaRibuan(item.total) || '0' }}
+                                      </strong>
+                                    </div>
+                                  </div>
+                                  <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-1.5 text-xs">
+                                    <div class="bg-white/90 dark:bg-slate-900/60 p-1.5 rounded-lg border border-slate-200/80 dark:border-slate-700">
+                                      <div class="text-[10px] text-slate-500 dark:text-slate-400 font-semibold uppercase">Jml Bayar</div>
+                                      <div class="font-mono font-bold text-slate-800 dark:text-slate-200 text-[11px]">Rp {{ formatAngkaRibuan(item.jumlahBayar) || '0' }}</div>
+                                    </div>
+                                    <div class="bg-white/90 dark:bg-slate-900/60 p-1.5 rounded-lg border border-slate-200/80 dark:border-slate-700">
+                                      <div class="text-[10px] text-slate-500 dark:text-slate-400 font-semibold uppercase">Zakat</div>
+                                      <div class="font-mono font-medium text-slate-600 dark:text-slate-300 text-[11px]">Rp {{ formatAngkaRibuan(item.zakat) || '0' }}</div>
+                                    </div>
+                                    <div class="bg-white/90 dark:bg-slate-900/60 p-1.5 rounded-lg border border-slate-200/80 dark:border-slate-700">
+                                      <div class="text-[10px] text-slate-500 dark:text-slate-400 font-semibold uppercase">Operator</div>
+                                      <div class="font-mono font-bold text-slate-800 dark:text-slate-200 text-[11px]">Rp {{ formatAngkaRibuan(item.operator) || '0' }}</div>
+                                    </div>
+                                    <div class="bg-white/90 dark:bg-slate-900/60 p-1.5 rounded-lg border border-slate-200/80 dark:border-slate-700">
+                                      <div class="text-[10px] text-slate-500 dark:text-slate-400 font-semibold uppercase">BMHP Obat</div>
+                                      <div class="font-mono font-medium text-slate-600 dark:text-slate-300 text-[11px]">Rp {{ formatAngkaRibuan(item.bmhpObat) || '0' }}</div>
+                                    </div>
+                                    <div class="bg-white/90 dark:bg-slate-900/60 p-1.5 rounded-lg border border-slate-200/80 dark:border-slate-700">
+                                      <div class="text-[10px] text-slate-500 dark:text-slate-400 font-semibold uppercase">Lem</div>
+                                      <div class="font-mono font-medium text-slate-600 dark:text-slate-300 text-[11px]">Rp {{ formatAngkaRibuan(item.lem) || '0' }}</div>
+                                    </div>
+                                    <div class="bg-white/90 dark:bg-slate-900/60 p-1.5 rounded-lg border border-slate-200/80 dark:border-slate-700">
+                                      <div class="text-[10px] text-slate-500 dark:text-slate-400 font-semibold uppercase">Fee</div>
+                                      <div class="font-mono font-medium text-slate-600 dark:text-slate-300 text-[11px]">Rp {{ formatAngkaRibuan(item.fee) || '0' }}</div>
+                                    </div>
+                                    <div class="bg-white/90 dark:bg-slate-900/60 p-1.5 rounded-lg border border-slate-200/80 dark:border-slate-700">
+                                      <div class="text-[10px] text-slate-500 dark:text-slate-400 font-semibold uppercase">Status</div>
+                                      <div class="font-bold text-[11px]" :class="item.statusBayar === 'Bayar' ? 'text-emerald-700 dark:text-emerald-300' : (item.statusBayar === 'Free' ? 'text-blue-700 dark:text-blue-300' : 'text-rose-700 dark:text-rose-300')">
+                                        {{ item.statusBayar || 'Bayar' }}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
                           </tr>
                         </tbody>
                       </table>
@@ -20000,42 +20339,47 @@
           }).length;
         };
 
-        // Definisi 30 Kolom Sesuai Spesifikasi Pengguna
+        // Definisi 30 Kolom Sesuai Spesifikasi Pengguna (Lebar Kolom Disesuaikan agar Muat 1 Layar Penuh)
         const kunjunganColumns = [
-          { key: 'register', label: 'REGISTER', min: 'min-w-[150px]' },
-          { key: 'idBooking', label: 'ID BOOKING', min: 'min-w-[110px]' },
-          { key: 'namaAnanda', label: 'NAMA ANANDA', min: 'min-w-[180px]' },
-          { key: 'tempatLahir', label: 'TEMPAT LAHIR', min: 'min-w-[130px]' },
-          { key: 'tanggalLahir', label: 'TANGGAL LAHIR', min: 'min-w-[150px]' },
-          { key: 'beratBadan', label: 'BERAT BADAN', min: 'min-w-[110px]', align: 'text-center' },
-          { key: 'tanggalKhitan', label: 'TANGGAL KHITAN', min: 'min-w-[180px]' },
-          { key: 'jamKhitan', label: 'JAM KHITAN', min: 'min-w-[110px]' },
-          { key: 'metodeKhitan', label: 'METODE KHITAN', min: 'min-w-[160px]' },
-          { key: 'ukuranCelana', label: 'UKURAN CELANA', min: 'min-w-[120px]', align: 'text-center' },
-          { key: 'obat', label: 'OBAT', min: 'min-w-[110px]' },
-          { key: 'namaPenanggungJawab', label: 'NAMA PENANGGUNG JAWAB', min: 'min-w-[190px]' },
-          { key: 'usiaPenanggungJawab', label: 'USIA PJ', min: 'min-w-[80px]', align: 'text-center' },
-          { key: 'pekerjaan', label: 'PEKERJAAN', min: 'min-w-[130px]' },
-          { key: 'hubunganKeluarga', label: 'HUBUNGAN KELUARGA', min: 'min-w-[150px]' },
-          { key: 'nomorHp', label: 'NOMOR HP', min: 'min-w-[140px]' },
-          { key: 'alamat', label: 'ALAMAT', min: 'min-w-[240px]' },
-          { key: 'provinsi', label: 'PROVINSI', min: 'min-w-[130px]' },
-          { key: 'kabupaten', label: 'KABUPATEN', min: 'min-w-[130px]' },
-          { key: 'kecamatan', label: 'KECAMATAN', min: 'min-w-[130px]' },
-          { key: 'kelurahan', label: 'KELURAHAN', min: 'min-w-[130px]' },
-          { key: 'ukuranKlamp', label: 'UKURAN KLAMP', min: 'min-w-[110px]' },
-          { key: 'statusBayar', label: 'STATUS BAYAR', min: 'min-w-[120px]', align: 'text-center', filterType: 'select' },
-          { key: 'jumlahBayar', label: 'JUMLAH BAYAR', min: 'min-w-[130px]', align: 'text-right' },
-          { key: 'zakat', label: 'ZAKAT', min: 'min-w-[110px]', align: 'text-right' },
-          { key: 'operator', label: 'OPERATOR', min: 'min-w-[120px]', align: 'text-right' },
-          { key: 'bmhpObat', label: 'BMHP OBAT', min: 'min-w-[110px]', align: 'text-right' },
-          { key: 'lem', label: 'LEM', min: 'min-w-[100px]', align: 'text-right' },
-          { key: 'fee', label: 'FEE', min: 'min-w-[100px]', align: 'text-right' },
-          { key: 'total', label: 'TOTAL', min: 'min-w-[130px]', align: 'text-right' }
+          { key: 'register', label: 'REGISTER', min: 'min-w-[130px]' },
+          { key: 'idBooking', label: 'ID BOOKING', min: 'min-w-[85px]' },
+          { key: 'namaAnanda', label: 'NAMA ANANDA', min: 'min-w-[130px]' },
+          { key: 'tempatLahir', label: 'TEMPAT LAHIR', min: 'min-w-[110px]' },
+          { key: 'tanggalLahir', label: 'TANGGAL LAHIR', min: 'min-w-[110px]' },
+          { key: 'beratBadan', label: 'BERAT BADAN', min: 'min-w-[80px]', align: 'text-center' },
+          { key: 'tanggalKhitan', label: 'TANGGAL KHITAN', min: 'min-w-[110px]' },
+          { key: 'jamKhitan', label: 'JAM KHITAN', min: 'min-w-[65px]' },
+          { key: 'metodeKhitan', label: 'METODE KHITAN', min: 'min-w-[95px]' },
+          { key: 'ukuranCelana', label: 'UKURAN CELANA', min: 'min-w-[80px]', align: 'text-center' },
+          { key: 'obat', label: 'OBAT', min: 'min-w-[90px]' },
+          { key: 'namaPenanggungJawab', label: 'NAMA PENANGGUNG JAWAB', min: 'min-w-[125px]' },
+          { key: 'usiaPenanggungJawab', label: 'USIA PJ', min: 'min-w-[65px]', align: 'text-center' },
+          { key: 'pekerjaan', label: 'PEKERJAAN', min: 'min-w-[100px]' },
+          { key: 'hubunganKeluarga', label: 'HUBUNGAN KELUARGA', min: 'min-w-[100px]' },
+          { key: 'nomorHp', label: 'NOMOR HP', min: 'min-w-[110px]' },
+          { key: 'alamat', label: 'ALAMAT', min: 'min-w-[180px]' },
+          { key: 'provinsi', label: 'PROVINSI', min: 'min-w-[100px]' },
+          { key: 'kabupaten', label: 'KABUPATEN', min: 'min-w-[100px]' },
+          { key: 'kecamatan', label: 'KECAMATAN', min: 'min-w-[100px]' },
+          { key: 'kelurahan', label: 'KELURAHAN', min: 'min-w-[100px]' },
+          { key: 'ukuranKlamp', label: 'UKURAN KLAMP', min: 'min-w-[90px]' },
+          { key: 'statusBayar', label: 'STATUS BAYAR', min: 'min-w-[85px]', align: 'text-center', filterType: 'select' },
+          { key: 'jumlahBayar', label: 'JUMLAH BAYAR', min: 'min-w-[100px]', align: 'text-right' },
+          { key: 'zakat', label: 'ZAKAT', min: 'min-w-[90px]', align: 'text-right' },
+          { key: 'operator', label: 'OPERATOR', min: 'min-w-[100px]', align: 'text-right' },
+          { key: 'bmhpObat', label: 'BMHP OBAT', min: 'min-w-[90px]', align: 'text-right' },
+          { key: 'lem', label: 'LEM', min: 'min-w-[80px]', align: 'text-right' },
+          { key: 'fee', label: 'FEE', min: 'min-w-[80px]', align: 'text-right' },
+          { key: 'total', label: 'TOTAL', min: 'min-w-[95px]', align: 'text-right' }
         ];
 
-        // Mode Tampilan Kolom Kunjungan (Compact 10 Kolom Esensial vs Full 30 Kolom)
-        const kunjunganViewMode = ref('compact'); // 'compact' | 'full'
+        // Mode Tampilan Kolom Kunjungan (Compact 10 Kolom Esensial vs Full 30 Kolom Bertumpuk)
+        const kunjunganViewMode = ref(localStorage.getItem('kd_kunjungan_view_mode') || 'compact'); // 'compact' | 'full'
+        watch(kunjunganViewMode, (newVal) => {
+          try {
+            localStorage.setItem('kd_kunjungan_view_mode', newVal);
+          } catch (e) {}
+        });
         const compactKunjunganKeys = [
           'register', 
           'idBooking', 
@@ -20096,8 +20440,8 @@
           activeKunjunganMenuRegister.value = null;
         };
 
-        // Tab Navigasi Modal Kunjungan (Langkah 1 Biodata, 2 Tindakan, 3 Biaya, All)
-        const kunjunganModalTab = ref('biodata'); // 'biodata' | 'tindakan' | 'biaya' | 'all'
+        // Tab Navigasi Modal Kunjungan (Default 'all' 1 Halaman Utuh, atau Langkah 1 Biodata, 2 Tindakan, 3 Biaya)
+        const kunjunganModalTab = ref('all'); // 'all' | 'biodata' | 'tindakan' | 'biaya'
 
         // State Sorting & Filter per Kolom
         const kunjunganSort = ref({ key: 'register', dir: 'desc' });
@@ -20757,7 +21101,7 @@
               keterangan: ''
             });
           }
-          kunjunganModalTab.value = 'biodata';
+          kunjunganModalTab.value = 'all';
           showKunjunganModal.value = true;
         };
 
@@ -23674,6 +24018,7 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
           window.__kdAdminKunjungan = adminKunjungan;
           window.__kdKunjunganForm = kunjunganForm;
           window.__kdFilteredAdminKunjungan = filteredAdminKunjungan;
+          window.__kdKunjunganViewMode = kunjunganViewMode;
           window.__kdFormBooking = formBooking;
           window.__kdSubmitBooking = submitBooking;
         }

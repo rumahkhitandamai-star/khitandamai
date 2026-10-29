@@ -184,6 +184,13 @@ test('Verify Booking row is automatically deleted when transferred and saved to 
   await navBooking.click();
   await page.waitForTimeout(600);
 
+  // Set filter jadwal ke 'Semua' agar tidak terpengaruh perbedaan zona waktu Node vs Browser
+  const filterJadwal = page.locator('select').filter({ has: page.locator('option:has-text("Semua")') }).first();
+  if (await filterJadwal.isVisible()) {
+    await filterJadwal.selectOption('Semua');
+    await page.waitForTimeout(300);
+  }
+
   // 3. Pastikan row KD26001 dan KD26002 terlihat pada tabel booking
   const bookingRow1 = page.locator('tr:has-text("KD26001")');
   const bookingRow2 = page.locator('tr:has-text("KD26002")');
