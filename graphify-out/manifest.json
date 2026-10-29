@@ -13,10 +13,10 @@
     "semantic_hash": "9b5e4d4606c71e30dbf22e199a20c0a5"
   },
   "asset/Code.gs": {
-    "mtime": 1793237053.4864626,
-    "seen": 1793238123.8873222,
-    "ast_hash": "d0835776eaced5d30d3202549388bf21",
-    "semantic_hash": "d0835776eaced5d30d3202549388bf21",
+    "mtime": 1793281421.4569733,
+    "seen": 1793281594.849056,
+    "ast_hash": "b35651ddaf93d47591f2d06b82c63cab",
+    "semantic_hash": "b35651ddaf93d47591f2d06b82c63cab",
     "language": "language=.js"
   },
   "asset/appsscript.json": {

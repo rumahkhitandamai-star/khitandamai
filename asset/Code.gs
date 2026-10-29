@@ -132,28 +132,130 @@ const TELEGRAM_CONFIG = {
 
 /**
  * Mengambil konfigurasi Telegram Bot (fallback ke Script Properties jika tersedia)
+ * Otomatis melakukan sinkronisasi ke Script Properties jika belum tersimpan,
+ * sehingga kredensial dapat dikelola / di-rotate secara aman via Script Properties.
  */
 function getTelegramConfig_() {
   try {
     const props = PropertiesService.getScriptProperties();
-    const token = (props && props.getProperty("TELEGRAM_BOT_TOKEN")) || TELEGRAM_CONFIG.BOT_TOKEN;
-    const chatId = (props && props.getProperty("TELEGRAM_ADMIN_CHAT_ID")) || TELEGRAM_CONFIG.ADMIN_CHAT_ID;
-    const adminPhone = (props && props.getProperty("TELEGRAM_ADMIN_PHONE")) || TELEGRAM_CONFIG.ADMIN_PHONE;
-    return { botToken: token, chatId: chatId, adminPhone: adminPhone };
+    if (!props) {
+      return { botToken: TELEGRAM_CONFIG.BOT_TOKEN, chatId: TELEGRAM_CONFIG.ADMIN_CHAT_ID, adminPhone: TELEGRAM_CONFIG.ADMIN_PHONE };
+    }
+    let token = props.getProperty("TELEGRAM_BOT_TOKEN");
+    let chatId = props.getProperty("TELEGRAM_ADMIN_CHAT_ID");
+    let adminPhone = props.getProperty("TELEGRAM_ADMIN_PHONE");
+
+    // Auto-seed ke Script Properties jika belum disetel
+    if (!token && TELEGRAM_CONFIG.BOT_TOKEN) {
+      token = TELEGRAM_CONFIG.BOT_TOKEN;
+      props.setProperty("TELEGRAM_BOT_TOKEN", token);
+    }
+    if (!chatId && TELEGRAM_CONFIG.ADMIN_CHAT_ID) {
+      chatId = TELEGRAM_CONFIG.ADMIN_CHAT_ID;
+      props.setProperty("TELEGRAM_ADMIN_CHAT_ID", chatId);
+    }
+    if (!adminPhone && TELEGRAM_CONFIG.ADMIN_PHONE) {
+      adminPhone = TELEGRAM_CONFIG.ADMIN_PHONE;
+      props.setProperty("TELEGRAM_ADMIN_PHONE", adminPhone);
+    }
+
+    return {
+      botToken: token || TELEGRAM_CONFIG.BOT_TOKEN,
+      chatId: chatId || TELEGRAM_CONFIG.ADMIN_CHAT_ID,
+      adminPhone: adminPhone || TELEGRAM_CONFIG.ADMIN_PHONE
+    };
   } catch (e) {
     return { botToken: TELEGRAM_CONFIG.BOT_TOKEN, chatId: TELEGRAM_CONFIG.ADMIN_CHAT_ID, adminPhone: TELEGRAM_CONFIG.ADMIN_PHONE };
   }
 }
 
 /**
- * Mengambil token rahasia webhook Telegram dari Script Properties (jika dikonfigurasi)
+ * Mengambil token rahasia webhook Telegram dari Script Properties.
+ * Otomatis menghasilkan secret token acak (UUID + entropy) jika belum disetel.
  */
 function getTelegramHookSecret_() {
   try {
     const props = PropertiesService.getScriptProperties();
-    return (props && props.getProperty("TELEGRAM_HOOK_SECRET")) || "";
+    if (!props) return "";
+    let secret = props.getProperty("TELEGRAM_HOOK_SECRET");
+    if (!secret) {
+      secret = Utilities.getUuid().replace(/-/g, "") + Math.random().toString(36).substring(2, 10);
+      props.setProperty("TELEGRAM_HOOK_SECRET", secret);
+    }
+    return secret;
   } catch (e) {
     return "";
+  }
+}
+
+/**
+ * Memeriksa apakah pengirim Telegram merupakan Admin
+ */
+function isTelegramAdmin_(chatId, senderPhone, config) {
+  if (!config) config = getTelegramConfig_();
+  const cId = String(chatId || "").trim();
+  const adminIds = String(config.chatId || "").split(",").map(function(s) { return s.trim(); }).filter(Boolean);
+  if (adminIds.indexOf(cId) !== -1) return true;
+  if (senderPhone) {
+    const cleanSender = cleanPhoneNumber(senderPhone);
+    const cleanAdmin = cleanPhoneNumber(config.adminPhone || "081222531978");
+    if (cleanSender && cleanAdmin && cleanSender === cleanAdmin) return true;
+  }
+  return false;
+}
+
+/**
+ * Format badge status booking untuk pesan Telegram
+ */
+function formatStatusBadgeTelegram_(status) {
+  const s = String(status || "Terkonfirmasi").trim();
+  const lower = s.toLowerCase();
+  if (lower === "selesai") return s + " 🏁";
+  if (lower === "batal") return s + " ❌";
+  if (lower === "pending" || lower.includes("menunggu")) return s + " ⏳";
+  return s + " ✅";
+}
+
+/**
+ * Menjawab Callback Query Telegram agar status loading spinner pada tombol inline berhenti
+ */
+function answerTelegramCallbackQuery_(callbackQueryId, text, showAlert) {
+  try {
+    const config = getTelegramConfig_();
+    if (!config.botToken || !callbackQueryId) return;
+    const url = "https://api.telegram.org/bot" + config.botToken + "/answerCallbackQuery";
+    UrlFetchApp.fetch(url, {
+      method: "post",
+      contentType: "application/json",
+      payload: JSON.stringify({
+        callback_query_id: callbackQueryId,
+        text: text || "Permintaan diterima...",
+        show_alert: !!showAlert
+      }),
+      muteHttpExceptions: true
+    });
+  } catch (e) {
+    Logger.log("answerTelegramCallbackQuery_ error: " + e.toString());
+  }
+}
+
+/**
+ * Mengirim pesan notifikasi langsung ke akun Telegram keluarga pasien (jika nomor HP terhubung ke bot)
+ */
+function notifyPatientTelegram_(phone, message) {
+  try {
+    if (!phone || !message) return false;
+    const cleanPhone = cleanPhoneNumber(phone);
+    if (!cleanPhone) return false;
+    const props = PropertiesService.getScriptProperties();
+    if (!props) return false;
+    const patientChatId = props.getProperty("tg_phone_chat_" + cleanPhone);
+    if (!patientChatId) return false;
+    sendTelegramMessage_(patientChatId, message);
+    return true;
+  } catch (e) {
+    Logger.log("notifyPatientTelegram_ error: " + e.toString());
+    return false;
   }
 }
 
@@ -711,7 +813,16 @@ function sendTelegramMessage_(chatId, text, replyMarkup) {
       const lines = str.split("\n");
       let currentChunk = "";
       for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
+        let line = lines[i];
+        while (line.length > MAX_LEN) {
+          const part = line.substring(0, MAX_LEN);
+          line = line.substring(MAX_LEN);
+          if (currentChunk) {
+            chunks.push(currentChunk);
+            currentChunk = "";
+          }
+          chunks.push(part);
+        }
         if ((currentChunk + "\n" + line).length > MAX_LEN) {
           if (currentChunk) chunks.push(currentChunk);
           currentChunk = line;
@@ -757,9 +868,18 @@ function sendTelegramMessage_(chatId, text, replyMarkup) {
  * Parameter filterType: "upcoming" (default), "today", "tomorrow", atau format YYYY-MM-DD
  */
 function getUpcomingBookingsGroupedByDate_(filterType) {
+  const currentFilter = filterType || "upcoming";
+  const cacheKey = "tg_sched_" + currentFilter;
+  try {
+    const cache = CacheService.getScriptCache();
+    const cached = cache ? cache.get(cacheKey) : null;
+    if (cached) {
+      return JSON.parse(cached);
+    }
+  } catch (e) {}
+
   const sheet = getSheet();
   const lastRow = sheet.getLastRow();
-  const currentFilter = filterType || "upcoming";
   if (lastRow <= 1) return { dates: [], grouped: {}, totalPasien: 0, filterType: currentFilter };
 
   const values = sheet.getRange(2, 1, lastRow - 1, HEADERS.length).getValues();
@@ -838,7 +958,17 @@ function getUpcomingBookingsGroupedByDate_(filterType) {
   }
 
   const dates = Object.keys(grouped).sort();
-  return { dates: dates, grouped: grouped, totalPasien: list.length, filterType: currentFilter };
+  const resData = { dates: dates, grouped: grouped, totalPasien: list.length, filterType: currentFilter };
+  try {
+    const cache = CacheService.getScriptCache();
+    if (cache) {
+      const str = JSON.stringify(resData);
+      if (str.length < 80000) {
+        cache.put(cacheKey, str, 60);
+      }
+    }
+  } catch (e) {}
+  return resData;
 }
 
 /**
@@ -961,22 +1091,31 @@ function formatUpcomingScheduleMessage_(data, isAdmin) {
 
     for (let i = 0; i < items.length; i++) {
       const it = items[i];
-      const sapaan = resolveSapaanWa_(it.hubunganKeluarga);
       const jam = formatJamDisplay_(it.jamKhitan);
-      const noHp = it.nomorHp || "-";
-      const phoneDisplay = isAdmin ? noHp : (noHp && noHp.length > 7 ? noHp.substring(0, 4) + "****" + noHp.slice(-4) : noHp);
       const metode = it.metodeKhitan || "Standar";
 
-      text += "  " + (i + 1) + ". 👦 <b>" + escapeTelegramHtml_(it.namaAnanda) + "</b>\n" +
-              "     🕒 " + escapeTelegramHtml_(jam) + " • ✂️ " + escapeTelegramHtml_(metode) + "\n" +
-              "     👨‍👩‍👦 " + escapeTelegramHtml_(it.namaPenanggungJawab) + " (" + escapeTelegramHtml_(sapaan) + ") • 📱 <code>" + escapeTelegramHtml_(phoneDisplay) + "</code>\n" +
-              "     🏷️ ID: <code>" + escapeTelegramHtml_(it.idBooking) + "</code>\n";
+      if (!isAdmin) {
+        // Mode privasi: lindungi identitas pasien lain dari sesama pengguna umum
+        text += "  " + (i + 1) + ". 🕒 " + escapeTelegramHtml_(jam) + " • ✂️ " + escapeTelegramHtml_(metode) + " • <i>[Terjadwal]</i>\n";
+      } else {
+        const sapaan = resolveSapaanWa_(it.hubunganKeluarga);
+        const noHp = it.nomorHp || "-";
+        const phoneDisplay = noHp;
+        text += "  " + (i + 1) + ". 👦 <b>" + escapeTelegramHtml_(it.namaAnanda) + "</b>\n" +
+                "     🕒 " + escapeTelegramHtml_(jam) + " • ✂️ " + escapeTelegramHtml_(metode) + "\n" +
+                "     👨‍👩‍👦 " + escapeTelegramHtml_(it.namaPenanggungJawab) + " (" + escapeTelegramHtml_(sapaan) + ") • 📱 <code>" + escapeTelegramHtml_(phoneDisplay) + "</code>\n" +
+                "     🏷️ ID: <code>" + escapeTelegramHtml_(it.idBooking) + "</code>\n";
+      }
     }
     text += "\n";
   }
 
-  text += "━━━━━━━━━━━━━━━━━━\n" +
-    "💡 <i>Ketik ID Booking (misal: <code>KD-202610-001</code> atau <code>6UZA6KM</code>) untuk rincian data lengkap.</i>";
+  text += "━━━━━━━━━━━━━━━━━━\n";
+  if (isAdmin) {
+    text += "💡 <i>Ketik ID Booking (misal: <code>KD-202610-001</code> atau <code>6UZA6KM</code>) untuk rincian data lengkap.</i>";
+  } else {
+    text += "💡 <i>Untuk memeriksa data & status pendaftaran Ananda sendiri, sentuh menu <b>'🔍 Status Booking Saya'</b>.</i>";
+  }
 
   return text;
 }
@@ -994,6 +1133,15 @@ function findBookingForTelegram_(query) {
   if (!cleanQ) return null;
   const upperQ = cleanQ.toUpperCase();
   const phoneDigits = cleanPhoneNumber(cleanQ);
+
+  const cacheKey = "tg_bkg_" + (phoneDigits || upperQ);
+  try {
+    const cache = CacheService.getScriptCache();
+    const cached = cache ? cache.get(cacheKey) : null;
+    if (cached) {
+      return JSON.parse(cached);
+    }
+  } catch (e) {}
 
   const sheet = getSheet();
   const lastRow = sheet.getLastRow();
@@ -1075,6 +1223,14 @@ function findBookingForTelegram_(query) {
     primary.otherBookings = matches.slice(1);
     primary.totalFound = matches.length;
   }
+
+  try {
+    const cache = CacheService.getScriptCache();
+    if (cache) {
+      cache.put(cacheKey, JSON.stringify(primary), 60);
+    }
+  } catch (e) {}
+
   return primary;
 }
 
@@ -1089,6 +1245,7 @@ function formatBookingDetailTelegram_(b, isAdmin) {
   const maskedPhone = isAdmin ? noHp : (noHp && noHp.length > 7 ? noHp.substring(0, 4) + "****" + noHp.slice(-4) : noHp);
   const wilParts = [b.kelurahan, b.kecamatan, b.kabupaten].filter(Boolean);
   const wilayah = wilParts.length > 0 ? wilParts.join(", ") : (b.alamat || "-");
+  const statusBadge = formatStatusBadgeTelegram_(b.status);
 
   let text = "📋 <b>INFORMASI STATUS BOOKING</b> 🏥\n" +
     "━━━━━━━━━━━━━━━━━━\n" +
@@ -1101,7 +1258,7 @@ function formatBookingDetailTelegram_(b, isAdmin) {
     "🕒 <b>Jam Pelaksanaan:</b> " + escapeTelegramHtml_(jamKhitan) + "\n" +
     "✂️ <b>Metode Khitan:</b> " + escapeTelegramHtml_(b.metodeKhitan || "Standar") + "\n" +
     "📍 <b>Wilayah:</b> " + escapeTelegramHtml_(wilayah) + "\n" +
-    "📌 <b>Status:</b> " + escapeTelegramHtml_(b.status || "Terkonfirmasi") + " ✅\n" +
+    "📌 <b>Status:</b> " + escapeTelegramHtml_(statusBadge) + "\n" +
     "━━━━━━━━━━━━━━━━━━\n" +
     "💡 <i>Harap hadir di lokasi khitan 15 menit sebelum jam pelaksanaan.</i>";
 
@@ -1109,7 +1266,8 @@ function formatBookingDetailTelegram_(b, isAdmin) {
     text += "\n\n👨‍👩‍👦 <b>Pendaftaran Lain Pada Nomor Ini (" + b.otherBookings.length + " Pasien):</b>\n";
     for (let k = 0; k < b.otherBookings.length; k++) {
       const ob = b.otherBookings[k];
-      text += "• 👦 <b>" + escapeTelegramHtml_(ob.namaAnanda) + "</b> (" + escapeTelegramHtml_(ob.status) + ")\n" +
+      const obBadge = formatStatusBadgeTelegram_(ob.status);
+      text += "• 👦 <b>" + escapeTelegramHtml_(ob.namaAnanda) + "</b> (" + escapeTelegramHtml_(obBadge) + ")\n" +
               "  ID: <code>" + escapeTelegramHtml_(ob.idBooking) + "</code> • 📅 " + escapeTelegramHtml_(formatIndonesianDateStr_(ob.tanggalKhitan)) + "\n";
     }
     text += "<i>💡 Ketik ID Booking di atas untuk melihat rincian lengkap pendaftaran tersebut.</i>";
@@ -1119,11 +1277,143 @@ function formatBookingDetailTelegram_(b, isAdmin) {
 }
 
 /**
+ * Memperbarui status booking langsung dari antarmuka Bot Telegram (Khusus Admin)
+ */
+function updateBookingStatusFromTelegram_(bookingId, newStatus) {
+  try {
+    const id = String(bookingId || "").trim().toUpperCase();
+    if (!id) return { success: false, message: "⚠️ ID Booking tidak valid." };
+
+    const sheet = getSheet();
+    const lastRow = sheet.getLastRow();
+    if (lastRow <= 1) return { success: false, message: "⚠️ Database booking masih kosong." };
+
+    const idValues = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+    let targetRow = -1;
+    for (let i = 0; i < idValues.length; i++) {
+      if (String(idValues[i][0] || "").trim().toUpperCase() === id) {
+        targetRow = i + 2;
+        break;
+      }
+    }
+
+    if (targetRow <= 0) {
+      return { success: false, message: "⚠️ ID Booking <code>" + escapeTelegramHtml_(id) + "</code> tidak ditemukan." };
+    }
+
+    const statusColIndex = HEADERS.indexOf("STATUS") + 1;
+    sheet.getRange(targetRow, statusColIndex > 0 ? statusColIndex : 22).setValue(newStatus);
+    invalidateDataset_(SERVER_CACHE_KEYS.BOOKINGS, "bookings");
+
+    // Ambil data untuk notifikasi pasien
+    const rowData = sheet.getRange(targetRow, 1, 1, HEADERS.length).getValues()[0];
+    const namaAnanda = String(rowData[1] || "-");
+    const namaPj = String(rowData[10] || "-");
+    const sapaan = resolveSapaanWa_(rowData[13]);
+    const noHp = String(rowData[14] || "");
+    const statusBadge = formatStatusBadgeTelegram_(newStatus);
+
+    if (noHp) {
+      const patMsg = "📢 <b>PEMBARUAN STATUS PENDAFTARAN KHITAN</b> 🏥✨\n" +
+        "━━━━━━━━━━━━━━━━━━\n" +
+        "Yth. " + sapaan + " <b>" + escapeTelegramHtml_(namaPj) + "</b>,\n\n" +
+        "Status pendaftaran khitan Ananda <b>" + escapeTelegramHtml_(namaAnanda) + "</b> (ID: <code>" + escapeTelegramHtml_(id) + "</code>) saat ini telah diperbarui menjadi:\n\n" +
+        "👉 <b>" + escapeTelegramHtml_(statusBadge) + "</b>\n\n" +
+        "━━━━━━━━━━━━━━━━━━\n" +
+        "💡 <i>Sentuh menu '🔍 Status Booking Saya' pada bot untuk memeriksa rincian terkini.</i>\n" +
+        "🏥 Rumah Khitan Damai — Nyaman, Aman, dan Menyenangkan ✨";
+      notifyPatientTelegram_(noHp, patMsg);
+    }
+
+    const feedback = "✅ <b>Pembaruan Status Berhasil!</b> 🎯\n" +
+      "━━━━━━━━━━━━━━━━━━\n" +
+      "📋 <b>ID:</b> <code>" + escapeTelegramHtml_(id) + "</code>\n" +
+      "👦 <b>Nama Ananda:</b> " + escapeTelegramHtml_(namaAnanda) + "\n" +
+      "📌 <b>Status Baru:</b> " + escapeTelegramHtml_(statusBadge) + "\n" +
+      "━━━━━━━━━━━━━━━━━━\n" +
+      "<i>Database sheet & cache telah disinkronkan.</i>";
+    return { success: true, message: feedback };
+  } catch (err) {
+    return { success: false, message: "❌ Gagal memperbarui status: " + escapeTelegramHtml_(err.toString()) };
+  }
+}
+
+/**
  * Handler Telegram Webhook Update (2 arah)
  */
 function handleTelegramWebhookUpdate_(update) {
   try {
     if (!update) return HtmlService.createHtmlOutput("OK");
+
+    const config = getTelegramConfig_();
+    const props = PropertiesService.getScriptProperties();
+
+    // 0. Penanganan Callback Query dari tombol Inline Telegram
+    if (update.callback_query) {
+      const cb = update.callback_query;
+      const cbId = cb.id;
+      const cbData = String(cb.data || "").trim();
+      const cbChatId = cb.message && cb.message.chat ? String(cb.message.chat.id) : String(cb.from.id);
+      const verifiedPhone = props ? (props.getProperty("tg_auth_" + cbChatId) || "") : "";
+      const isAdmin = isTelegramAdmin_(cbChatId, verifiedPhone, config);
+
+      if (cbData === "cb_jadwal_today") {
+        answerTelegramCallbackQuery_(cbId, "Memuat jadwal hari ini...");
+        const d = getUpcomingBookingsGroupedByDate_("today");
+        sendTelegramMessage_(cbChatId, formatUpcomingScheduleMessage_(d, isAdmin));
+        return HtmlService.createHtmlOutput("OK");
+      }
+      if (cbData === "cb_jadwal_besok") {
+        answerTelegramCallbackQuery_(cbId, "Memuat jadwal besok...");
+        const d = getUpcomingBookingsGroupedByDate_("tomorrow");
+        const btn = isAdmin ? buildWaReminderInlineKeyboard_(d) : null;
+        sendTelegramMessage_(cbChatId, formatUpcomingScheduleMessage_(d, isAdmin), btn);
+        return HtmlService.createHtmlOutput("OK");
+      }
+      if (cbData === "cb_cek_reminder") {
+        if (!isAdmin) {
+          answerTelegramCallbackQuery_(cbId, "Khusus akun Admin.", true);
+          return HtmlService.createHtmlOutput("OK");
+        }
+        answerTelegramCallbackQuery_(cbId, "Memindai reminder...");
+        const scanRes = checkAndSendUpcomingReminders_();
+        const items = scanRes.items || [];
+        let resText = "⏰ <b>HASIL PEMINDAIAN JADWAL KHITAN (&lt; 12 JAM)</b> 🔔\n" +
+          "━━━━━━━━━━━━━━━━━━\n" +
+          "📋 <b>Total Diperiksa:</b> " + (scanRes.checked || 0) + " data\n" +
+          "⏳ <b>Pasien &lt; 12 Jam:</b> " + items.length + " pasien\n" +
+          "📨 <b>Notifikasi Terkirim:</b> " + (scanRes.sent || 0) + "\n";
+        sendTelegramMessage_(cbChatId, resText);
+        return HtmlService.createHtmlOutput("OK");
+      }
+      if (cbData.startsWith("cb_status:")) {
+        const bId = cbData.replace("cb_status:", "").trim();
+        answerTelegramCallbackQuery_(cbId, "Mencari " + bId + "...");
+        const b = findBookingForTelegram_(bId);
+        if (b) {
+          sendTelegramMessage_(cbChatId, formatBookingDetailTelegram_(b, isAdmin));
+        } else {
+          sendTelegramMessage_(cbChatId, "⚠️ Data ID " + bId + " tidak ditemukan.");
+        }
+        return HtmlService.createHtmlOutput("OK");
+      }
+      if (cbData.startsWith("cb_selesai:") || cbData.startsWith("cb_konfirmasi:")) {
+        if (!isAdmin) {
+          answerTelegramCallbackQuery_(cbId, "Khusus akun Admin.", true);
+          return HtmlService.createHtmlOutput("OK");
+        }
+        const isSelesai = cbData.startsWith("cb_selesai:");
+        const bId = (isSelesai ? cbData.replace("cb_selesai:", "") : cbData.replace("cb_konfirmasi:", "")).trim();
+        const targetStatus = isSelesai ? "Selesai" : "Terkonfirmasi";
+        answerTelegramCallbackQuery_(cbId, "Mengubah status " + bId + "...");
+        const updRes = updateBookingStatusFromTelegram_(bId, targetStatus);
+        sendTelegramMessage_(cbChatId, updRes.message);
+        return HtmlService.createHtmlOutput("OK");
+      }
+
+      answerTelegramCallbackQuery_(cbId, "Perintah diterima.");
+      return HtmlService.createHtmlOutput("OK");
+    }
 
     const msg = update.message || update.edited_message;
     if (!msg) {
@@ -1131,19 +1421,25 @@ function handleTelegramWebhookUpdate_(update) {
     }
 
     const chatId = String(msg.chat.id);
-    const config = getTelegramConfig_();
-    const props = PropertiesService.getScriptProperties();
 
-    // 1. Otorisasi Admin:
-    // Terverifikasi jika chat.id sesuai config.chatId (8746493929)
-    // ATAU nomor HP yang tersimpan cocok dengan nomor Admin (081222531978)
+    // Rate Limiting per Chat ID (maks 25 permintaan per menit)
+    try {
+      const cache = CacheService.getScriptCache();
+      if (cache) {
+        const rlKey = "tg_rl_" + chatId;
+        const curReq = parseInt(cache.get(rlKey) || "0", 10);
+        if (curReq > 25) {
+          sendTelegramMessage_(chatId, "⏳ Terlalu banyak permintaan dalam waktu singkat. Mohon tunggu beberapa saat sebelum mengirim pesan lagi.");
+          return HtmlService.createHtmlOutput("OK");
+        }
+        cache.put(rlKey, String(curReq + 1), 60);
+      }
+    } catch (rlErr) {}
+
+    // 1. Otorisasi Pengguna & Admin
     const cleanAdminPhone = cleanPhoneNumber(config.adminPhone || "081222531978");
-    let isAdmin = String(chatId) === String(config.chatId);
-    let verifiedPhone = props.getProperty("tg_auth_" + chatId) || "";
-
-    if (!isAdmin && verifiedPhone && cleanPhoneNumber(verifiedPhone) === cleanAdminPhone) {
-      isAdmin = true;
-    }
+    let verifiedPhone = props ? (props.getProperty("tg_auth_" + chatId) || "") : "";
+    let isAdmin = isTelegramAdmin_(chatId, verifiedPhone, config);
 
     // 2. Otorisasi Pengguna Terdaftar (Keluarga Pasien di Sheet BOOKING):
     let isRegistered = false;
@@ -1153,7 +1449,7 @@ function handleTelegramWebhookUpdate_(update) {
       if (registeredBooking) {
         isRegistered = true;
       } else {
-        props.deleteProperty("tg_auth_" + chatId);
+        if (props) props.deleteProperty("tg_auth_" + chatId);
         verifiedPhone = "";
       }
     }
@@ -1165,7 +1461,8 @@ function handleTelegramWebhookUpdate_(update) {
       keyboard: [
         [{ text: "📅 Jadwal Mendatang" }, { text: "🔍 Cek Status Booking" }],
         [{ text: "📅 Hari Ini" }, { text: "⚡ Jadwal Besok" }],
-        [{ text: "⏰ Cek Reminder (< 12 Jam)" }, { text: "ℹ️ Bantuan & Info" }]
+        [{ text: "⏰ Cek Reminder (< 12 Jam)" }, { text: "📊 Statistik Khitan" }],
+        [{ text: "💾 Backup Database" }, { text: "ℹ️ Bantuan & Info" }]
       ],
       resize_keyboard: true,
       one_time_keyboard: false
@@ -1196,14 +1493,28 @@ function handleTelegramWebhookUpdate_(update) {
     if (msg.contact && msg.contact.phone_number) {
       const incomingPhone = String(msg.contact.phone_number || "").trim();
       const cleanIncoming = cleanPhoneNumber(incomingPhone);
+      const contactUserId = msg.contact.user_id ? String(msg.contact.user_id) : "";
+      const senderUserId = msg.from ? String(msg.from.id) : (msg.chat ? String(msg.chat.id) : "");
+
+      // Proteksi Spoofing: Pastikan kartu kontak yang dikirim benar-benar milik akun pengirim
+      if (contactUserId && senderUserId && contactUserId !== senderUserId) {
+        const spoofMsg = "⚠️ <b>Verifikasi Ditolak: Kontak Tidak Sah</b> 🔒\n\n" +
+          "Kontak yang Anda kirim bukan berasal dari akun Telegram Anda sendiri.\n" +
+          "Silakan gunakan tombol resmi <b>'📱 Verifikasi Nomor WhatsApp Saya'</b> di bawah untuk verifikasi otomatis.";
+        sendTelegramMessage_(chatId, spoofMsg, authKeyboard);
+        return HtmlService.createHtmlOutput("OK");
+      }
 
       // Verifikasi Admin
       if (cleanIncoming === cleanAdminPhone) {
-        props.setProperty("tg_auth_" + chatId, incomingPhone);
+        if (props) {
+          props.setProperty("tg_auth_" + chatId, incomingPhone);
+          props.setProperty("tg_phone_chat_" + cleanIncoming, chatId);
+        }
         const welcAdmin = "✅ <b>Verifikasi Admin Berhasil!</b> 👨‍⚕️\n\n" +
           "Selamat datang, <b>Admin Rumah Khitan Damai</b>.\n" +
           "Akun Telegram Anda telah terverifikasi dengan nomor <code>" + escapeTelegramHtml_(incomingPhone) + "</code>.\n" +
-          "Seluruh fitur kendali bot dan pengingat jadwal telah diaktifkan.";
+          "Seluruh fitur kendali bot, pemindai reminder, dan pengingat jadwal telah diaktifkan.";
         sendTelegramMessage_(chatId, welcAdmin, adminKeyboard);
         return HtmlService.createHtmlOutput("OK");
       }
@@ -1211,7 +1522,10 @@ function handleTelegramWebhookUpdate_(update) {
       // Verifikasi Pasien Terdaftar
       const found = findBookingForTelegram_(incomingPhone);
       if (found) {
-        props.setProperty("tg_auth_" + chatId, incomingPhone);
+        if (props) {
+          props.setProperty("tg_auth_" + chatId, incomingPhone);
+          props.setProperty("tg_phone_chat_" + cleanIncoming, chatId);
+        }
         const sapaan = resolveSapaanWa_(found.hubunganKeluarga);
         const welcUser = "✅ <b>Verifikasi Berhasil!</b> 🎉\n\n" +
           "Selamat datang, " + sapaan + " <b>" + escapeTelegramHtml_(found.namaPenanggungJawab) + "</b>!\n" +
@@ -1254,7 +1568,12 @@ function handleTelegramWebhookUpdate_(update) {
 
     // C. Logout / Keluar Sesi
     if (lowerText === "/logout" || lowerText === "keluar" || lowerText === "🚪 keluar / ganti nomor") {
-      props.deleteProperty("tg_auth_" + chatId);
+      if (props) {
+        props.deleteProperty("tg_auth_" + chatId);
+        if (verifiedPhone) {
+          props.deleteProperty("tg_phone_chat_" + cleanPhoneNumber(verifiedPhone));
+        }
+      }
       const logoutMsg = "👋 <b>Anda Telah Keluar</b>\n\n" +
         "Sesi akses bot untuk akun Telegram ini telah dihentikan.\n" +
         "Silakan verifikasi nomor kembali sewaktu-waktu jika ingin mengakses layanan bot Rumah Khitan Damai.";
@@ -1262,17 +1581,57 @@ function handleTelegramWebhookUpdate_(update) {
       return HtmlService.createHtmlOutput("OK");
     }
 
-    // D. Gerbang Akses: Verifikasi untuk pengguna yang belum terverifikasi
+    // D. Perintah Start / Bantuan / Info (DAPAT DIAKSES OLEH SIAPAPUN, TERMASUK PENGGUNA BARU)
+    if (lowerText === "/start" || lowerText === "/help" || lowerText === "bantuan" || lowerText === "info" || lowerText === "/info" || lowerText === "ℹ️ bantuan & info" || lowerText === "halo" || lowerText === "hai") {
+      let welcomeText = "👋 <b>Halo! Selamat Datang di Bot Resmi Rumah Khitan Damai</b> 🏥✨\n" +
+        "<i>\"Aku Berani Khitan — Nyaman, Modern, dan Menyenangkan\"</i>\n\n";
+
+      if (isAdmin) {
+        welcomeText += "Silakan pilih menu di bawah atau ketik perintah kendali Admin:\n" +
+          "📅 <b>/jadwal</b> — Lihat Jadwal Khitan Mendatang\n" +
+          "📅 <b>/hariini</b> — Lihat Jadwal Khitan Hari Ini\n" +
+          "⚡ <b>/besok</b> — Lihat Jadwal Khitan Besok (Lengkap dengan Tombol WhatsApp Reminder)\n" +
+          "⏰ <b>/cekreminder</b> — Pindai jadwal khitan &lt; 12 jam\n" +
+          "📊 <b>/statistik</b> — Ringkasan total & status pasien\n" +
+          "🤖 <b>/statusbot</b> — Cek kesehatan webhook & trigger bot\n" +
+          "💾 <b>/backup</b> — Backup seluruh database ke Google Drive\n" +
+          "🏁 <b>/selesai &lt;ID&gt;</b> — Tandai pasien selesai tindakan\n" +
+          "✅ <b>/konfirmasi &lt;ID&gt;</b> — Konfirmasi jadwal pasien\n" +
+          "🔍 <b>Cek Booking</b> — Ketik ID Booking / Nomor WhatsApp pasien.\n";
+      } else if (isRegistered) {
+        welcomeText += "Silakan pilih menu di bawah untuk memeriksa informasi pendaftaran khitan Ananda:\n" +
+          "🔍 <b>Status Booking Saya</b> — Informasi lengkap jadwal & status tindakan Ananda\n" +
+          "📅 <b>Jadwal Khitan</b> — Jadwal pelaksanaan khitan klinik mendatang\n" +
+          "⚡ <b>Jadwal Besok</b> — Jadwal khitan esok hari\n" +
+          "🚪 <b>Keluar</b> — Ganti nomor WhatsApp akun ini\n";
+      } else {
+        welcomeText += "Bot ini melayani <b>Keluarga Pasien yang Telah Terdaftar</b> dan <b>Admin Klinik</b>.\n\n" +
+          "Untuk mulai mengakses layanan bot, silakan hubungkan nomor Anda:\n" +
+          "👉 Sentuh tombol <b>'📱 Verifikasi Nomor WhatsApp Saya'</b> di bawah, ATAU\n" +
+          "👉 Ketik langsung <b>Nomor WhatsApp</b> yang didaftarkan / <b>ID Booking</b> Anda di chat ini.\n";
+      }
+
+      welcomeText += "\n📞 <i>Pusat Bantuan WhatsApp: 081222531978</i>";
+      sendTelegramMessage_(chatId, welcomeText, mainKeyboard);
+      return HtmlService.createHtmlOutput("OK");
+    }
+
+    // E. Gerbang Akses: Verifikasi untuk pengguna yang belum terverifikasi
     if (!isAuthorized) {
       const cleanDigits = cleanPhoneNumber(rawText);
       const isPhone = cleanDigits.length >= 8 && cleanDigits.length <= 15;
-      const isIdBooking = /^[A-Za-z0-9\-_]{4,20}$/.test(rawText) && !rawText.startsWith("/");
+      const nonBookingWords = ["info", "help", "bantuan", "halo", "hello", "hi", "menu", "admin", "jadwal", "daftar", "khitan", "status", "test", "tes"];
+      const isIdBooking = !nonBookingWords.includes(lowerText) && !rawText.startsWith("/") &&
+        (/^KD-[A-Za-z0-9\-]+$/i.test(rawText) || (/^[A-Za-z0-9]{5,10}$/i.test(rawText)));
 
       if (isPhone || isIdBooking) {
-        // Cek apakah nomor/ID terdaftar di BOOKING
         const found = findBookingForTelegram_(rawText);
         if (found) {
-          props.setProperty("tg_auth_" + chatId, found.nomorHp || rawText);
+          const registeredPhone = found.nomorHp || rawText;
+          if (props) {
+            props.setProperty("tg_auth_" + chatId, registeredPhone);
+            props.setProperty("tg_phone_chat_" + cleanPhoneNumber(registeredPhone), chatId);
+          }
           const sapaan = resolveSapaanWa_(found.hubunganKeluarga);
           const welcText = "✅ <b>Verifikasi Berhasil!</b> 🎉\n\n" +
             "Selamat datang, " + sapaan + " <b>" + escapeTelegramHtml_(found.namaPenanggungJawab) + "</b>!\n" +
@@ -1309,7 +1668,7 @@ function handleTelegramWebhookUpdate_(update) {
       return HtmlService.createHtmlOutput("OK");
     }
 
-    // E. Tombol "🔍 Status Booking Saya" (Khusus Pengguna Terdaftar)
+    // F. Tombol "🔍 Status Booking Saya" (Khusus Pengguna Terdaftar)
     if (lowerText === "🔍 status booking saya" || lowerText === "status booking saya" || lowerText === "status booking") {
       const myBooking = findBookingForTelegram_(verifiedPhone || chatId);
       if (myBooking) {
@@ -1318,32 +1677,6 @@ function handleTelegramWebhookUpdate_(update) {
       } else {
         sendTelegramMessage_(chatId, "⚠️ Data pendaftaran Anda tidak ditemukan. Silakan hubungi Admin WhatsApp: 081222531978.", mainKeyboard);
       }
-      return HtmlService.createHtmlOutput("OK");
-    }
-
-    // 1. Perintah Start / Bantuan
-    if (lowerText === "/start" || lowerText === "/help" || lowerText === "bantuan" || lowerText === "info" || lowerText === "ℹ️ bantuan & info") {
-      let welcomeText = "👋 <b>Halo! Selamat Datang di Bot Resmi Rumah Khitan Damai</b> 🏥✨\n" +
-        "<i>\"Aku Berani Khitan — Nyaman, Modern, dan Menyenangkan\"</i>\n\n";
-
-      if (isAdmin) {
-        welcomeText += "Silakan pilih menu di bawah atau ketik perintah:\n" +
-          "📅 <b>/jadwal</b> — Lihat Jadwal Khitan Mendatang\n" +
-          "📅 <b>/hariini</b> — Lihat Jadwal Khitan Hari Ini\n" +
-          "⚡ <b>/besok</b> — Lihat Jadwal Khitan Besok (Lengkap dengan Tombol WhatsApp Reminder)\n" +
-          "⏰ <b>/cekreminder</b> — Pindai & kirim pengingat jadwal khitan &lt; 12 jam (Khusus Admin)\n" +
-          "💾 <b>/backup</b> — Backup seluruh database ke Google Drive (Khusus Admin)\n" +
-          "🔍 <b>Cek Booking</b> — Ketik ID Booking / Nomor WhatsApp pasien.\n";
-      } else {
-        welcomeText += "Silakan pilih menu di bawah untuk melihat informasi pendaftaran khitan Ananda:\n" +
-          "🔍 <b>Status Booking Saya</b> — Informasi lengkap jadwal & status tindakan Ananda\n" +
-          "📅 <b>Jadwal Khitan</b> — Jadwal khitan klinik mendatang\n" +
-          "⚡ <b>Jadwal Besok</b> — Jadwal khitan esok hari\n" +
-          "🚪 <b>Keluar</b> — Ganti nomor WhatsApp akun ini\n";
-      }
-
-      welcomeText += "\n📞 <i>Pusat Bantuan WhatsApp: 081222531978</i>";
-      sendTelegramMessage_(chatId, welcomeText, mainKeyboard);
       return HtmlService.createHtmlOutput("OK");
     }
 
@@ -1413,12 +1746,172 @@ function handleTelegramWebhookUpdate_(update) {
         return HtmlService.createHtmlOutput("OK");
       }
 
+      // Proteksi deduplikasi: cegah backup berulang dalam interval 2 menit
+      const lastBackupMs = parseInt((props && props.getProperty("LAST_BACKUP_TIME")) || "0", 10);
+      if (Date.now() - lastBackupMs < 120000) {
+        sendTelegramMessage_(chatId, "ℹ️ <i>Pencadangan baru saja dijalankan kurang dari 2 menit yang lalu. Silakan tunggu sebentar jika ingin mencadangkan ulang.</i>", mainKeyboard);
+        return HtmlService.createHtmlOutput("OK");
+      }
+
       sendTelegramMessage_(chatId, "⏳ <i>Sedang memproses backup seluruh sheet database ke Google Drive...</i>", mainKeyboard);
       try {
         const bRes = executeDatabaseBackup_();
+        if (props) props.setProperty("LAST_BACKUP_TIME", String(Date.now()));
         sendTelegramBackupNotification_(bRes, false);
       } catch (errBackup) {
         sendTelegramMessage_(chatId, "❌ <b>Gagal Memproses Backup Database:</b>\n" + escapeTelegramHtml_(errBackup.toString()), mainKeyboard);
+      }
+      return HtmlService.createHtmlOutput("OK");
+    }
+
+    // 1d. Perintah Cepat Ubah Status Booking (Khusus Admin)
+    if (isAdmin && (lowerText.startsWith("/selesai ") || lowerText.startsWith("/konfirmasi ") || lowerText.startsWith("/batal "))) {
+      const parts = rawText.split(/\s+/);
+      const cmd = parts[0].toLowerCase().replace("/", "");
+      const targetId = (parts[1] || "").trim().toUpperCase();
+
+      if (!targetId) {
+        sendTelegramMessage_(chatId, "⚠️ Mohon sertakan ID Booking.\nContoh: <code>/" + cmd + " KD-202610-001</code>", mainKeyboard);
+        return HtmlService.createHtmlOutput("OK");
+      }
+
+      let newStatus = "Terkonfirmasi";
+      if (cmd === "selesai") newStatus = "Selesai";
+      else if (cmd === "batal") newStatus = "Batal";
+      else if (cmd === "konfirmasi") newStatus = "Terkonfirmasi";
+
+      const resUpd = updateBookingStatusFromTelegram_(targetId, newStatus);
+      sendTelegramMessage_(chatId, resUpd.message, mainKeyboard);
+      return HtmlService.createHtmlOutput("OK");
+    }
+
+    // 1e. Perintah Statistik Khitan (Khusus Admin)
+    if (isAdmin && (lowerText === "/statistik" || lowerText === "statistik" || lowerText === "📊 statistik khitan")) {
+      const sheet = getSheet();
+      const lastRow = sheet.getLastRow();
+      if (lastRow <= 1) {
+        sendTelegramMessage_(chatId, "📊 Belum ada data pendaftaran.", mainKeyboard);
+        return HtmlService.createHtmlOutput("OK");
+      }
+
+      const values = sheet.getRange(2, 1, lastRow - 1, HEADERS.length).getValues();
+      const now = new Date();
+      const currentMonthKey = Utilities.formatDate(now, "Asia/Jakarta", "yyyy-MM");
+      const todayYmd = Utilities.formatDate(now, "Asia/Jakarta", "yyyy-MM-dd");
+
+      let total = 0;
+      let countConfirmed = 0;
+      let countPending = 0;
+      let countSelesai = 0;
+      let countBatal = 0;
+      let countBulanIni = 0;
+      let countHariIni = 0;
+
+      for (let i = 0; i < values.length; i++) {
+        const row = values[i];
+        const id = String(row[0] || "").trim();
+        if (!id) continue;
+        total++;
+
+        const st = String(row[21] || "").trim().toLowerCase();
+        if (st === "selesai") countSelesai++;
+        else if (st === "batal") countBatal++;
+        else if (st === "pending" || st.includes("menunggu")) countPending++;
+        else countConfirmed++;
+
+        let tglKhitanStr = row[5];
+        if (tglKhitanStr instanceof Date) {
+          tglKhitanStr = Utilities.formatDate(tglKhitanStr, "Asia/Jakarta", "yyyy-MM-dd");
+        } else {
+          tglKhitanStr = normalizeYmd_(tglKhitanStr);
+        }
+
+        if (tglKhitanStr) {
+          if (tglKhitanStr.substring(0, 7) === currentMonthKey) countBulanIni++;
+          if (tglKhitanStr.substring(0, 10) === todayYmd) countHariIni++;
+        }
+      }
+
+      const statMsg = "📊 <b>RINGKASAN STATISTIK KHITAN DAMAI</b> 🏥\n" +
+        "━━━━━━━━━━━━━━━━━━\n" +
+        "📈 <b>Total Seluruh Pasien:</b> " + total + " Orang\n" +
+        "🔥 <b>Jadwal Hari Ini:</b> " + countHariIni + " Pasien\n" +
+        "🗓️ <b>Jadwal Bulan Ini:</b> " + countBulanIni + " Pasien\n" +
+        "━━━━━━━━━━━━━━━━━━\n" +
+        "<b>Status Pasien:</b>\n" +
+        "• ✅ Terkonfirmasi: " + countConfirmed + " Pasien\n" +
+        "• ⏳ Menunggu Konfirmasi: " + countPending + " Pasien\n" +
+        "• 🏁 Telah Selesai: " + countSelesai + " Pasien\n" +
+        "• ❌ Dibatalkan: " + countBatal + " Pasien\n" +
+        "━━━━━━━━━━━━━━━━━━\n" +
+        "<i>Data ditarik langsung secara real-time dari Sheet BOOKING.</i>";
+
+      sendTelegramMessage_(chatId, statMsg, mainKeyboard);
+      return HtmlService.createHtmlOutput("OK");
+    }
+
+    // 1f. Perintah Status Bot & Webhook Diagnostik (Khusus Admin)
+    if (isAdmin && (lowerText === "/statusbot" || lowerText === "statusbot" || lowerText === "status bot")) {
+      let webhookInfoText = "Tidak dapat memeriksa webhook info.";
+      try {
+        const res = UrlFetchApp.fetch("https://api.telegram.org/bot" + config.botToken + "/getWebhookInfo", { muteHttpExceptions: true });
+        if (res.getResponseCode() === 200) {
+          const wData = JSON.parse(res.getContentText()).result;
+          webhookInfoText = "• <b>URL:</b> <code>" + escapeTelegramHtml_(wData.url ? (wData.url.substring(0, 45) + "...") : "Belum di-set") + "</code>\n" +
+            "• <b>Custom Cert:</b> " + (wData.has_custom_certificate ? "Ya" : "Tidak") + "\n" +
+            "• <b>Pending Updates:</b> " + (wData.pending_update_count || 0) + " update\n" +
+            "• <b>Error Terakhir:</b> " + escapeTelegramHtml_(wData.last_error_message || "Tidak ada (Normal)") + "\n" +
+            (wData.last_error_date ? ("• <b>Waktu Error:</b> " + Utilities.formatDate(new Date(wData.last_error_date * 1000), "Asia/Jakarta", "yyyy-MM-dd HH:mm:ss") + " WIB\n") : "");
+        }
+      } catch (wErr) {
+        webhookInfoText = "Peringatan getWebhookInfo: " + escapeTelegramHtml_(wErr.toString());
+      }
+
+      // Cek Trigger 1 jam
+      let triggerStatus = "❌ Belum Aktif";
+      try {
+        const triggers = ScriptApp.getProjectTriggers();
+        for (let t = 0; t < triggers.length; t++) {
+          if (triggers[t].getHandlerFunction() === "checkUpcomingKhitanReminders") {
+            triggerStatus = "✅ Aktif (Setiap 1 Jam)";
+            break;
+          }
+        }
+      } catch (trErr) {
+        triggerStatus = "⚠️ Tidak dapat membaca trigger: " + trErr.message;
+      }
+
+      const lastBackupTime = (props && props.getProperty("AUTO_BACKUP_LAST_RUN")) || "Belum tercatat";
+      const lastBackupFile = (props && props.getProperty("AUTO_BACKUP_LAST_FILE")) || "-";
+      const maskedToken = config.botToken ? (config.botToken.substring(0, 6) + "..." + config.botToken.slice(-4)) : "Belum diatur";
+
+      const diagMsg = "🤖 <b>STATUS KESEHATAN BOT &amp; SISTEM KHITAN DAMAI</b> 🏥\n" +
+        "━━━━━━━━━━━━━━━━━━\n" +
+        "🔑 <b>Bot Token:</b> <code>" + maskedToken + "</code>\n" +
+        "👨‍⚕️ <b>Admin Chat ID:</b> <code>" + escapeTelegramHtml_(config.chatId) + "</code>\n" +
+        "📱 <b>Admin Phone:</b> <code>" + escapeTelegramHtml_(config.adminPhone) + "</code>\n" +
+        "━━━━━━━━━━━━━━━━━━\n" +
+        "🌐 <b>Status Webhook Telegram:</b>\n" +
+        webhookInfoText +
+        "━━━━━━━━━━━━━━━━━━\n" +
+        "⏰ <b>Trigger Reminder (&lt;12 Jam):</b> " + triggerStatus + "\n" +
+        "💾 <b>Backup Terakhir:</b> " + escapeTelegramHtml_(lastBackupTime) + "\n" +
+        "📁 <b>File Backup:</b> <code>" + escapeTelegramHtml_(lastBackupFile) + "</code>\n" +
+        "━━━━━━━━━━━━━━━━━━\n" +
+        "💡 <i>Gunakan <code>/setwebhook</code> jika URL webhook perlu diperbarui ulang.</i>";
+
+      sendTelegramMessage_(chatId, diagMsg, mainKeyboard);
+      return HtmlService.createHtmlOutput("OK");
+    }
+
+    // 1g. Perintah Mendaftarkan Ulang Webhook (Khusus Admin)
+    if (isAdmin && (lowerText === "/setwebhook" || lowerText === "setwebhook")) {
+      sendTelegramMessage_(chatId, "⏳ <i>Sedang mendaftarkan ulang Webhook Telegram ke Apps Script...</i>", mainKeyboard);
+      const hookRes = setTelegramWebhookUrl_();
+      if (hookRes.success) {
+        sendTelegramMessage_(chatId, "✅ <b>Pendaftaran Webhook Berhasil!</b>\nTarget URL: <code>" + escapeTelegramHtml_(hookRes.webhookUrl) + "</code>", mainKeyboard);
+      } else {
+        sendTelegramMessage_(chatId, "❌ <b>Gagal Mendaftarkan Webhook:</b>\n" + escapeTelegramHtml_(hookRes.error || hookRes.response || "Unknown error"), mainKeyboard);
       }
       return HtmlService.createHtmlOutput("OK");
     }
@@ -1482,7 +1975,6 @@ function handleTelegramWebhookUpdate_(update) {
 
     const cleanDigits = cleanPhoneNumber(searchQuery);
     const isPhoneNumber = cleanDigits.length >= 8 && cleanDigits.length <= 15;
-    // ID booking bisa diawali KD, atau kode alphanumeric 4-20 karakter tanpa spasi dan bukan perintah garis miring
     const isIdBooking = /^[A-Za-z0-9\-_]{4,20}$/.test(searchQuery) && !searchQuery.startsWith("/");
 
     if (isPhoneNumber || isIdBooking) {
@@ -2839,17 +3331,50 @@ function listDatabaseBackups_() {
 }
 
 /**
+ * Membersihkan file cadangan database lama (> 90 hari) dari folder Google Drive
+ */
+function pruneOldBackups_(folder) {
+  try {
+    if (!folder) return;
+    const files = folder.getFiles();
+    const nowMs = Date.now();
+    const RETENTION_MS = 90 * 24 * 60 * 60 * 1000; // 90 hari
+    let deletedCount = 0;
+    while (files.hasNext()) {
+      const f = files.next();
+      if (!f.isTrashed()) {
+        const createdMs = f.getDateCreated().getTime();
+        if (nowMs - createdMs > RETENTION_MS) {
+          f.setTrashed(true);
+          deletedCount++;
+        }
+      }
+    }
+    if (deletedCount > 0) {
+      Logger.log("pruneOldBackups_: " + deletedCount + " file cadangan lama telah dibersihkan.");
+    }
+  } catch (e) {
+    Logger.log("pruneOldBackups_ error: " + e.toString());
+  }
+}
+
+/**
  * Helper untuk membuat salinan seluruh database Spreadsheet ke folder Google Drive BACKUP_FOLDER_ID
- * Format Nama File: "YYYY-MM-DD_KhitanDamai"
+ * Format Nama File: "YYYY-MM-DD_HHmmss_KhitanDamai"
  */
 function executeDatabaseBackup_() {
   const targetFolder = DriveApp.getFolderById(BACKUP_FOLDER_ID);
   const originFile = DriveApp.getFileById(SPREADSHEET_ID);
-  const todayStr = Utilities.formatDate(new Date(), "Asia/Jakarta", "yyyy-MM-dd");
-  const fileName = todayStr + "_KhitanDamai";
+  const now = new Date();
+  const todayStr = Utilities.formatDate(now, "Asia/Jakarta", "yyyy-MM-dd");
+  const timeStr = Utilities.formatDate(now, "Asia/Jakarta", "HHmmss");
+  const fileName = todayStr + "_" + timeStr + "_KhitanDamai";
 
   const backupFile = originFile.makeCopy(fileName, targetFolder);
-  const timestamp = Utilities.formatDate(new Date(), "Asia/Jakarta", "yyyy-MM-dd HH:mm:ss");
+  const timestamp = Utilities.formatDate(now, "Asia/Jakarta", "yyyy-MM-dd HH:mm:ss");
+
+  // Pembersihan berkala cadangan kadaluarsa (> 90 hari)
+  pruneOldBackups_(targetFolder);
 
   return {
     fileId: backupFile.getId(),
@@ -5173,6 +5698,34 @@ function doGet(e) {
       });
     }
 
+    if (action === "getBotStatus") {
+      if (!validateSessionToken(params.token)) {
+        return unauthorizedResponse();
+      }
+      const config = getTelegramConfig_();
+      const props = PropertiesService.getScriptProperties();
+      let webhookInfo = null;
+      try {
+        const res = UrlFetchApp.fetch("https://api.telegram.org/bot" + config.botToken + "/getWebhookInfo", { muteHttpExceptions: true });
+        if (res.getResponseCode() === 200) {
+          webhookInfo = JSON.parse(res.getContentText()).result;
+        }
+      } catch (e) {}
+
+      return createJsonResponse({
+        status: "success",
+        data: {
+          botConfigured: !!config.botToken,
+          adminChatId: config.chatId,
+          adminPhone: config.adminPhone,
+          webhookSecretSet: !!(props && props.getProperty("TELEGRAM_HOOK_SECRET")),
+          webhookInfo: webhookInfo,
+          lastBackupRun: props ? props.getProperty("AUTO_BACKUP_LAST_RUN") : null,
+          lastBackupFile: props ? props.getProperty("AUTO_BACKUP_LAST_FILE") : null
+        }
+      });
+    }
+
     if (action === "checkStatus" || action === "checkBooking") {
       const idQuery = String(params.id || params.idBooking || params.bookingId || params.query || "").trim().toUpperCase();
       const phoneQuery = cleanPhoneNumber(params.phone);
@@ -5940,9 +6493,8 @@ function handleForgotPassword(identifier) {
  * POST Handler — Submit Pendaftaran Booking & Manajemen Admin
  */
 function doPost(e) {
-  const lock = LockService.getScriptLock();
-  // Kunci script maks 10 detik agar penambahan/pembaruan baris aman dan berurutan
-  const hasLock = lock.tryLock(10000);
+  let lock = null;
+  let hasLock = false;
 
   try {
     let payload = {};
@@ -5957,7 +6509,7 @@ function doPost(e) {
       }
     }
 
-    // 0. Deteksi Telegram Webhook Update (2 arah)
+    // 0. Deteksi Telegram Webhook Update (2 arah) - DIJALANKAN TANPA MENGUNCI GLOBAL DATABASE LOCK
     if (payload && (payload.update_id !== undefined || payload.message || payload.callback_query)) {
       const configuredSecret = getTelegramHookSecret_();
       if (configuredSecret) {
@@ -5983,6 +6535,20 @@ function doPost(e) {
           message: "Aksi tidak dikenali atau parameter action wajib disertakan."
         });
       }
+    }
+
+    // Kunci script hanya untuk aksi mutasi database
+    const MUTATING_ACTIONS = [
+      "createBooking", "updateBookingStatus", "updateBookingFull", "deleteBooking",
+      "saveUsers", "saveSettings", "backupDatabase", "createSaran", "deleteSaran",
+      "createKunjungan", "updateKunjungan", "deleteKunjungan",
+      "createJumatBerkah", "updateJumatBerkah", "deleteJumatBerkah",
+      "uploadSlideshowImage", "uploadGaleriImage", "saveGaleri"
+    ];
+
+    if (MUTATING_ACTIONS.indexOf(action) !== -1) {
+      lock = LockService.getScriptLock();
+      hasLock = lock.tryLock(10000);
     }
 
     // 1. Aksi LOGIN ADMIN
@@ -6078,6 +6644,29 @@ function doPost(e) {
           sumber: "admin-panel"
         });
         invalidateDataset_(SERVER_CACHE_KEYS.BOOKINGS, "bookings");
+
+        // Kirim notifikasi Telegram ke keluarga pasien jika nomor terhubung ke bot
+        try {
+          const rowVals = sheet.getRange(rowIndexToUpdate, 1, 1, HEADERS.length).getValues()[0];
+          const noHp = String(rowVals[14] || "");
+          const namaAnanda = String(rowVals[1] || "");
+          const namaPj = String(rowVals[10] || "");
+          const sapaan = resolveSapaanWa_(rowVals[13]);
+          if (noHp) {
+            const statusBadge = formatStatusBadgeTelegram_(newStatus);
+            const patMsg = "📢 <b>PEMBARUAN STATUS PENDAFTARAN KHITAN</b> 🏥✨\n" +
+              "━━━━━━━━━━━━━━━━━━\n" +
+              "Yth. " + sapaan + " <b>" + escapeTelegramHtml_(namaPj) + "</b>,\n\n" +
+              "Status pendaftaran khitan Ananda <b>" + escapeTelegramHtml_(namaAnanda) + "</b> (ID: <code>" + escapeTelegramHtml_(bookingId) + "</code>) saat ini telah diperbarui menjadi:\n\n" +
+              "👉 <b>" + escapeTelegramHtml_(statusBadge) + "</b>\n\n" +
+              "━━━━━━━━━━━━━━━━━━\n" +
+              "💡 <i>Sentuh menu '🔍 Status Booking Saya' pada bot untuk memeriksa rincian terkini.</i>\n" +
+              "🏥 Rumah Khitan Damai — Nyaman, Aman, dan Menyenangkan ✨";
+            notifyPatientTelegram_(noHp, patMsg);
+          }
+        } catch (tgNotifyErr) {
+          Logger.log("Peringatan notifikasi Telegram ke pasien: " + tgNotifyErr.toString());
+        }
 
         return createJsonResponse({
           status: "success",
