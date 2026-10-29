@@ -367,13 +367,13 @@
       "degree": 81
     },
     {
-      "id": "ref_playwright_test",
-      "label": "@playwright/test",
+      "id": "asset_code_doget",
+      "label": "doGet()",
       "degree": 42
     },
     {
-      "id": "asset_code_doget",
-      "label": "doGet()",
+      "id": "ref_playwright_test",
+      "label": "@playwright/test",
       "degree": 42
     },
     {
@@ -437,7 +437,7 @@
     },
     {
       "source": "Architecture",
-      "target": "doGet()",
+      "target": "doPost()",
       "source_files": [
         "AGENTS.md",
         "asset/Code.gs"
@@ -448,7 +448,7 @@
     },
     {
       "source": "Architecture",
-      "target": "doPost()",
+      "target": "doGet()",
       "source_files": [
         "AGENTS.md",
         "asset/Code.gs"
