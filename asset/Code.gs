@@ -111,7 +111,9 @@ const SERVER_CACHE_KEYS = {
   SETTINGS: "kd_server_settings_cache",
   GALERI: "kd_server_galeri_cache",
   SARAN: "kd_server_saran_cache",
-  JUMAT_BERKAH: "kd_server_jumatberkah_cache"
+  JUMAT_BERKAH: "kd_server_jumatberkah_cache",
+  VERSIONS: "kd_server_versions_cache",
+  HISTORY: "kd_server_history_cache"
 };
 const GALERI_CACHE_KEY = SERVER_CACHE_KEYS.GALERI;
 const GALERI_CACHE_TTL = 600; // 10 Menit
@@ -1644,6 +1646,57 @@ function removeChunkedCache(key) {
 }
 
 /**
+ * Mengambil registry versi dataset dari CacheService
+ */
+function getStoredDatasetVersions_() {
+  try {
+    const cache = CacheService.getScriptCache();
+    const raw = cache.get(SERVER_CACHE_KEYS.VERSIONS);
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+/**
+ * Memperbarui registry versi dan metadata dataset di CacheService
+ */
+function updateDatasetVersionMeta_(datasetName, version, sizeBytes, count) {
+  try {
+    const cache = CacheService.getScriptCache();
+    const registry = getStoredDatasetVersions_();
+    registry[datasetName] = {
+      version: version,
+      sizeBytes: sizeBytes || 0,
+      count: count || 0,
+      updatedAt: Date.now()
+    };
+    cache.put(SERVER_CACHE_KEYS.VERSIONS, JSON.stringify(registry), SERVER_CACHE_DEFAULT_TTL);
+  } catch (e) {
+    Logger.log("Peringatan updateDatasetVersionMeta_: " + e.message);
+  }
+}
+
+/**
+ * Menghapus cache dataset dan membersihkan versinya dari registry
+ */
+function invalidateDataset_(cacheKey, datasetName) {
+  try {
+    removeChunkedCache(cacheKey);
+    if (datasetName) {
+      const cache = CacheService.getScriptCache();
+      const registry = getStoredDatasetVersions_();
+      if (registry && registry[datasetName]) {
+        delete registry[datasetName];
+        cache.put(SERVER_CACHE_KEYS.VERSIONS, JSON.stringify(registry), SERVER_CACHE_DEFAULT_TTL);
+      }
+    }
+  } catch (e) {
+    Logger.log("Peringatan invalidateDataset_: " + e.message);
+  }
+}
+
+/**
  * Membersihkan seluruh cache server aplikasi sekaligus
  */
 function clearAllServerCaches() {
@@ -1655,7 +1708,9 @@ function clearAllServerCaches() {
       SERVER_CACHE_KEYS.SETTINGS,
       SERVER_CACHE_KEYS.GALERI,
       SERVER_CACHE_KEYS.SARAN,
-      SERVER_CACHE_KEYS.JUMAT_BERKAH
+      SERVER_CACHE_KEYS.JUMAT_BERKAH,
+      SERVER_CACHE_KEYS.VERSIONS,
+      SERVER_CACHE_KEYS.HISTORY
     ];
     for (let i = 0; i < keys.length; i++) {
       removeChunkedCache(keys[i]);
@@ -1756,6 +1811,198 @@ const JUMAT_BERKAH_HEADERS = [
   "KECAMATAN",
   "KELURAHAN"
 ];
+
+// Konfigurasi Audit Trail & History Cache (Sheet HISTORY)
+const HISTORY_SHEET_NAME = "HISTORY";
+const HISTORY_HEADERS = [
+  "TIMESTAMP",
+  "WAKTU",
+  "USER",
+  "AKSI",
+  "DATASET",
+  "ID_RECORD",
+  "RINGKASAN",
+  "SUMBER"
+];
+const HISTORY_MAX_ROWS = 5000;
+const HISTORY_PRUNE_BATCH = 500;
+
+/**
+ * Mendapatkan atau menginisialisasi sheet HISTORY untuk audit trail dan history cache
+ */
+function getHistorySheet_() {
+  const ss = getSpreadsheet_();
+  let sheet = ss.getSheetByName(HISTORY_SHEET_NAME);
+  
+  if (!sheet) {
+    sheet = ss.insertSheet(HISTORY_SHEET_NAME);
+  }
+
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(HISTORY_HEADERS);
+    const headerRange = sheet.getRange(1, 1, 1, HISTORY_HEADERS.length);
+    headerRange.setFontWeight("bold");
+    headerRange.setBackground("#008080"); // Brand Tosca
+    headerRange.setFontColor("#FFFFFF");
+    headerRange.setHorizontalAlignment("center");
+    sheet.setFrozenRows(1);
+    
+    for (let col = 1; col <= HISTORY_HEADERS.length; col++) {
+      sheet.autoResizeColumn(col);
+    }
+  }
+
+  return sheet;
+}
+
+/**
+ * Mencatat riwayat perubahan data (audit trail) ke sheet HISTORY
+ * Bersifat non-blocking dan diisolasi dengan try-catch agar tidak mengganggu transaksi utama
+ */
+function logHistory_(entries) {
+  try {
+    if (!entries) return;
+    const list = Array.isArray(entries) ? entries : [entries];
+    if (list.length === 0) return;
+
+    const sheet = getHistorySheet_();
+    const now = new Date();
+    const nowTs = now.getTime();
+    const formattedWaktu = Utilities.formatDate(now, "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss") + " WIB";
+
+    const rows = [];
+    for (let i = 0; i < list.length; i++) {
+      const item = list[i];
+      if (!item) continue;
+      rows.push([
+        item.timestamp || nowTs,
+        item.waktu || formattedWaktu,
+        String(item.user || "System").trim(),
+        String(item.aksi || "UBAH").trim().toUpperCase(),
+        String(item.dataset || "-").trim().toUpperCase(),
+        String(item.idRecord || "-").trim(),
+        sanitizeSpreadsheetFormula(String(item.ringkasan || "").trim()),
+        String(item.sumber || "admin-panel").trim()
+      ]);
+    }
+
+    if (rows.length > 0) {
+      const nextRow = sheet.getLastRow() + 1;
+      sheet.getRange(nextRow, 1, rows.length, HISTORY_HEADERS.length).setValues(rows);
+
+      // Invalidate history cache
+      invalidateDataset_(SERVER_CACHE_KEYS.HISTORY, "history");
+
+      // Pruning guard: jika baris melebihi batas HISTORY_MAX_ROWS, hapus 500 baris tertua
+      const totalRows = nextRow + rows.length - 1;
+      if (totalRows > HISTORY_MAX_ROWS + 1) { // +1 karena header baris 1
+        try {
+          const deleteCount = Math.min(HISTORY_PRUNE_BATCH, totalRows - 2);
+          if (deleteCount > 0) {
+            sheet.deleteRows(2, deleteCount);
+          }
+        } catch (pruneErr) {
+          Logger.log("Peringatan pruning HISTORY: " + pruneErr.message);
+        }
+      }
+    }
+  } catch (err) {
+    Logger.log("Peringatan logHistory_: " + err.message);
+  }
+}
+
+/**
+ * Membaca riwayat perubahan dari sheet HISTORY dengan pagination, pencarian, dan filter dataset
+ */
+function readHistoryFromSheet_(options) {
+  options = options || {};
+  const limit = Math.min(Math.max(parseInt(options.limit || 50, 10), 1), 200);
+  const offset = Math.max(parseInt(options.offset || 0, 10), 0);
+  const filterDataset = String(options.dataset || "").trim().toUpperCase();
+  const filterAksi = String(options.aksi || "").trim().toUpperCase();
+  const searchQuery = String(options.q || "").trim().toLowerCase();
+
+  const sheet = getHistorySheet_();
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) {
+    return { total: 0, items: [], hasMore: false };
+  }
+
+  // Baca seluruh baris riwayat
+  const values = sheet.getRange(2, 1, lastRow - 1, HISTORY_HEADERS.length).getValues();
+  const allItems = [];
+
+  for (let i = values.length - 1; i >= 0; i--) { // Reverse: data terbaru di atas
+    const row = values[i];
+    let ts = row[0];
+    if (ts instanceof Date) ts = ts.getTime();
+    else ts = Number(ts) || 0;
+
+    let waktuStr = row[1];
+    if (waktuStr instanceof Date) {
+      waktuStr = Utilities.formatDate(waktuStr, "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss") + " WIB";
+    } else {
+      waktuStr = String(waktuStr || "");
+    }
+
+    const user = String(row[2] || "").trim();
+    const aksi = String(row[3] || "").trim().toUpperCase();
+    const dataset = String(row[4] || "").trim().toUpperCase();
+    const idRecord = String(row[5] || "").trim();
+    const ringkasan = String(row[6] || "").trim();
+    const sumber = String(row[7] || "").trim();
+
+    if (filterDataset && filterDataset !== "SEMUA" && dataset !== filterDataset) {
+      continue;
+    }
+    if (filterAksi && filterAksi !== "SEMUA" && aksi !== filterAksi) {
+      continue;
+    }
+    if (searchQuery) {
+      const matchQuery = user.toLowerCase().includes(searchQuery) ||
+                         idRecord.toLowerCase().includes(searchQuery) ||
+                         ringkasan.toLowerCase().includes(searchQuery) ||
+                         dataset.toLowerCase().includes(searchQuery);
+      if (!matchQuery) continue;
+    }
+
+    allItems.push({
+      timestamp: ts,
+      waktu: waktuStr,
+      user: user,
+      aksi: aksi,
+      dataset: dataset,
+      idRecord: idRecord,
+      ringkasan: ringkasan,
+      sumber: sumber
+    });
+  }
+
+  const total = allItems.length;
+  const paged = allItems.slice(offset, offset + limit);
+  const hasMore = (offset + limit) < total;
+
+  return {
+    total: total,
+    offset: offset,
+    limit: limit,
+    hasMore: hasMore,
+    items: paged
+  };
+}
+
+/**
+ * Membersihkan seluruh baris pada sheet HISTORY (hanya menyisakan baris header)
+ */
+function clearHistorySheet_() {
+  const sheet = getHistorySheet_();
+  const lastRow = sheet.getLastRow();
+  if (lastRow > 1) {
+    sheet.deleteRows(2, lastRow - 1);
+  }
+  invalidateDataset_(SERVER_CACHE_KEYS.HISTORY, "history");
+  return true;
+}
 
 // ID Template Google Docs SURAT PERNYATAAN TIDAK MEROKOK untuk Export Word Jumat Berkah
 const TEMPLATE_SURAT_MEROKOK_ID = "17VXeKN8ygM_PBW8JSggbPPHDIdVWrgb08nofV1JZV8g";
@@ -4197,14 +4444,6 @@ function handleSyncAdminData(params) {
   const startTime = Date.now();
   const ss = getSpreadsheet_();
 
-  const bookings = readBookingsFromSheet(ss.getSheetByName(SHEET_NAME), forceRefresh);
-  const kunjungan = readKunjunganFromSheet(ss.getSheetByName(KUNJUNGAN_SHEET_NAME), forceRefresh);
-  const jumatBerkah = readJumatBerkahFromSheet(ss.getSheetByName(JUMAT_BERKAH_SHEET_NAME), forceRefresh);
-  const usersResult = readUsersFromSheet(ss.getSheetByName(USERS_SHEET_NAME), forceRefresh);
-  const settings = readSettings(forceRefresh);
-  const galeri = readGaleriFromSheet(forceRefresh);
-  const saran = readSaranFromSheet(forceRefresh);
-
   // Parsing parameter versions klien (jika dikirim untuk delta sync)
   var clientVersions = {};
   var rawVersions = params.versions || (params.data && params.data.versions);
@@ -4220,14 +4459,118 @@ function handleSyncAdminData(params) {
     }
   }
 
-  // Hitung versi dataset terkini menggunakan hashing FNV-1a ringkas
-  const bVer = computeDatasetVersion_(bookings);
-  const kVer = computeDatasetVersion_(kunjungan);
-  const jVer = computeDatasetVersion_(jumatBerkah);
-  const uVer = computeDatasetVersion_(usersResult.users || []);
-  const sVer = computeDatasetVersion_(settings);
-  const gVer = computeDatasetVersion_(galeri);
-  const rVer = computeDatasetVersion_(saran);
+  // Fast-Path Delta Sync: Menggunakan cache registry versi dataset untuk melewati pembacaan & parsing JSON data besar
+  const registry = (!forceRefresh) ? getStoredDatasetVersions_() : {};
+
+  // 1. Bookings
+  let bookings = null;
+  let bVer = (registry.bookings && registry.bookings.version) ? registry.bookings.version : null;
+  let bCount = (registry.bookings && typeof registry.bookings.count === "number") ? registry.bookings.count : 0;
+  let bSizeBytes = (registry.bookings && typeof registry.bookings.sizeBytes === "number") ? registry.bookings.sizeBytes : 0;
+  if (forceRefresh || !bVer || clientVersions.bookings !== bVer) {
+    bookings = readBookingsFromSheet(ss.getSheetByName(SHEET_NAME), forceRefresh);
+    bVer = computeDatasetVersion_(bookings);
+    bCount = bookings.length;
+    bSizeBytes = JSON.stringify(bookings).length;
+    updateDatasetVersionMeta_("bookings", bVer, bSizeBytes, bCount);
+  } else {
+    recordCacheTelemetry_("bookings", "hit");
+    bookings = { length: bCount };
+  }
+
+  // 2. Kunjungan
+  let kunjungan = null;
+  let kVer = (registry.kunjungan && registry.kunjungan.version) ? registry.kunjungan.version : null;
+  let kCount = (registry.kunjungan && typeof registry.kunjungan.count === "number") ? registry.kunjungan.count : 0;
+  let kSizeBytes = (registry.kunjungan && typeof registry.kunjungan.sizeBytes === "number") ? registry.kunjungan.sizeBytes : 0;
+  if (forceRefresh || !kVer || clientVersions.kunjungan !== kVer) {
+    kunjungan = readKunjunganFromSheet(ss.getSheetByName(KUNJUNGAN_SHEET_NAME), forceRefresh);
+    kVer = computeDatasetVersion_(kunjungan);
+    kCount = kunjungan.length;
+    kSizeBytes = JSON.stringify(kunjungan).length;
+    updateDatasetVersionMeta_("kunjungan", kVer, kSizeBytes, kCount);
+  } else {
+    recordCacheTelemetry_("kunjungan", "hit");
+    kunjungan = { length: kCount };
+  }
+
+  // 2b. Jumat Berkah
+  let jumatBerkah = null;
+  let jVer = (registry.jumatberkah && registry.jumatberkah.version) ? registry.jumatberkah.version : null;
+  let jCount = (registry.jumatberkah && typeof registry.jumatberkah.count === "number") ? registry.jumatberkah.count : 0;
+  let jSizeBytes = (registry.jumatberkah && typeof registry.jumatberkah.sizeBytes === "number") ? registry.jumatberkah.sizeBytes : 0;
+  const clientJVer = clientVersions.jumatberkah || clientVersions.jumatBerkah;
+  if (forceRefresh || !jVer || clientJVer !== jVer) {
+    jumatBerkah = readJumatBerkahFromSheet(ss.getSheetByName(JUMAT_BERKAH_SHEET_NAME), forceRefresh);
+    jVer = computeDatasetVersion_(jumatBerkah);
+    jCount = jumatBerkah.length;
+    jSizeBytes = JSON.stringify(jumatBerkah).length;
+    updateDatasetVersionMeta_("jumatberkah", jVer, jSizeBytes, jCount);
+  } else {
+    recordCacheTelemetry_("jumatberkah", "hit");
+    jumatBerkah = { length: jCount };
+  }
+
+  // 3. Users
+  let usersResult = null;
+  let uVer = (registry.users && registry.users.version) ? registry.users.version : null;
+  let uCount = (registry.users && typeof registry.users.count === "number") ? registry.users.count : 0;
+  let uSizeBytes = (registry.users && typeof registry.users.sizeBytes === "number") ? registry.users.sizeBytes : 0;
+  if (forceRefresh || !uVer || clientVersions.users !== uVer) {
+    usersResult = readUsersFromSheet(ss.getSheetByName(USERS_SHEET_NAME), forceRefresh);
+    uVer = computeDatasetVersion_(usersResult.users || []);
+    uCount = usersResult.users ? usersResult.users.length : 0;
+    uSizeBytes = JSON.stringify(usersResult).length;
+    updateDatasetVersionMeta_("users", uVer, uSizeBytes, uCount);
+  } else {
+    recordCacheTelemetry_("users", "hit");
+    usersResult = { users: { length: uCount }, layout: "baru" };
+  }
+
+  // 4. Settings
+  let settings = null;
+  let sVer = (registry.settings && registry.settings.version) ? registry.settings.version : null;
+  let sSizeBytes = (registry.settings && typeof registry.settings.sizeBytes === "number") ? registry.settings.sizeBytes : 0;
+  if (forceRefresh || !sVer || clientVersions.settings !== sVer) {
+    settings = readSettings(forceRefresh);
+    sVer = computeDatasetVersion_(settings);
+    sSizeBytes = JSON.stringify(settings).length;
+    updateDatasetVersionMeta_("settings", sVer, sSizeBytes, 1);
+  } else {
+    recordCacheTelemetry_("settings", "hit");
+  }
+
+  // 5. Galeri
+  let galeri = null;
+  let gVer = (registry.galeri && registry.galeri.version) ? registry.galeri.version : null;
+  let gCount = (registry.galeri && typeof registry.galeri.count === "number") ? registry.galeri.count : 0;
+  let gSizeBytes = (registry.galeri && typeof registry.galeri.sizeBytes === "number") ? registry.galeri.sizeBytes : 0;
+  if (forceRefresh || !gVer || clientVersions.galeri !== gVer) {
+    galeri = readGaleriFromSheet(forceRefresh);
+    gVer = computeDatasetVersion_(galeri);
+    gCount = galeri.length;
+    gSizeBytes = JSON.stringify(galeri).length;
+    updateDatasetVersionMeta_("galeri", gVer, gSizeBytes, gCount);
+  } else {
+    recordCacheTelemetry_("galeri", "hit");
+    galeri = { length: gCount };
+  }
+
+  // 6. Saran
+  let saran = null;
+  let rVer = (registry.saran && registry.saran.version) ? registry.saran.version : null;
+  let rCount = (registry.saran && typeof registry.saran.count === "number") ? registry.saran.count : 0;
+  let rSizeBytes = (registry.saran && typeof registry.saran.sizeBytes === "number") ? registry.saran.sizeBytes : 0;
+  if (forceRefresh || !rVer || clientVersions.saran !== rVer) {
+    saran = readSaranFromSheet(forceRefresh);
+    rVer = computeDatasetVersion_(saran);
+    rCount = saran.length;
+    rSizeBytes = JSON.stringify(saran).length;
+    updateDatasetVersionMeta_("saran", rVer, rSizeBytes, rCount);
+  } else {
+    recordCacheTelemetry_("saran", "hit");
+    saran = { length: rCount };
+  }
 
   const versions = {
     bookings: bVer,
@@ -4238,6 +4581,16 @@ function handleSyncAdminData(params) {
     settings: sVer,
     galeri: gVer,
     saran: rVer
+  };
+
+  const versionsMeta = {
+    bookings: { version: bVer, sizeBytes: bSizeBytes, count: bCount },
+    kunjungan: { version: kVer, sizeBytes: kSizeBytes, count: kCount },
+    jumatberkah: { version: jVer, sizeBytes: jSizeBytes, count: jCount },
+    users: { version: uVer, sizeBytes: uSizeBytes, count: uCount },
+    settings: { version: sVer, sizeBytes: sSizeBytes, count: 1 },
+    galeri: { version: gVer, sizeBytes: gSizeBytes, count: gCount },
+    saran: { version: rVer, sizeBytes: rSizeBytes, count: rCount }
   };
 
   // Evaluasi unchanged flag per dataset
@@ -4318,6 +4671,7 @@ function handleSyncAdminData(params) {
     delta: Object.keys(clientVersions).length > 0 && !forceRefresh,
     unchanged: unchanged,
     versions: versions,
+    versionsMeta: versionsMeta,
     telemetry: {
       cache: CACHE_TELEMETRY_ || {},
       durationMs: durationMs,
@@ -4325,12 +4679,12 @@ function handleSyncAdminData(params) {
       changedCount: changedCount
     },
     counts: {
-      bookings: bookings.length,
-      kunjungan: kunjungan.length,
-      jumatberkah: jumatBerkah.length,
-      users: usersResult.users ? usersResult.users.length : 0,
-      galeri: galeri.length,
-      saran: saran.length
+      bookings: bCount,
+      kunjungan: kCount,
+      jumatberkah: jCount,
+      users: uCount,
+      galeri: gCount,
+      saran: rCount
     },
     data: responseData
   });
@@ -4690,6 +5044,21 @@ function unauthorizedResponse() {
 }
 
 /**
+ * Mengambil role pengguna (Super Admin / Admin) berdasarkan username
+ */
+function getUserRole_(username) {
+  if (!username) return null;
+  const usersRes = readUsersFromSheet();
+  const users = usersRes && usersRes.users ? usersRes.users : [];
+  for (let i = 0; i < users.length; i++) {
+    if (users[i].username && String(users[i].username).trim().toLowerCase() === String(username).trim().toLowerCase()) {
+      return String(users[i].role || "Admin").trim();
+    }
+  }
+  return null;
+}
+
+/**
  * GET Handler — Frontend SPA & API Services
  */
 function doGet(e) {
@@ -4915,6 +5284,55 @@ function doGet(e) {
       return createJsonResponse({
         status: "success",
         message: "Seluruh cache server Google Apps Script berhasil dibersihkan."
+      });
+    }
+
+    if (action === "getSyncHistory") {
+      if (!validateSessionToken(params.token)) {
+        return unauthorizedResponse();
+      }
+      const historyResult = readHistoryFromSheet_({
+        limit: params.limit,
+        offset: params.offset,
+        dataset: params.dataset,
+        aksi: params.aksi,
+        q: params.q,
+        forceRefresh: String(params.forceRefresh || "").toLowerCase() === "true"
+      });
+      return createJsonResponse({
+        status: "success",
+        total: historyResult.total,
+        offset: historyResult.offset,
+        limit: historyResult.limit,
+        hasMore: historyResult.hasMore,
+        data: historyResult.items
+      });
+    }
+
+    if (action === "clearSyncHistory") {
+      const username = validateSessionToken(params.token);
+      if (!username) {
+        return unauthorizedResponse();
+      }
+      const role = getUserRole_(username);
+      if (role !== "Super Admin") {
+        return createJsonResponse({
+          status: "error",
+          message: "Hanya Super Admin yang memiliki hak akses untuk membersihkan riwayat perubahan."
+        });
+      }
+      clearHistorySheet_();
+      logHistory_({
+        user: username,
+        aksi: "HAPUS",
+        dataset: "HISTORY",
+        idRecord: "ALL",
+        ringkasan: "Super Admin membersihkan seluruh riwayat perubahan di sheet HISTORY.",
+        sumber: "admin-panel"
+      });
+      return createJsonResponse({
+        status: "success",
+        message: "Seluruh riwayat perubahan pada sheet HISTORY berhasil dibersihkan."
       });
     }
 
@@ -5649,7 +6067,18 @@ function doPost(e) {
         // Kolom status berada di kolom STATUS (kolom ke-22 pada skema baru)
         const statusColIndex = HEADERS.indexOf("STATUS") + 1;
         sheet.getRange(rowIndexToUpdate, statusColIndex > 0 ? statusColIndex : 22).setValue(newStatus);
-        removeChunkedCache(SERVER_CACHE_KEYS.BOOKINGS);
+        
+        const authUser = validateSessionToken(token);
+        logHistory_({
+          user: authUser,
+          aksi: "UBAH",
+          dataset: "BOOKINGS",
+          idRecord: bookingId,
+          ringkasan: "Ubah status booking " + bookingId + " menjadi " + newStatus,
+          sumber: "admin-panel"
+        });
+        invalidateDataset_(SERVER_CACHE_KEYS.BOOKINGS, "bookings");
+
         return createJsonResponse({
           status: "success",
           message: "Status booking " + bookingId + " berhasil diperbarui menjadi " + newStatus + ".",
@@ -5763,7 +6192,17 @@ function doPost(e) {
       ];
 
       sheet.getRange(rowIndexToUpdate, 2, 1, updatedRowValues.length).setValues([updatedRowValues]);
-      removeChunkedCache(SERVER_CACHE_KEYS.BOOKINGS);
+
+      const authUser = validateSessionToken(token);
+      logHistory_({
+        user: authUser,
+        aksi: "UBAH",
+        dataset: "BOOKINGS",
+        idRecord: bookingId,
+        ringkasan: "Perbarui data booking: " + namaAnanda + " (" + bookingId + ")",
+        sumber: "admin-panel"
+      });
+      invalidateDataset_(SERVER_CACHE_KEYS.BOOKINGS, "bookings");
 
       const savedData = {
         id: bookingId,
@@ -5828,14 +6267,15 @@ function deleteBookingRowById_(bookingId) {
   if (rowIndexToDelete < 2) return null;
 
   sheet.deleteRow(rowIndexToDelete);
-  removeChunkedCache(SERVER_CACHE_KEYS.BOOKINGS);
+  invalidateDataset_(SERVER_CACHE_KEYS.BOOKINGS, "bookings");
   return cleanId;
 }
 
     // 2c. Aksi HAPUS DATA BOOKING (ADMIN)
     if (action === "deleteBooking") {
       const token = payload.token || (payload.data && payload.data.token);
-      if (!validateSessionToken(token)) {
+      const authUser = validateSessionToken(token);
+      if (!authUser) {
         return unauthorizedResponse();
       }
 
@@ -5856,6 +6296,15 @@ function deleteBookingRowById_(bookingId) {
           message: "Kode booking " + bookingId + " tidak ditemukan di database."
         });
       }
+
+      logHistory_({
+        user: authUser,
+        aksi: "HAPUS",
+        dataset: "BOOKINGS",
+        idRecord: bookingId,
+        ringkasan: "Hapus booking ID: " + bookingId,
+        sumber: "admin-panel"
+      });
 
       return createJsonResponse({
         status: "success",
@@ -5895,6 +6344,60 @@ function deleteBookingRowById_(bookingId) {
       return createJsonResponse({
         status: "success",
         message: "Seluruh cache server Google Apps Script berhasil dibersihkan."
+      });
+    }
+
+    // 3a3. Aksi AMBIL RIWAYAT PERUBAHAN SINKRONISASI (via POST)
+    if (action === "getSyncHistory") {
+      const token = payload.token || (payload.data && payload.data.token);
+      if (!validateSessionToken(token)) {
+        return unauthorizedResponse();
+      }
+      const data = payload.data || payload;
+      const historyResult = readHistoryFromSheet_({
+        limit: data.limit,
+        offset: data.offset,
+        dataset: data.dataset,
+        aksi: data.aksi,
+        q: data.q,
+        forceRefresh: String(data.forceRefresh || "").toLowerCase() === "true"
+      });
+      return createJsonResponse({
+        status: "success",
+        total: historyResult.total,
+        offset: historyResult.offset,
+        limit: historyResult.limit,
+        hasMore: historyResult.hasMore,
+        data: historyResult.items
+      });
+    }
+
+    // 3a4. Aksi BERSIHKAN RIWAYAT PERUBAHAN (via POST)
+    if (action === "clearSyncHistory") {
+      const token = payload.token || (payload.data && payload.data.token);
+      const username = validateSessionToken(token);
+      if (!username) {
+        return unauthorizedResponse();
+      }
+      const role = getUserRole_(username);
+      if (role !== "Super Admin") {
+        return createJsonResponse({
+          status: "error",
+          message: "Hanya Super Admin yang memiliki hak akses untuk membersihkan riwayat perubahan."
+        });
+      }
+      clearHistorySheet_();
+      logHistory_({
+        user: username,
+        aksi: "HAPUS",
+        dataset: "HISTORY",
+        idRecord: "ALL",
+        ringkasan: "Super Admin membersihkan seluruh riwayat perubahan di sheet HISTORY.",
+        sumber: "admin-panel"
+      });
+      return createJsonResponse({
+        status: "success",
+        message: "Seluruh riwayat perubahan pada sheet HISTORY berhasil dibersihkan."
       });
     }
 
@@ -6040,7 +6543,16 @@ function deleteBookingRowById_(bookingId) {
         sheet.autoResizeColumn(c);
       }
 
-      removeChunkedCache(SERVER_CACHE_KEYS.USERS);
+      const authUser = validateSessionToken(token);
+      logHistory_({
+        user: authUser,
+        aksi: "UBAH",
+        dataset: "USERS",
+        idRecord: cleanedUsers.length + " Akun",
+        ringkasan: "Perbarui data pengguna (" + cleanedUsers.length + " akun, layout " + layout + ")",
+        sumber: "admin-panel"
+      });
+      invalidateDataset_(SERVER_CACHE_KEYS.USERS, "users");
 
       return createJsonResponse({
         status: "success",
@@ -6404,7 +6916,16 @@ function deleteBookingRowById_(bookingId) {
       }
 
       // Bersihkan cache pengaturan server
-      removeChunkedCache(SERVER_CACHE_KEYS.SETTINGS);
+      const authUser = validateSessionToken(token);
+      logHistory_({
+        user: authUser,
+        aksi: "UBAH",
+        dataset: "SETTINGS",
+        idRecord: savedMessages.join(", "),
+        ringkasan: "Simpan pengaturan: " + savedMessages.join(", "),
+        sumber: "admin-panel"
+      });
+      invalidateDataset_(SERVER_CACHE_KEYS.SETTINGS, "settings");
 
       return createJsonResponse({
         status: "success",
@@ -6677,7 +7198,17 @@ function deleteBookingRowById_(bookingId) {
         };
 
         sheet.appendRow([finalId, safeNama, JSON.stringify(fotoObj)]);
-        removeChunkedCache(SERVER_CACHE_KEYS.GALERI);
+
+        const authUser = validateSessionToken(token);
+        logHistory_({
+          user: authUser,
+          aksi: "TAMBAH",
+          dataset: "GALERI",
+          idRecord: finalId,
+          ringkasan: "Tambah foto galeri: " + nama,
+          sumber: "admin-panel"
+        });
+        invalidateDataset_(SERVER_CACHE_KEYS.GALERI, "galeri");
 
         return createJsonResponse({
           status: "success",
@@ -6763,7 +7294,17 @@ function deleteBookingRowById_(bookingId) {
         } else {
           sheet.getRange(targetRowIndex, 2).setValue(safeNama);
         }
-        removeChunkedCache(SERVER_CACHE_KEYS.GALERI);
+
+        const authUser = validateSessionToken(token);
+        logHistory_({
+          user: authUser,
+          aksi: "UBAH",
+          dataset: "GALERI",
+          idRecord: id,
+          ringkasan: "Ubah foto galeri: " + nama,
+          sumber: "admin-panel"
+        });
+        invalidateDataset_(SERVER_CACHE_KEYS.GALERI, "galeri");
 
         return createJsonResponse({
           status: "success",
@@ -6820,7 +7361,17 @@ function deleteBookingRowById_(bookingId) {
         }
 
         sheet.deleteRow(targetRowIndex);
-        removeChunkedCache(SERVER_CACHE_KEYS.GALERI);
+
+        const authUser = validateSessionToken(token);
+        logHistory_({
+          user: authUser,
+          aksi: "HAPUS",
+          dataset: "GALERI",
+          idRecord: id,
+          ringkasan: "Hapus foto galeri: " + id,
+          sumber: "admin-panel"
+        });
+        invalidateDataset_(SERVER_CACHE_KEYS.GALERI, "galeri");
 
         return createJsonResponse({
           status: "success",
@@ -6959,7 +7510,15 @@ function deleteBookingRowById_(bookingId) {
       ];
 
       sheet.appendRow(newRow);
-      removeChunkedCache(SERVER_CACHE_KEYS.BOOKINGS);
+      invalidateDataset_(SERVER_CACHE_KEYS.BOOKINGS, "bookings");
+      logHistory_({
+        user: namaPenanggungJawab || "Publik",
+        aksi: "TAMBAH",
+        dataset: "BOOKINGS",
+        idRecord: bookingId,
+        ringkasan: "Pendaftaran booking baru: " + namaAnanda + " (" + tanggalKhitan + ")",
+        sumber: "publik"
+      });
 
       const savedData = {
         // Field baru
@@ -7201,7 +7760,15 @@ function deleteBookingRowById_(bookingId) {
       ];
 
       sheet.appendRow(newRow);
-      removeChunkedCache(SERVER_CACHE_KEYS.SARAN);
+      logHistory_({
+        user: nama || "Publik",
+        aksi: "TAMBAH",
+        dataset: "SARAN",
+        idRecord: saranId,
+        ringkasan: "Saran & kritik baru dari " + (nama || "Anonim"),
+        sumber: "publik"
+      });
+      invalidateDataset_(SERVER_CACHE_KEYS.SARAN, "saran");
 
       return createJsonResponse({
         status: "success",
@@ -7260,7 +7827,15 @@ function deleteBookingRowById_(bookingId) {
       }
 
       sheet.deleteRow(targetRowIndex);
-      removeChunkedCache(SERVER_CACHE_KEYS.SARAN);
+      logHistory_({
+        user: authUsername,
+        aksi: "HAPUS",
+        dataset: "SARAN",
+        idRecord: id,
+        ringkasan: "Hapus saran & kritik ID: " + id,
+        sumber: "admin-panel"
+      });
+      invalidateDataset_(SERVER_CACHE_KEYS.SARAN, "saran");
 
       return createJsonResponse({
         status: "success",
@@ -7295,7 +7870,15 @@ function deleteBookingRowById_(bookingId) {
 
       // Tulis ulang penuh seluruh sheet terurut REGISTER DESC (data terbaru di atas)
       writeKunjunganRowsToSheet_(sheet, allRows);
-      removeChunkedCache(SERVER_CACHE_KEYS.KUNJUNGAN);
+      logHistory_({
+        user: authUsername,
+        aksi: "TAMBAH",
+        dataset: "KUNJUNGAN",
+        idRecord: newRegister,
+        ringkasan: "Tambah kunjungan baru: " + (itemData.namaAnanda || "") + " (" + newRegister + ")",
+        sumber: "admin-panel"
+      });
+      invalidateDataset_(SERVER_CACHE_KEYS.KUNJUNGAN, "kunjungan");
 
       // Otomatis hapus baris booking sumber jika data berasal dari pendaftaran booking
       let deletedBookingId = null;
@@ -7367,7 +7950,15 @@ function deleteBookingRowById_(bookingId) {
 
       // Tulis ulang penuh seluruh sheet terurut REGISTER DESC (data terbaru di atas)
       writeKunjunganRowsToSheet_(sheet, allRows);
-      removeChunkedCache(SERVER_CACHE_KEYS.KUNJUNGAN);
+      logHistory_({
+        user: authUsername,
+        aksi: "UBAH",
+        dataset: "KUNJUNGAN",
+        idRecord: targetRegister,
+        ringkasan: "Ubah data kunjungan register: " + targetRegister,
+        sumber: "admin-panel"
+      });
+      invalidateDataset_(SERVER_CACHE_KEYS.KUNJUNGAN, "kunjungan");
 
       return createJsonResponse({
         status: "success",
@@ -7423,7 +8014,15 @@ function deleteBookingRowById_(bookingId) {
 
       // Tulis ulang penuh seluruh sheet terurut REGISTER DESC
       writeKunjunganRowsToSheet_(sheet, remainingRows);
-      removeChunkedCache(SERVER_CACHE_KEYS.KUNJUNGAN);
+      logHistory_({
+        user: authUsername,
+        aksi: "HAPUS",
+        dataset: "KUNJUNGAN",
+        idRecord: targetRegister,
+        ringkasan: "Hapus data kunjungan register: " + targetRegister,
+        sumber: "admin-panel"
+      });
+      invalidateDataset_(SERVER_CACHE_KEYS.KUNJUNGAN, "kunjungan");
 
       return createJsonResponse({
         status: "success",
@@ -7485,7 +8084,15 @@ function deleteBookingRowById_(bookingId) {
 
       // Tulis ulang penuh seluruh sheet terurut REGISTER DESC
       writeJumatBerkahRowsToSheet_(sheet, allRows);
-      removeChunkedCache(SERVER_CACHE_KEYS.JUMAT_BERKAH);
+      logHistory_({
+        user: authUsername,
+        aksi: "TAMBAH",
+        dataset: "JUMAT_BERKAH",
+        idRecord: newRegister,
+        ringkasan: "Tambah Jumat Berkah baru: " + (itemData.namaAnanda || "") + " (" + newRegister + ")",
+        sumber: "admin-panel"
+      });
+      invalidateDataset_(SERVER_CACHE_KEYS.JUMAT_BERKAH, "jumatberkah");
 
       return createJsonResponse({
         status: "success",
@@ -7543,7 +8150,15 @@ function deleteBookingRowById_(bookingId) {
 
       // Tulis ulang penuh seluruh sheet terurut REGISTER DESC
       writeJumatBerkahRowsToSheet_(sheet, allRows);
-      removeChunkedCache(SERVER_CACHE_KEYS.JUMAT_BERKAH);
+      logHistory_({
+        user: authUsername,
+        aksi: "UBAH",
+        dataset: "JUMAT_BERKAH",
+        idRecord: targetRegister,
+        ringkasan: "Ubah data Jumat Berkah: " + targetRegister,
+        sumber: "admin-panel"
+      });
+      invalidateDataset_(SERVER_CACHE_KEYS.JUMAT_BERKAH, "jumatberkah");
 
       return createJsonResponse({
         status: "success",
@@ -7599,7 +8214,15 @@ function deleteBookingRowById_(bookingId) {
 
       // Tulis ulang penuh seluruh sheet terurut REGISTER DESC
       writeJumatBerkahRowsToSheet_(sheet, remainingRows);
-      removeChunkedCache(SERVER_CACHE_KEYS.JUMAT_BERKAH);
+      logHistory_({
+        user: authUsername,
+        aksi: "HAPUS",
+        dataset: "JUMAT_BERKAH",
+        idRecord: targetRegister,
+        ringkasan: "Hapus data Jumat Berkah: " + targetRegister,
+        sumber: "admin-panel"
+      });
+      invalidateDataset_(SERVER_CACHE_KEYS.JUMAT_BERKAH, "jumatberkah");
 
       return createJsonResponse({
         status: "success",

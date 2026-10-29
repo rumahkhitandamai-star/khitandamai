@@ -10825,10 +10825,10 @@
                   <div class="space-y-3 pt-3 border-t border-slate-200/80">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <!-- Tab Buttons -->
-                      <div class="flex items-center gap-1 p-1 bg-slate-100 rounded-2xl w-fit">
+                      <div class="flex items-center gap-1 p-1 bg-slate-100 rounded-2xl w-fit flex-wrap">
                         <button
                           type="button"
-                          @click="syncActiveSubTab = 'log'"
+                          @click="switchSyncSubTab('log')"
                           class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
                           :class="syncActiveSubTab === 'log' ? 'bg-white text-tosca-800 shadow-xs' : 'text-slate-600 hover:text-slate-900'"
                         >
@@ -10838,13 +10838,23 @@
                         </button>
                         <button
                           type="button"
-                          @click="syncActiveSubTab = 'snapshot'"
+                          @click="switchSyncSubTab('snapshot')"
                           class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
                           :class="syncActiveSubTab === 'snapshot' ? 'bg-white text-tosca-800 shadow-xs' : 'text-slate-600 hover:text-slate-900'"
                         >
                           <v-icon name="clock"></v-icon>
                           <span>Riwayat Versi Snapshot</span>
                           <span class="text-[10px] px-1.5 py-0.2 rounded-full font-mono" :class="syncActiveSubTab === 'snapshot' ? 'bg-teal-100 text-tosca-800' : 'bg-slate-200 text-slate-600'">{{ cacheSnapshotHistory.length }}</span>
+                        </button>
+                        <button
+                          type="button"
+                          @click="switchSyncSubTab('history')"
+                          class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+                          :class="syncActiveSubTab === 'history' ? 'bg-white text-tosca-800 shadow-xs' : 'text-slate-600 hover:text-slate-900'"
+                        >
+                          <v-icon name="database"></v-icon>
+                          <span>Riwayat Perubahan Data</span>
+                          <span class="text-[10px] px-1.5 py-0.2 rounded-full font-mono" :class="syncActiveSubTab === 'history' ? 'bg-teal-100 text-tosca-800' : 'bg-slate-200 text-slate-600'">{{ serverSyncHistoryTotal }}</span>
                         </button>
                       </div>
 
@@ -11060,6 +11070,188 @@
                               <span>Pulihkan</span>
                             </button>
                           </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- ================= SUB-TAB 3: RIWAYAT PERUBAHAN DATA (SHEET HISTORY) ================= -->
+                    <div v-else-if="syncActiveSubTab === 'history'" class="space-y-2.5">
+                      <!-- Penjelasan Fitur Sheet HISTORY -->
+                      <div class="p-3 bg-teal-50/80 border border-teal-200/90 rounded-2xl text-xs text-tosca-900 flex items-start gap-2">
+                        <v-icon name="database" class="text-base text-tosca-700 shrink-0 mt-0.5"></v-icon>
+                        <div class="leading-relaxed">
+                          <strong>Audit Trail Sheet HISTORY:</strong> Mencatat seluruh mutasi data (penambahan, perubahan, dan penghapusan) langsung ke sheet <span class="font-mono bg-teal-100/80 text-tosca-900 px-1 py-0.2 rounded font-bold">HISTORY</span> di Spreadsheet Google Sheets. Riwayat ini tersimpan permanen di cloud lintas perangkat, dengan batas retensi 5.000 baris.
+                        </div>
+                      </div>
+
+                      <!-- Filter & Search Toolbar -->
+                      <div class="flex flex-col md:flex-row md:items-center justify-between gap-2 text-xs">
+                        <!-- Filter Pills Dataset -->
+                        <div class="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0 scrollbar-none flex-wrap">
+                          <button
+                            v-for="flt in ['SEMUA', 'BOOKINGS', 'KUNJUNGAN', 'JUMAT_BERKAH', 'USERS', 'SETTINGS', 'GALERI', 'SARAN']"
+                            :key="flt"
+                            type="button"
+                            @click="setServerHistoryDataset(flt)"
+                            class="px-2.5 py-1 rounded-lg text-[10px] font-bold transition shrink-0"
+                            :class="serverSyncHistoryFilterDataset === flt ? 'bg-tosca-700 text-white shadow-2xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                          >
+                            {{ flt }}
+                          </button>
+                        </div>
+
+                        <!-- Search Bar, Muat Ulang, & Bersihkan Riwayat (Super Admin) -->
+                        <div class="flex items-center gap-2">
+                          <div class="relative w-full sm:w-48">
+                            <input
+                              v-model="serverSyncHistorySearch"
+                              @input="onServerHistorySearchInput"
+                              type="text"
+                              placeholder="Cari user, ID, deskripsi..."
+                              class="w-full pl-7 pr-2.5 py-1 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-tosca-600"
+                            >
+                            <span class="absolute inset-y-0 left-2.5 flex items-center pointer-events-none text-slate-400 text-xs">
+                              <v-icon name="magnifying-glass"></v-icon>
+                            </span>
+                          </div>
+
+                          <button
+                            type="button"
+                            @click="fetchServerHistory(true)"
+                            :disabled="serverSyncHistoryLoading"
+                            class="p-1.5 bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 rounded-xl text-xs transition shadow-2xs flex items-center gap-1"
+                            title="Muat ulang riwayat dari server Google Sheets"
+                          >
+                            <v-icon name="rotate" :class="{ 'animate-spin': serverSyncHistoryLoading }"></v-icon>
+                          </button>
+
+                          <!-- Tombol Bersihkan Riwayat (Khusus Super Admin) -->
+                          <button
+                            v-if="isSuperAdmin"
+                            type="button"
+                            @click="clearServerHistory"
+                            class="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition shadow-2xs flex items-center gap-1 btn-press"
+                            title="Bersihkan seluruh baris sheet HISTORY (Hanya Super Admin)"
+                          >
+                            <v-icon name="trash-can"></v-icon>
+                            <span class="hidden sm:inline">Bersihkan Sheet</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <!-- Filter Aksi Pills -->
+                      <div class="flex items-center gap-1 text-[11px]">
+                        <span class="text-slate-400 font-medium mr-1 text-[10px]">Aksi:</span>
+                        <button
+                          v-for="ak in ['SEMUA', 'TAMBAH', 'UBAH', 'HAPUS']"
+                          :key="ak"
+                          type="button"
+                          @click="setServerHistoryAksi(ak)"
+                          class="px-2 py-0.5 rounded-md text-[10px] font-bold transition"
+                          :class="serverSyncHistoryFilterAksi === ak ? 'bg-slate-800 text-white shadow-2xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                        >
+                          {{ ak }}
+                        </button>
+                      </div>
+
+                      <!-- Loading Indicator -->
+                      <div v-if="serverSyncHistoryLoading && serverSyncHistory.length === 0" class="p-8 rounded-2xl bg-slate-50 border border-slate-200/80 text-center text-xs text-slate-500 flex flex-col items-center justify-center gap-2">
+                        <v-icon name="rotate" class="text-tosca-700 text-lg animate-spin"></v-icon>
+                        <span>Menghubungi spreadsheet & memuat riwayat perubahan...</span>
+                      </div>
+
+                      <!-- Empty State -->
+                      <div v-else-if="serverSyncHistory.length === 0" class="p-8 rounded-2xl bg-slate-50 border border-slate-200/80 text-center text-xs text-slate-400">
+                        {{ serverSyncHistorySearch || serverSyncHistoryFilterDataset !== 'SEMUA' || serverSyncHistoryFilterAksi !== 'SEMUA' ? 'Tidak ada riwayat yang cocok dengan filter / pencarian.' : 'Belum ada riwayat perubahan data tercatat di sheet HISTORY.' }}
+                      </div>
+
+                      <!-- List Baris Riwayat -->
+                      <div v-else class="space-y-2">
+                        <div class="max-h-80 overflow-y-auto space-y-1.5 pr-1 divide-y divide-slate-100 bg-white border border-slate-200/80 rounded-2xl p-2.5 shadow-2xs">
+                          <div
+                            v-for="(item, idx) in serverSyncHistory"
+                            :key="idx"
+                            class="pt-1.5 first:pt-0 flex items-start justify-between gap-2 text-xs"
+                          >
+                            <div class="flex items-start gap-2 min-w-0">
+                              <span class="text-sm shrink-0 mt-0.5">
+                                <span
+                                  v-if="item.aksi === 'TAMBAH'"
+                                  class="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px]"
+                                  title="Penambahan Data"
+                                >
+                                  <v-icon name="plus"></v-icon>
+                                </span>
+                                <span
+                                  v-else-if="item.aksi === 'HAPUS'"
+                                  class="w-6 h-6 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center text-[10px]"
+                                  title="Penghapusan Data"
+                                >
+                                  <v-icon name="trash-can"></v-icon>
+                                </span>
+                                <span
+                                  v-else
+                                  class="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center text-[10px]"
+                                  title="Pembaruan Data"
+                                >
+                                  <v-icon name="pen-to-square"></v-icon>
+                                </span>
+                              </span>
+
+                              <div class="min-w-0">
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                  <span
+                                    class="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded-md"
+                                    :class="{
+                                      'bg-emerald-50 text-emerald-700 border border-emerald-200': item.aksi === 'TAMBAH',
+                                      'bg-rose-50 text-rose-700 border border-rose-200': item.aksi === 'HAPUS',
+                                      'bg-blue-50 text-blue-700 border border-blue-200': item.aksi === 'UBAH' || !item.aksi
+                                    }"
+                                  >{{ item.aksi }}</span>
+
+                                  <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
+                                    {{ item.dataset }}
+                                  </span>
+
+                                  <span v-if="item.idRecord && item.idRecord !== '-'" class="text-[10px] font-mono font-bold text-slate-700 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">
+                                    {{ item.idRecord }}
+                                  </span>
+                                </div>
+
+                                <p class="text-slate-800 font-medium text-xs mt-0.5 leading-snug break-words">
+                                  {{ item.ringkasan }}
+                                </p>
+
+                                <div class="flex items-center gap-2 text-[10px] text-slate-400 mt-0.5 flex-wrap">
+                                  <span class="flex items-center gap-1 text-slate-600 font-semibold">
+                                    <v-icon name="user" class="text-[9px]"></v-icon>
+                                    <span>{{ item.user || 'System' }}</span>
+                                  </span>
+                                  <span>•</span>
+                                  <span class="flex items-center gap-1">
+                                    <v-icon name="clock" class="text-[9px]"></v-icon>
+                                    <span>{{ item.waktu }}</span>
+                                  </span>
+                                  <span v-if="item.sumber">• {{ item.sumber }}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Footer Load More & Counter -->
+                        <div class="flex items-center justify-between text-xs text-slate-500 pt-1">
+                          <span>Menampilkan <strong>{{ serverSyncHistory.length }}</strong> dari <strong>{{ serverSyncHistoryTotal }}</strong> catatan riwayat</span>
+                          <button
+                            v-if="serverSyncHistoryHasMore"
+                            type="button"
+                            @click="loadMoreServerHistory"
+                            :disabled="serverSyncHistoryLoading"
+                            class="px-3 py-1 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-tosca-800 transition shadow-2xs flex items-center gap-1"
+                          >
+                            <v-icon name="rotate" v-if="serverSyncHistoryLoading" class="animate-spin text-xs"></v-icon>
+                            <span>Muat Lebih Banyak</span>
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -13030,9 +13222,132 @@
         const cacheInspectSearch = ref('');
 
         // Sub-Tab & Filter Sinkronisasi
-        const syncActiveSubTab = ref('log'); // 'log' | 'snapshot'
+        const syncActiveSubTab = ref('log'); // 'log' | 'snapshot' | 'history'
         const syncLogFilter = ref('semua'); // 'semua' | 'otomatis' | 'manual' | 'perubahan' | 'delta' | 'failed'
         const syncLogSearch = ref('');
+
+        // ================= RIWAYAT PERUBAHAN SINKRONISASI SERVER (SHEET HISTORY) =================
+        const serverSyncHistory = ref([]);
+        const serverSyncHistoryTotal = ref(0);
+        const serverSyncHistoryLoading = ref(false);
+        const serverSyncHistoryFilterDataset = ref('SEMUA');
+        const serverSyncHistoryFilterAksi = ref('SEMUA');
+        const serverSyncHistorySearch = ref('');
+        const serverSyncHistoryLimit = ref(50);
+        const serverSyncHistoryOffset = ref(0);
+        const serverSyncHistoryHasMore = ref(false);
+        let serverHistorySearchTimer = null;
+
+        const fetchServerHistory = async (resetOffset = true) => {
+          if (serverSyncHistoryLoading.value) return;
+          const token = (adminUser.value && adminUser.value.token) ? adminUser.value.token : '';
+          if (!token) return;
+
+          serverSyncHistoryLoading.value = true;
+          try {
+            if (resetOffset) {
+              serverSyncHistoryOffset.value = 0;
+            }
+            const offset = serverSyncHistoryOffset.value;
+            const limit = serverSyncHistoryLimit.value;
+            const ds = serverSyncHistoryFilterDataset.value !== 'SEMUA' ? ('&dataset=' + encodeURIComponent(serverSyncHistoryFilterDataset.value)) : '';
+            const ak = serverSyncHistoryFilterAksi.value !== 'SEMUA' ? ('&aksi=' + encodeURIComponent(serverSyncHistoryFilterAksi.value)) : '';
+            const q = serverSyncHistorySearch.value.trim() ? ('&q=' + encodeURIComponent(serverSyncHistorySearch.value.trim())) : '';
+
+            const endpoint = GAS_ENDPOINT_URL + '?action=getSyncHistory&token=' + encodeURIComponent(token) + '&limit=' + limit + '&offset=' + offset + ds + ak + q + '&t=' + Date.now();
+            const res = await fetch(endpoint, { method: 'GET', redirect: 'follow' });
+            const json = await res.json();
+            if (json.status === 'success' && Array.isArray(json.data)) {
+              if (resetOffset) {
+                serverSyncHistory.value = json.data;
+              } else {
+                serverSyncHistory.value = serverSyncHistory.value.concat(json.data);
+              }
+              serverSyncHistoryTotal.value = typeof json.total === 'number' ? json.total : serverSyncHistory.value.length;
+              serverSyncHistoryHasMore.value = Boolean(json.hasMore);
+              serverSyncHistoryOffset.value = offset + json.data.length;
+            } else if (json.code === 'unauthorized') {
+              forceRelogin(json.message);
+            }
+          } catch (err) {
+            console.error('Gagal mengambil riwayat perubahan server:', err);
+          } finally {
+            serverSyncHistoryLoading.value = false;
+          }
+        };
+
+        const loadMoreServerHistory = async () => {
+          if (serverSyncHistoryHasMore.value && !serverSyncHistoryLoading.value) {
+            await fetchServerHistory(false);
+          }
+        };
+
+        const switchSyncSubTab = (tab) => {
+          syncActiveSubTab.value = tab;
+          if (tab === 'history' && serverSyncHistory.value.length === 0 && !serverSyncHistoryLoading.value) {
+            fetchServerHistory(true);
+          }
+        };
+
+        const setServerHistoryDataset = (dataset) => {
+          serverSyncHistoryFilterDataset.value = dataset;
+          fetchServerHistory(true);
+        };
+
+        const setServerHistoryAksi = (aksi) => {
+          serverSyncHistoryFilterAksi.value = aksi;
+          fetchServerHistory(true);
+        };
+
+        const onServerHistorySearchInput = () => {
+          if (serverHistorySearchTimer) clearTimeout(serverHistorySearchTimer);
+          serverHistorySearchTimer = setTimeout(() => {
+            fetchServerHistory(true);
+          }, 350);
+        };
+
+        const clearServerHistory = () => {
+          const role = (adminUser.value && adminUser.value.role) ? adminUser.value.role : '';
+          if (String(role).trim().toLowerCase() !== 'super admin') {
+            showToastNotification('Hanya Super Admin yang diizinkan membersihkan riwayat perubahan.');
+            return;
+          }
+
+          openConfirmDialog({
+            type: 'warning',
+            title: 'Hapus Seluruh Riwayat Perubahan?',
+            message: 'Aksi ini akan membersihkan seluruh baris pada sheet HISTORY di Google Sheets. Riwayat audit trail tidak dapat dikembalikan. Lanjutkan?',
+            confirmText: 'YA, BERSIHKAN RIWAYAT',
+            cancelText: 'BATAL',
+            onConfirm: async () => {
+              const token = (adminUser.value && adminUser.value.token) ? adminUser.value.token : '';
+              if (!token) return;
+              try {
+                showToastNotification('Membersihkan sheet HISTORY di server...');
+                const res = await fetch(GAS_ENDPOINT_URL, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                  body: JSON.stringify({ action: 'clearSyncHistory', token: token }),
+                  redirect: 'follow'
+                });
+                const json = await res.json();
+                if (json.status === 'success') {
+                  showToastNotification('Seluruh riwayat perubahan di sheet HISTORY berhasil dibersihkan.');
+                  serverSyncHistory.value = [];
+                  serverSyncHistoryTotal.value = 0;
+                  serverSyncHistoryHasMore.value = false;
+                  serverSyncHistoryOffset.value = 0;
+                  fetchServerHistory(true);
+                } else {
+                  showToastNotification(json.message || 'Gagal membersihkan riwayat.');
+                }
+              } catch (err) {
+                console.error('Gagal clearSyncHistory:', err);
+                showToastNotification('Terjadi kesalahan saat membersihkan riwayat.');
+              }
+            }
+          });
+        };
 
         const formatByteSize = (bytes) => {
           if (!bytes || isNaN(bytes)) return '0 B';
@@ -17100,6 +17415,7 @@
         const isLoadingLogin = ref(false);
         const loginError = ref('');
         const adminUser = ref(null);
+        const isSuperAdmin = computed(() => Boolean(adminUser.value && String(adminUser.value.role || '').trim().toLowerCase() === 'super admin'));
         const adminBookings = ref([]);
         const isLoadingAdminData = ref(false);
         const adminSearchQuery = ref('');
@@ -23725,6 +24041,8 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
           applyHashRoute(hash);
         };
 
+        let consecutiveSyncFailures = 0;
+
         // Runner Sinkronisasi Terpadu & Teroptimasi Database Google Sheets
         const runAutoSync = async (trigger = 'otomatis', forceServerRefresh = false) => {
           if (isAutoSyncing.value) return;
@@ -23791,9 +24109,7 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
                     unchangedDatasetsCount++;
                   } else if (Array.isArray(json.data.bookings)) {
                     changedDatasetsCount++;
-                    if (JSON.stringify(adminBookings.value) !== JSON.stringify(json.data.bookings)) {
-                      adminBookings.value = json.data.bookings;
-                    }
+                    adminBookings.value = json.data.bookings;
                     saveCacheSnapshot('bookings', json.data.bookings, trigger);
                   }
 
@@ -23803,9 +24119,7 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
                   } else if (Array.isArray(json.data.kunjungan)) {
                     changedDatasetsCount++;
                     const sortedKunjungan = json.data.kunjungan.slice().sort((a, b) => (b.register || '').localeCompare(a.register || ''));
-                    if (JSON.stringify(adminKunjungan.value) !== JSON.stringify(sortedKunjungan)) {
-                      adminKunjungan.value = sortedKunjungan;
-                    }
+                    adminKunjungan.value = sortedKunjungan;
                     saveCacheSnapshot('kunjungan', sortedKunjungan, trigger);
                   }
 
@@ -23815,9 +24129,7 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
                   } else if (Array.isArray(json.data.jumatBerkah)) {
                     changedDatasetsCount++;
                     const sortedJumat = json.data.jumatBerkah.slice().sort((a, b) => (b.register || '').localeCompare(a.register || ''));
-                    if (JSON.stringify(adminJumatBerkah.value) !== JSON.stringify(sortedJumat)) {
-                      adminJumatBerkah.value = sortedJumat;
-                    }
+                    adminJumatBerkah.value = sortedJumat;
                     saveCacheSnapshot('jumatberkah', sortedJumat, trigger);
                   }
 
@@ -23890,8 +24202,19 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
                     } else if (unchangedDatasetsCount > 0) {
                       deltaStatus = 'Δ ' + changedDatasetsCount + ' Berubah';
                     }
-                    savedBytes = unchangedDatasetsCount * 25000;
+                    if (json.versionsMeta && typeof json.versionsMeta === 'object') {
+                      for (const dKey in unchangedMap) {
+                        if (unchangedMap[dKey] && json.versionsMeta[dKey] && json.versionsMeta[dKey].sizeBytes) {
+                          savedBytes += json.versionsMeta[dKey].sizeBytes;
+                        }
+                      }
+                    }
+                    if (savedBytes === 0 && unchangedDatasetsCount > 0) {
+                      savedBytes = unchangedDatasetsCount * 25000;
+                    }
                   }
+
+                  consecutiveSyncFailures = 0;
 
                   recordSyncEntry({
                     type: trigger,
@@ -23932,6 +24255,11 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
             }
           } catch (err) {
             console.error('Gagal saat auto-sync database:', err);
+            consecutiveSyncFailures++;
+            const backoffSec = Math.min(30 * Math.pow(2, consecutiveSyncFailures - 1), 900);
+            if (nextSyncCountdown.value < backoffSec) {
+              nextSyncCountdown.value = backoffSec;
+            }
             recordSyncEntry({
               type: trigger,
               target: 'semua',
@@ -23967,6 +24295,7 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
           resetNextSyncTimer();
           countdownTimer = setInterval(() => {
             if (typeof document !== 'undefined' && document.hidden) return;
+            if (typeof navigator !== 'undefined' && !navigator.onLine) return;
             if (isAutoSyncPaused.value) return;
             if (nextSyncCountdown.value > 0) {
               nextSyncCountdown.value--;
@@ -23976,6 +24305,7 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
           // Timer interval runner sinkronisasi
           autoSyncTimer = setInterval(() => {
             if (typeof document !== 'undefined' && document.hidden) return;
+            if (typeof navigator !== 'undefined' && !navigator.onLine) return;
             if (isAutoSyncPaused.value) return;
             runAutoSync('otomatis');
           }, intervalMs);
@@ -23994,6 +24324,13 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
 
         const handleVisibilityChange = () => {
           if (typeof document !== 'undefined' && !document.hidden && !isAutoSyncPaused.value && autoSyncInterval.value > 0) {
+            if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+            runAutoSync('otomatis');
+          }
+        };
+
+        const handleOnlineStatus = () => {
+          if (typeof navigator !== 'undefined' && navigator.onLine && !isAutoSyncPaused.value && autoSyncInterval.value > 0) {
             runAutoSync('otomatis');
           }
         };
@@ -24140,6 +24477,7 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
           window.addEventListener('keydown', handleLoginGlobalKeydown);
           window.addEventListener('click', closeKunjunganActionMenu);
           document.addEventListener('visibilitychange', handleVisibilityChange);
+          window.addEventListener('online', handleOnlineStatus);
 
           fetchPublicSettings();
           fetchPublicGallery();
@@ -24168,6 +24506,7 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
           window.removeEventListener('hashchange', handleHashChange);
           window.removeEventListener('scroll', handleScroll);
           document.removeEventListener('visibilitychange', handleVisibilityChange);
+          window.removeEventListener('online', handleOnlineStatus);
         });
 
         return {
@@ -24756,6 +25095,24 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
           syncLogFilter,
           syncLogSearch,
           filteredSyncHistory,
+          // Riwayat Perubahan Data Server (Sheet HISTORY)
+          serverSyncHistory,
+          serverSyncHistoryTotal,
+          serverSyncHistoryLoading,
+          serverSyncHistoryFilterDataset,
+          serverSyncHistoryFilterAksi,
+          serverSyncHistorySearch,
+          serverSyncHistoryLimit,
+          serverSyncHistoryOffset,
+          serverSyncHistoryHasMore,
+          fetchServerHistory,
+          loadMoreServerHistory,
+          switchSyncSubTab,
+          setServerHistoryDataset,
+          setServerHistoryAksi,
+          onServerHistorySearchInput,
+          clearServerHistory,
+          isSuperAdmin,
           avgSyncDurationMs,
           syncSuccessRate,
           cacheHitRatePercent,
