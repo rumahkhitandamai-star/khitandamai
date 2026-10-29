@@ -225,3 +225,17 @@ Sistem memiliki mekanisme pencadangan basis data Spreadsheet utama secara berkal
 7. **Dukungan Callback Query & Retensi Backup**:
    - Tombol interaktif *Inline Keyboard* merespons secara mulus dengan `answerCallbackQuery` tanpa efek loading macet.
    - Deduplikasi interval backup manual (jeda minimum 2 menit) serta pembersihan otomatis (*auto-pruning*) file cadangan Google Drive yang berusia lebih dari 90 hari.
+
+### 9.5 Integrasi Notifikasi Google Review ke Bot Telegram Admin
+Sistem pemantauan ulasan pelanggan baru di Google Business Profile / Google Review (`https://g.page/r/CbVAUU-xn-ylEBM/review`) dengan notifikasi otomatis ke Bot Telegram Admin:
+1. **Mekanisme Deteksi Gmail**:
+   - Memindai email masuk notifikasi ulasan dari Google (`google-my-business-noreply@google.com`, `googlebusinessprofile-noreply@google.com`, dsb.) yang belum dibaca (`is:unread`).
+   - Parser mengekstrak Nama Pengulas, Rating Bintang (1–5 bintang), Isi Komentar/Ulasan, Tanggal Ulasan, dan tautan langsung untuk membalas ulasan.
+2. **Deduplikasi & Proteksi Ganda**:
+   - ID email yang diproses disimpan di `Script Properties` (`KD_PROCESSED_REVIEW_MSG_IDS`, kapasitas 50 entri) dan email ditandai sudah dibaca (`markRead()`), menjamin tidak ada notifikasi ganda terkirim meskipun trigger dieksekusi bersamaan.
+3. **Format Notifikasi Telegram**:
+   - Mengirim kartu notifikasi interaktif ke Admin Chat ID lengkap dengan rating bintang visual (`⭐⭐⭐⭐⭐`), kutipan ulasan, dan tombol *Inline Keyboard*: **"⭐ Buka & Balas di Google Review"**.
+4. **Pemicu Otomatis & Kendali Telegram**:
+   - Terintegrasi langsung dalam pemicu jam (`checkUpcomingKhitanReminders`) dan dapat dipasang sebagai pemicu berkala mandiri 15 menitan (`setupGoogleReviewTrigger`).
+   - Perintah Telegram Admin: `/cekreview` (pemeriksaan manual instan) dan `/tesreview` (simulasi kirim format notifikasi ulasan).
+   - Fungsi Editor Apps Script: `testSendGoogleReviewAlert()`, `checkGoogleReviewsTrigger()`, dan `setupGoogleReviewTrigger()`.
