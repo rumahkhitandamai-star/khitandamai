@@ -252,6 +252,32 @@ Sistem pemantauan ulasan pelanggan baru di Google Business Profile / Google Revi
      - `/tesemailreview`: Simulasi kirim contoh notifikasi email ulasan Google Review ke alamat terdaftar (`denluckyman@gmail.com`).
      - `/settrigger` atau `/aktifkantrigger`: Memasang atau memverifikasi kesehatan pemicu otomatis background (interval 5 menit).
      - *Inline keyboard* interaktif: tombol Buka di Google Review, Pindai Ulang Real-time, Tes Email Notifikasi, Uji Coba Format Bot, dan Diagnostik Sistem.
+
+### 9.6 Peningkatan Lanjutan Bot Telegram (@khitandamai_bot): Pagination, Pengingat Pasien, Aftercare, & Layanan Mandiri
+1. **Pendaftaran Menu Perintah Telegram API (`setMyCommands`)**:
+   - Mendukung registrasi menu shortcut terpisah melalui `registerTelegramBotCommands_()`:
+     - **Scope Default (Pasien/Umum)**: `/start`, `/jadwal`, `/hariini`, `/besok`, `/cek`, `/bantuan`.
+     - **Scope Chat Khusus Admin**: `/jadwal`, `/hariini`, `/besok`, `/cekreminder`, `/cari`, `/statistik`, `/selesai`, `/konfirmasi`, `/batal`, `/10review`, `/statusbot`, `/backup`.
+   - Admin dapat memperbarui menu sewaktu-waktu dengan mengetik `/setcommands`.
+2. **Pencarian Pasien by Nama (`/cari <nama>`)**:
+   - Admin dapat mencari riwayat pendaftaran berdasarkan substring nama anak atau penanggung jawab (`searchBookingsByNameForTelegram_`).
+   - Menyajikan kartu hasil pencarian terstruktur dan tombol cepat inline untuk membuka rincian data masing-masing pasien.
+3. **Pagination Jadwal & Edit-in-Place (`cb_sched:<filter>:<page>`)**:
+   - Tampilan jadwal mendatang (`/jadwal`, `/hariini`, `/besok`) mendukung pagination otomatis (default 8 pasien per halaman) dengan tombol navigasi `◀️ Hal Sebelumnya`, nomor halaman `📄 X/Y`, dan `Hal Selanjutnya ▶️`.
+   - Menggunakan mekanisme Telegram *Edit-in-Place* (`editTelegramMessage_`) sehingga berpindah halaman berlangsung instan tanpa menghasilkan spam pesan baru.
+4. **Notifikasi Pengingat Langsung ke Keluarga Pasien (H-24 & H-2 Jam)**:
+   - **H-24 Persiapan Tindakan**: Pengingat otomatis terkirim ke Telegram keluarga pasien 24 jam sebelum tindakan (`sendPatientH24ReminderTelegram_`), memuat checklist persiapan (istirahat cukup, sarapan, mandi bersih, pakaian longgar, waktu hadir) dan tombol rute Google Maps.
+   - **H-2 Jam Menuju Tindakan**: Pengingat hari pelaksanaan 1–3 jam sebelum tindakan (`sendPatientH2ReminderTelegram_`) dengan tombol panduan arah Maps dan kontak WhatsApp darurat klinik.
+   - Pemicu otomatis terintegrasi dalam pemindaian per jam `checkUpcomingKhitanReminders` dengan proteksi status pendaftaran aktif dan deduplikasi per slot jadwal.
+5. **Panduan Perawatan Pasca-Khitan (Aftercare) & Ajakan Google Review**:
+   - Terpicu otomatis saat status booking diubah menjadi "Selesai" (baik dari tombol Telegram Admin `cb_selesai`, perintah `/selesai <id>`, maupun admin web panel `updateBookingStatus` & `updateBookingFull`).
+   - Mengirim panduan perawatan luka 5 langkah (istirahat, obat nyeri/antibiotik teratur, kebersihan luka, pakaian longgar, nutrisi protein) dan ajakan memberikan bintang 5 di Google Review.
+   - Bersifat idempoten (dikirimkan tepat 1 kali per ID pendaftaran via key `aftercare_sent_<id>`).
+6. **Layanan Mandiri Pasien (Reschedule & Pembatalan Jadwal)**:
+   - Pasien terverifikasi dapat mengakses tombol mandiri pada menu status booking:
+     - **Reschedule (`cb_rs_*`)**: Memilih tanggal baru (7 hari ke depan), melihat ketersediaan slot jam & sisa kuota real-time via `getKuotaJamSummary_`, konfirmasi perubahan, dan sinkronisasi ke database Sheets. Dibatasi minimal H-24 sebelum jadwal semula.
+     - **Batal Mandiri (`cb_cancel_*`)**: Membatalkan pendaftaran dengan konfirmasi ganda, melepaskan slot kuota untuk pasien lain, dan mengirimkan notifikasi instan ke Admin klinik.
+   - Dilengkapi validasi otorisasi kepemilikan nomor WhatsApp terverifikasi dan `LockService` untuk integritas data.
    - Fungsi Editor Apps Script:
      - uthorizeGmailAccess(): Fungsi verifikasi otorisasi scope Gmail dan triggers, otomatis mengaktifkan pemicu 10 menit, mereset cache ulasan, dan langsung memindai serta mengirim ulasan yang ada.
      - sendEmailGoogleReviewNotification_(review, targetEmail): Fungsi pengiriman email notifikasi ulasan baru ke email terdaftar (denluckyman@gmail.com).
