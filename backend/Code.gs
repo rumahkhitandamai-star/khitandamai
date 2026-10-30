@@ -536,6 +536,76 @@ function sendTelegramGoogleReviewNotification_(review) {
 }
 
 /**
+ * Daftar alamat email penerima notifikasi otomatis Google Review
+ */
+const GOOGLE_REVIEW_RECIPIENT_EMAILS = ["denluckyman@gmail.com"];
+
+/**
+ * Mengirimkan email notifikasi ulasan Google Review baru ke alamat email yang terdaftar
+ */
+function sendEmailGoogleReviewNotification_(review, targetEmail) {
+  try {
+    const email = targetEmail || "denluckyman@gmail.com";
+    if (!email) return { success: false, message: "Alamat email kosong" };
+
+    const reviewerName = (review && review.reviewerName) ? String(review.reviewerName).trim() : "Pengguna Google";
+    const starsNum = Math.max(1, Math.min(5, parseInt((review && review.rating) || 5, 10)));
+    const starsIcon = "⭐".repeat(starsNum) + "☆".repeat(5 - starsNum);
+    const comment = (review && review.comment && String(review.comment).trim()) ? String(review.comment).trim() : "(Pengulas memberikan rating bintang tanpa komentar tertulis)";
+    const reviewDate = (review && review.date)
+      ? Utilities.formatDate(new Date(review.date), "Asia/Jakarta", "dd MMMM yyyy, HH:mm") + " WIB"
+      : (getJakartaTimestamp() + " WIB");
+    const reviewUrl = (review && review.reviewUrl) ? String(review.reviewUrl) : "https://g.page/r/CbVAUU-xn-ylEBM/review";
+
+    const subject = "⭐ [Google Review] " + starsNum + " Bintang dari " + reviewerName + " — Rumah Khitan Damai";
+    const htmlBody = '<div style="font-family:sans-serif;max-width:600px;margin:auto;padding:24px;border:1px solid #e2e8f0;border-radius:12px;background:#ffffff;">' +
+      '<div style="text-align:center;margin-bottom:20px;">' +
+        '<h2 style="color:#008080;margin:0 0 6px 0;">⭐ Ulasan Baru di Google Review</h2>' +
+        '<p style="color:#64748b;margin:0;font-size:14px;">Rumah Khitan Damai Subang</p>' +
+      '</div>' +
+      '<div style="background:#f8fafc;padding:18px;border-radius:10px;border-left:4px solid #008080;margin-bottom:20px;">' +
+        '<p style="margin:4px 0;font-size:15px;"><b>👤 Pengulas:</b> ' + escapeTelegramHtml_(reviewerName) + '</p>' +
+        '<p style="margin:6px 0;font-size:15px;"><b>🌟 Penilaian:</b> <span style="color:#eab308;font-size:18px;">' + starsIcon + '</span> <b>(' + starsNum + '/5)</b></p>' +
+        '<p style="margin:4px 0;font-size:13px;color:#64748b;"><b>📅 Waktu:</b> ' + escapeTelegramHtml_(reviewDate) + '</p>' +
+        '<div style="margin-top:12px;padding-top:12px;border-top:1px dashed #cbd5e1;">' +
+          '<b style="display:block;margin-bottom:4px;color:#334155;">💬 Isi Ulasan:</b>' +
+          '<blockquote style="margin:0;padding:8px 12px;background:#ffffff;border-radius:6px;border:1px solid #e2e8f0;color:#1e293b;font-style:italic;">"' + escapeTelegramHtml_(comment) + '"</blockquote>' +
+        '</div>' +
+      '</div>' +
+      '<div style="text-align:center;margin-top:24px;">' +
+        '<a href="' + reviewUrl + '" style="background:#008080;color:#ffffff;padding:12px 28px;text-decoration:none;border-radius:8px;font-weight:bold;display:inline-block;box-shadow:0 2px 4px rgba(0,128,128,0.2);">⭐ Buka & Balas di Google Review</a>' +
+      '</div>' +
+      '<p style="font-size:12px;color:#94a3b8;text-align:center;margin-top:24px;border-top:1px solid #f1f5f9;padding-top:12px;">Email notifikasi otomatis dari Sistem Rumah Khitan Damai. Dikirim ke ' + escapeTelegramHtml_(email) + '</p>' +
+    '</div>';
+
+    MailApp.sendEmail({
+      to: email,
+      subject: subject,
+      htmlBody: htmlBody
+    });
+    Logger.log("✓ Email notifikasi ulasan berhasil dikirim ke: " + email);
+    return { success: true };
+  } catch (err) {
+    Logger.log("Peringatan sendEmailGoogleReviewNotification_: " + err.toString());
+    return { success: false, error: err.toString() };
+  }
+}
+
+/**
+ * Uji coba kirim email notifikasi Google Review ke denluckyman@gmail.com dari Editor Apps Script
+ */
+function testSendGoogleReviewEmail(targetEmail) {
+  const sampleReview = {
+    reviewerName: "Budi Santoso (Uji Coba)",
+    rating: 5,
+    comment: "Pelayanan sangat ramah, dokternya komunikatif, tempat bersih dan nyaman, ananda sama sekali tidak merasa takut saat khitan. Metode super ring mantap! Terima kasih Rumah Khitan Damai 🙏✨",
+    date: new Date(),
+    reviewUrl: "https://g.page/r/CbVAUU-xn-ylEBM/review"
+  };
+  return sendEmailGoogleReviewNotification_(sampleReview, targetEmail || "denluckyman@gmail.com");
+}
+
+/**
  * Mendapatkan alamat email akun Google pemilik / pelaksana script saat ini
  */
 function getScriptUserEmail_() {
@@ -797,6 +867,8 @@ function diagnoseGoogleReviews_() {
     "━━━━━━━━━━━━━━━━━━\n" +
     "👤 <b>Akun Gmail Script:</b>\n" +
     "<code>" + escapeTelegramHtml_(accountEmail) + "</code>\n" +
+    "📬 <b>Email Notifikasi Terdaftar:</b>\n" +
+    "• <code>denluckyman@gmail.com</code> (Aktif)\n" +
     "📥 <b>Unread Inbox:</b> " + unreadInbox + " pesan\n" +
     "━━━━━━━━━━━━━━━━━━\n" +
     "🔎 <b>Hasil Uji Kueri Penelusuran:</b>\n" +
@@ -806,9 +878,9 @@ function diagnoseGoogleReviews_() {
     msgListText +
     "━━━━━━━━━━━━━━━━━━\n" +
     "💡 <b>Panduan Solusi:</b>\n" +
-    "1. Pastikan email ulasan Google Business Profile masuk ke alamat <code>" + escapeTelegramHtml_(accountEmail) + "</code>.\n" +
-    "2. Jika ulasan masuk ke email lain, tambahkan alamat tersebut sebagai Pengelola di Profil Bisnis Google atau atur auto-forward ke email ini.\n" +
-    "3. Gunakan tombol <b>🔄 Reset Cache & Pindai Ulang</b> di bawah untuk mencoba pemindaian lagi.";
+    "1. Pastikan email ulasan Google Business Profile masuk ke alamat <code>" + escapeTelegramHtml_(accountEmail) + "</code> atau <code>denluckyman@gmail.com</code>.\n" +
+    "2. Daftarkan <code>denluckyman@gmail.com</code> sebagai Pengelola di Profil Bisnis Google (Google Business Profile) agar menerima ulasan langsung dari Google.\n" +
+    "3. Gunakan tombol <b>🔄 Reset & Pindai Ulang</b> di bawah untuk mencoba pemindaian lagi.";
 
   return report;
 }
@@ -887,6 +959,16 @@ function checkGoogleReviewsAndNotify_(forceReset) {
         const parsed = parseGoogleReviewMessage_(msg, DEFAULT_REVIEW_URL);
         if (parsed) {
           const sendRes = sendTelegramGoogleReviewNotification_(parsed);
+
+          // Kirimkan notifikasi email ulasan ke daftar email terdaftar (denluckyman@gmail.com)
+          try {
+            for (let rIdx = 0; rIdx < GOOGLE_REVIEW_RECIPIENT_EMAILS.length; rIdx++) {
+              sendEmailGoogleReviewNotification_(parsed, GOOGLE_REVIEW_RECIPIENT_EMAILS[rIdx]);
+            }
+          } catch (mailNotifErr) {
+            Logger.log("Peringatan sendEmailGoogleReviewNotification_: " + mailNotifErr.toString());
+          }
+
           if (sendRes.success) {
             notifiedCount++;
             processedIds.push(msgId);
@@ -2130,6 +2212,20 @@ function handleTelegramWebhookUpdate_(update) {
         testSendGoogleReviewAlert();
         return HtmlService.createHtmlOutput("OK");
       }
+      if (cbData === "cb_review_test_email") {
+        if (!isAdmin) {
+          answerTelegramCallbackQuery_(cbId, "Khusus akun Admin.", true);
+          return HtmlService.createHtmlOutput("OK");
+        }
+        answerTelegramCallbackQuery_(cbId, "Mengirim contoh email ulasan...");
+        const emailRes = testSendGoogleReviewEmail("denluckyman@gmail.com");
+        if (emailRes.success) {
+          sendTelegramMessage_(cbChatId, "✅ <b>Email Uji Coba Berhasil Dikirim!</b>\nNotifikasi simulasi ulasan telah dikirim ke <code>denluckyman@gmail.com</code>. Silakan periksa inbox.", mainKeyboard);
+        } else {
+          sendTelegramMessage_(cbChatId, "⚠️ Gagal kirim email: " + escapeTelegramHtml_(emailRes.error || ""), mainKeyboard);
+        }
+        return HtmlService.createHtmlOutput("OK");
+      }
 
       answerTelegramCallbackQuery_(cbId, "Perintah diterima.");
       return HtmlService.createHtmlOutput("OK");
@@ -2581,6 +2677,9 @@ function handleTelegramWebhookUpdate_(update) {
             ],
             [
               { text: "🧪 Uji Coba Format Bot", callback_data: "cb_review_test" },
+              { text: "✉️ Tes Email Notifikasi", callback_data: "cb_review_test_email" }
+            ],
+            [
               { text: "⭐ Buka Halaman Review", url: "https://g.page/r/CbVAUU-xn-ylEBM/review" }
             ]
           ]
@@ -2591,10 +2690,21 @@ function handleTelegramWebhookUpdate_(update) {
     }
 
     if (isAdmin && (lowerText === "/tesreview" || lowerText === "tesreview" || lowerText === "test review" || lowerText === "tes review")) {
-      sendTelegramMessage_(chatId, "🧪 <i>Mengirim contoh format notifikasi Google Review...</i>", mainKeyboard);
+      sendTelegramMessage_(chatId, "🧪 <i>Mengirim contoh format notifikasi Google Review ke Telegram...</i>", mainKeyboard);
       const testRes = testSendGoogleReviewAlert();
       if (!testRes.success) {
         sendTelegramMessage_(chatId, "⚠️ Gagal mengirim tes review: " + escapeTelegramHtml_(testRes.error || testRes.message), mainKeyboard);
+      }
+      return HtmlService.createHtmlOutput("OK");
+    }
+
+    if (isAdmin && (lowerText === "/tesemailreview" || lowerText === "tesemailreview" || lowerText === "tes email review" || lowerText === "test email review")) {
+      sendTelegramMessage_(chatId, "⏳ <i>Mengirim contoh email notifikasi Google Review ke <code>denluckyman@gmail.com</code>...</i>", mainKeyboard);
+      const testEmailRes = testSendGoogleReviewEmail("denluckyman@gmail.com");
+      if (testEmailRes.success) {
+        sendTelegramMessage_(chatId, "✅ <b>Email Uji Coba Berhasil Dikirim!</b>\nNotifikasi simulasi ulasan Google Review telah terkirim ke alamat email:\n<code>denluckyman@gmail.com</code>\n\nSilakan periksa Kotak Masuk atau folder Spam.", mainKeyboard);
+      } else {
+        sendTelegramMessage_(chatId, "⚠️ <b>Gagal Mengirim Email:</b>\n" + escapeTelegramHtml_(testEmailRes.error || "Terjadi kesalahan"), mainKeyboard);
       }
       return HtmlService.createHtmlOutput("OK");
     }

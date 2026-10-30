@@ -239,11 +239,13 @@ Sistem pemantauan ulasan pelanggan baru di Google Business Profile / Google Revi
    - Pemicu background waktu berkala mandiri setiap 10 menit (`checkGoogleReviewsTrigger`) dan terintegrasi otomatis dalam pemicu jam (`checkUpcomingKhitanReminders`). Pemicu dipasang secara otomatis (`ensureAutomaticTriggers_()`) setiap kali admin berinteraksi dengan Bot Telegram.
    - Perintah Telegram Admin:
      - /cekreview atau /cekreview reset: Pemeriksaan manual instan dengan opsi reset cache ID untuk pemindaian ulang penuh (jendela 180 hari dengan operator in:anywhere).
-     - /cekreview debug atau /cekreview diagnosa: Diagnostik menyeluruh Gmail yang menampilkan alamat email akun aktif pemilik script, unread inbox, hasil uji kueri penelusuran ulasan, dan 5 email Google terbaru beserta status parsingnya.
-     - /tesreview: Simulasi kirim contoh format kartu notifikasi ulasan ke chat admin.
+     - /cekreview debug atau /cekreview diagnosa: Diagnostik menyeluruh Gmail yang menampilkan alamat email akun aktif pemilik script, daftar email notifikasi terdaftar (denluckyman@gmail.com), unread inbox, hasil uji kueri penelusuran ulasan, dan 5 email Google terbaru beserta status parsingnya.
+     - /tesreview: Simulasi kirim contoh format kartu notifikasi ulasan ke chat Telegram admin.
+     - /tesemailreview: Simulasi kirim contoh notifikasi email ulasan Google Review ke alamat terdaftar (denluckyman@gmail.com).
      - /settrigger atau /aktifkantrigger: Memasang atau memverifikasi kesehatan pemicu otomatis background.
-     - Inline keyboard interaktif: tombol Reset Cache & Pindai Ulang, Diagnostik Gmail, Uji Coba Format Bot, dan Buka Google Review.
+     - Inline keyboard interaktif: tombol Reset & Pindai Ulang, Diagnostik Gmail, Uji Coba Format Bot, Tes Email Notifikasi, dan Buka Google Review.
    - Fungsi Editor Apps Script:
      - uthorizeGmailAccess(): Fungsi verifikasi otorisasi scope Gmail dan triggers, otomatis mengaktifkan pemicu 10 menit, mereset cache ulasan, dan langsung memindai serta mengirim ulasan yang ada.
+     - sendEmailGoogleReviewNotification_(review, targetEmail): Fungsi pengiriman email notifikasi ulasan baru ke email terdaftar (denluckyman@gmail.com).
      - diagnoseGoogleReviews_(): Fungsi diagnostik pembacaan email Gmail dan status parser.
-     - `testSendGoogleReviewAlert()`, `checkGoogleReviewsTrigger()`, dan `setupGoogleReviewTrigger(minutes)`.
+     - 	estSendGoogleReviewAlert(), 	estSendGoogleReviewEmail(), checkGoogleReviewsTrigger(), dan setupGoogleReviewTrigger(minutes).
