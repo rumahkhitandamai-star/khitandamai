@@ -237,17 +237,19 @@ Sistem pemantauan ulasan pelanggan baru di Google Business Profile / Google Revi
 3. **Deduplikasi & Proteksi Ganda**:
    - ID ulasan yang telah berhasil dikirimkan disimpan di `Script Properties` (`KD_PROCESSED_REVIEW_MSG_IDS`, kapasitas hingga 150 entri).
 4. **Format Notifikasi Telegram & Email**:
-   - Telegram: Kartu notifikasi interaktif ke Admin Chat ID lengkap dengan rating bintang visual (`⭐⭐⭐⭐⭐`), kutipan ulasan, dan tombol *Inline Keyboard*: **"⭐ Buka & Balas di Google Review"** (`https://g.page/r/CbVAUU-xn-ylEAE/review`).
+   - Telegram: Kartu notifikasi interaktif ke Admin Chat ID lengkap dengan rating bintang visual (`⭐⭐⭐⭐⭐`), kutipan ulasan, dan tombol *Inline Keyboard*: **"⭐ Buka di Google Review"** (`https://g.page/r/CbVAUU-xn-ylEAE/review`).
+   - Tampilan 10 Ulasan Terbaru: Bot Telegram menyajikan daftar 10 Google Review terbaru secara real-time dari profil Google Maps Rumah Khitan Damai Subang (`format10GoogleReviewsText_`), memuat nama pengulas, jumlah bintang visual, waktu ulasan relatif, dan teks ulasan.
    - Email: Notifikasi format HTML responsif terkirim otomatis ke `denluckyman@gmail.com`.
 5. **Pemicu Otomatis & Kendali Telegram**:
    - Pemicu background waktu berkala mandiri setiap 10 menit (`checkGoogleReviewsTrigger`) dan terintegrasi otomatis dalam pemicu jam (`checkUpcomingKhitanReminders`). Pemicu dipasang secara otomatis (`ensureAutomaticTriggers_()`) setiap kali admin berinteraksi dengan Bot Telegram.
    - Perintah Telegram Admin:
-     - `/cekreview` atau `/cekreview reset`: Pemeriksaan ulasan real-time instan ke server Google Maps; menampilkan ringkasan status real-time, cuplikan ulasan terkini di Google Maps, dan notifikasi ulasan baru yang belum dibaca.
+     - Tombol Keyboard Admin: `⭐ 10 Google Review Terbaru` untuk akses instan 10 ulasan terbaru.
+     - `/10review`, `/review10`, `/cekreview` atau `/cekreview reset`: Pemeriksaan ulasan real-time instan ke server Google Maps; menampilkan 10 Google Review terbaru secara terstruktur beserta notifikasi ulasan baru yang belum dibaca.
      - `/cekreview debug` atau `/cekreview diagnosa`: Diagnostik menyeluruh status koneksi Google Maps real-time, akun Gmail pemilik script, email notifikasi terdaftar (`denluckyman@gmail.com`), dan status parsing.
      - `/tesreview`: Simulasi kirim contoh format kartu notifikasi ulasan ke chat Telegram admin.
      - `/tesemailreview`: Simulasi kirim contoh notifikasi email ulasan Google Review ke alamat terdaftar (`denluckyman@gmail.com`).
      - `/settrigger` atau `/aktifkantrigger`: Memasang atau memverifikasi kesehatan pemicu otomatis background.
-     - *Inline keyboard* interaktif: tombol Buka Halaman Review, Pindai Ulang Real-time, Tes Email Notifikasi, Uji Coba Format Bot, dan Diagnostik Sistem.
+     - *Inline keyboard* interaktif: tombol Buka di Google Review, Pindai Ulang Real-time, Tes Email Notifikasi, Uji Coba Format Bot, dan Diagnostik Sistem.
    - Fungsi Editor Apps Script:
      - uthorizeGmailAccess(): Fungsi verifikasi otorisasi scope Gmail dan triggers, otomatis mengaktifkan pemicu 10 menit, mereset cache ulasan, dan langsung memindai serta mengirim ulasan yang ada.
      - sendEmailGoogleReviewNotification_(review, targetEmail): Fungsi pengiriman email notifikasi ulasan baru ke email terdaftar (denluckyman@gmail.com).
