@@ -237,7 +237,7 @@ Sistem pemantauan ulasan pelanggan baru di Google Business Profile / Google Revi
 3. **Deduplikasi & Proteksi Ganda**:
    - ID ulasan yang telah berhasil dikirimkan disimpan di `Script Properties` (`KD_PROCESSED_REVIEW_MSG_IDS`, kapasitas hingga 150 entri).
 4. **Format Notifikasi Telegram & Email**:
-   - Telegram: Kartu notifikasi interaktif ke Admin Chat ID lengkap dengan rating bintang visual (`⭐⭐⭐⭐⭐`), kutipan ulasan, dan tombol *Inline Keyboard*: **"⭐ Buka di Google Review"** (`https://g.page/r/CbVAUU-xn-ylEAE/review`).
+   - Telegram: Kartu notifikasi interaktif ke Admin Chat ID lengkap dengan rating bintang visual (`⭐⭐⭐⭐⭐`), kutipan ulasan, dan tombol *Inline Keyboard*: **"⭐ Buka di Google Review"** (`https://www.google.co.id/search?sca_esv=47d3a503fd7b42d7&output=search&q=Rumah+Khitan+Damai&ludocid=11956106694650577077&lsig=AB86z5VxZiMPhsIh3gsUvrMYbXGw&sa=X&ved=2ahUKEwiv5syJga6UAxXtd2wGHZtNK40Qj9IGegQIExAG#ebo=0`).
    - Tampilan 10 Ulasan Terbaru: Bot Telegram menyajikan daftar 10 Google Review terbaru secara real-time dari profil Google Maps Rumah Khitan Damai Subang (`format10GoogleReviewsText_`), memuat nama pengulas, jumlah bintang visual, waktu ulasan relatif, dan teks ulasan.
    - Email: Notifikasi format HTML responsif terkirim otomatis ke `denluckyman@gmail.com`.
 5. **Pemicu Otomatis & Kendali Telegram**:

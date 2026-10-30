@@ -469,7 +469,7 @@ function testSendTelegramAlert() {
 /**
  * URL Halaman Google Review Resmi Rumah Khitan Damai
  */
-const GOOGLE_REVIEW_PAGE_URL = "https://g.page/r/CbVAUU-xn-ylEAE/review";
+const GOOGLE_REVIEW_PAGE_URL = "https://www.google.co.id/search?sca_esv=47d3a503fd7b42d7&output=search&q=Rumah+Khitan+Damai&ludocid=11956106694650577077&lsig=AB86z5VxZiMPhsIh3gsUvrMYbXGw&sa=X&ved=2ahUKEwiv5syJga6UAxXtd2wGHZtNK40Qj9IGegQIExAG#ebo=0";
 
 /**
  * Feature ID Google Maps untuk Rumah Khitan Damai Subang
@@ -613,7 +613,7 @@ function sendTelegramGoogleReviewNotification_(review) {
         inline_keyboard: [
           [
             {
-              text: "⭐ Buka & Balas di Google Review",
+              text: "⭐ Buka di Google Review",
               url: reviewUrl
             }
           ]
@@ -679,7 +679,7 @@ function sendEmailGoogleReviewNotification_(review, targetEmail) {
         '</div>' +
       '</div>' +
       '<div style="text-align:center;margin-top:24px;">' +
-        '<a href="' + reviewUrl + '" style="background:#008080;color:#ffffff;padding:12px 28px;text-decoration:none;border-radius:8px;font-weight:bold;display:inline-block;box-shadow:0 2px 4px rgba(0,128,128,0.2);">⭐ Buka & Balas di Google Review</a>' +
+        '<a href="' + reviewUrl + '" style="background:#008080;color:#ffffff;padding:12px 28px;text-decoration:none;border-radius:8px;font-weight:bold;display:inline-block;box-shadow:0 2px 4px rgba(0,128,128,0.2);">⭐ Buka di Google Review</a>' +
       '</div>' +
       '<p style="font-size:12px;color:#94a3b8;text-align:center;margin-top:24px;border-top:1px solid #f1f5f9;padding-top:12px;">Email notifikasi otomatis dari Sistem Rumah Khitan Damai. Dikirim ke ' + escapeTelegramHtml_(email) + '</p>' +
     '</div>';
@@ -2406,7 +2406,7 @@ function handleTelegramWebhookUpdate_(update) {
               { text: "🧪 Uji Coba Format Bot", callback_data: "cb_review_test" }
             ],
             [
-              { text: "⭐ Buka Halaman Review", url: GOOGLE_REVIEW_PAGE_URL }
+              { text: "⭐ Buka di Google Review", url: GOOGLE_REVIEW_PAGE_URL }
             ]
           ]
         };
@@ -2828,7 +2828,7 @@ function handleTelegramWebhookUpdate_(update) {
               { text: "🧪 Uji Coba Format Bot", callback_data: "cb_review_test" }
             ],
             [
-              { text: "⭐ Buka Halaman Review", url: GOOGLE_REVIEW_PAGE_URL }
+              { text: "⭐ Buka di Google Review", url: GOOGLE_REVIEW_PAGE_URL }
             ]
           ]
         };
