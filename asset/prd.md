@@ -227,23 +227,27 @@ Sistem memiliki mekanisme pencadangan basis data Spreadsheet utama secara berkal
    - Deduplikasi interval backup manual (jeda minimum 2 menit) serta pembersihan otomatis (*auto-pruning*) file cadangan Google Drive yang berusia lebih dari 90 hari.
 
 ### 9.5 Integrasi Notifikasi Google Review ke Bot Telegram Admin
-Sistem pemantauan ulasan pelanggan baru di Google Business Profile / Google Review (`https://g.page/r/CbVAUU-xn-ylEBM/review`) dengan notifikasi otomatis ke Bot Telegram Admin:
-1. **Mekanisme Deteksi Gmail**:
-   - Memindai email masuk notifikasi ulasan dari Google (`google-my-business-noreply@google.com`, `googlebusinessprofile-noreply@google.com`, `noreply-business@google.com`, Google Maps, dsb.) baik yang belum dibaca (`is:unread`) maupun riwayat 30 hari terakhir (`newer_than:30d`). Dengan demikian, ulasan yang sudah sempat dibuka atau dibaca di aplikasi Gmail HP tetap terdeteksi secara andal.
-   - Parser mengekstrak Nama Pengulas, Rating Bintang (1–5 bintang), Isi Komentar/Ulasan, Tanggal Ulasan, dan tautan langsung untuk membalas ulasan di Google Business Profile / Google Maps.
-2. **Deduplikasi & Proteksi Ganda**:
-   - ID email ulasan yang telah berhasil dikirimkan ke Telegram disimpan di `Script Properties` (`KD_PROCESSED_REVIEW_MSG_IDS`, kapasitas hingga 100 entri) dan email ditandai sudah dibaca (`markRead()`). ID hanya dicatat jika pengiriman ke Telegram sukses, sehingga ulasan tidak akan terlewat atau terblokir permanen jika terjadi kendala jaringan sesaat.
-3. **Format Notifikasi Telegram**:
-   - Mengirim kartu notifikasi interaktif ke Admin Chat ID lengkap dengan rating bintang visual (`⭐⭐⭐⭐⭐`), kutipan ulasan, dan tombol *Inline Keyboard*: **"⭐ Buka & Balas di Google Review"**.
-4. **Pemicu Otomatis & Kendali Telegram**:
+Sistem pemantauan ulasan pelanggan baru di Google Business Profile / Google Review (`https://g.page/r/CbVAUU-xn-ylEAE/review`) dengan deteksi real-time ke Google Maps dan notifikasi otomatis ke Bot Telegram Admin serta email `denluckyman@gmail.com`:
+1. **Mekanisme Deteksi Real-Time Google Maps**:
+   - Memeriksa ulasan publik secara real-time langsung ke server Google Maps untuk Feature ID `0x2e693c78f4580f35:0xa5ec9fb14f5140b5` (CID: `11956106694650577077`, Place ID: `ChIJNQ9Y9Hg8aS4RtUBRT7Gf7KU`) tanpa perlu menunggu delay email Gmail.
+   - Mengambil 20 ulasan terbaru (*Newest First*), mengekstrak ID ulasan Google, Nama Pengulas, Rating Bintang (1–5 bintang), Isi Ulasan, Waktu relatif (misal: "9 jam lalu"), dan Timestamp epoch ms untuk verifikasi kebaruan.
+   - Ulasan baru langsung dinotifikasikan ke Bot Telegram Admin dan dikirimkan via email ke `denluckyman@gmail.com`.
+2. **Mekanisme Cadangan Gmail**:
+   - Memindai email masuk notifikasi ulasan dari Google (`google-my-business-noreply@google.com`, `googlebusinessprofile-noreply@google.com`, `noreply-business@google.com`, Google Maps, dsb.) dengan filter anti-duplikasi terhadap ulasan real-time yang sudah diproses.
+3. **Deduplikasi & Proteksi Ganda**:
+   - ID ulasan yang telah berhasil dikirimkan disimpan di `Script Properties` (`KD_PROCESSED_REVIEW_MSG_IDS`, kapasitas hingga 150 entri).
+4. **Format Notifikasi Telegram & Email**:
+   - Telegram: Kartu notifikasi interaktif ke Admin Chat ID lengkap dengan rating bintang visual (`⭐⭐⭐⭐⭐`), kutipan ulasan, dan tombol *Inline Keyboard*: **"⭐ Buka & Balas di Google Review"** (`https://g.page/r/CbVAUU-xn-ylEAE/review`).
+   - Email: Notifikasi format HTML responsif terkirim otomatis ke `denluckyman@gmail.com`.
+5. **Pemicu Otomatis & Kendali Telegram**:
    - Pemicu background waktu berkala mandiri setiap 10 menit (`checkGoogleReviewsTrigger`) dan terintegrasi otomatis dalam pemicu jam (`checkUpcomingKhitanReminders`). Pemicu dipasang secara otomatis (`ensureAutomaticTriggers_()`) setiap kali admin berinteraksi dengan Bot Telegram.
    - Perintah Telegram Admin:
-     - /cekreview atau /cekreview reset: Pemeriksaan manual instan dengan opsi reset cache ID untuk pemindaian ulang penuh (jendela 180 hari dengan operator in:anywhere).
-     - /cekreview debug atau /cekreview diagnosa: Diagnostik menyeluruh Gmail yang menampilkan alamat email akun aktif pemilik script, daftar email notifikasi terdaftar (denluckyman@gmail.com), unread inbox, hasil uji kueri penelusuran ulasan, dan 5 email Google terbaru beserta status parsingnya.
-     - /tesreview: Simulasi kirim contoh format kartu notifikasi ulasan ke chat Telegram admin.
-     - /tesemailreview: Simulasi kirim contoh notifikasi email ulasan Google Review ke alamat terdaftar (denluckyman@gmail.com).
-     - /settrigger atau /aktifkantrigger: Memasang atau memverifikasi kesehatan pemicu otomatis background.
-     - Inline keyboard interaktif: tombol Reset & Pindai Ulang, Diagnostik Gmail, Uji Coba Format Bot, Tes Email Notifikasi, dan Buka Google Review.
+     - `/cekreview` atau `/cekreview reset`: Pemeriksaan ulasan real-time instan ke server Google Maps; menampilkan ringkasan status real-time, cuplikan ulasan terkini di Google Maps, dan notifikasi ulasan baru yang belum dibaca.
+     - `/cekreview debug` atau `/cekreview diagnosa`: Diagnostik menyeluruh status koneksi Google Maps real-time, akun Gmail pemilik script, email notifikasi terdaftar (`denluckyman@gmail.com`), dan status parsing.
+     - `/tesreview`: Simulasi kirim contoh format kartu notifikasi ulasan ke chat Telegram admin.
+     - `/tesemailreview`: Simulasi kirim contoh notifikasi email ulasan Google Review ke alamat terdaftar (`denluckyman@gmail.com`).
+     - `/settrigger` atau `/aktifkantrigger`: Memasang atau memverifikasi kesehatan pemicu otomatis background.
+     - *Inline keyboard* interaktif: tombol Buka Halaman Review, Pindai Ulang Real-time, Tes Email Notifikasi, Uji Coba Format Bot, dan Diagnostik Sistem.
    - Fungsi Editor Apps Script:
      - uthorizeGmailAccess(): Fungsi verifikasi otorisasi scope Gmail dan triggers, otomatis mengaktifkan pemicu 10 menit, mereset cache ulasan, dan langsung memindai serta mengirim ulasan yang ada.
      - sendEmailGoogleReviewNotification_(review, targetEmail): Fungsi pengiriman email notifikasi ulasan baru ke email terdaftar (denluckyman@gmail.com).

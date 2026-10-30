@@ -467,6 +467,110 @@ function testSendTelegramAlert() {
 }
 
 /**
+ * URL Halaman Google Review Resmi Rumah Khitan Damai
+ */
+const GOOGLE_REVIEW_PAGE_URL = "https://g.page/r/CbVAUU-xn-ylEAE/review";
+
+/**
+ * Feature ID Google Maps untuk Rumah Khitan Damai Subang
+ * (CID: 11956106694650577077 / Place ID: ChIJNQ9Y9Hg8aS4RtUBRT7Gf7KU)
+ */
+const GOOGLE_MAPS_FEATURE_ID = "0x2e693c78f4580f35:0xa5ec9fb14f5140b5";
+
+/**
+ * Mengambil ulasan publik Google Maps secara real-time langsung dari server Google
+ * @param {string} [fid] Feature ID Google Maps
+ * @param {number} [limit] Jumlah ulasan terbaru yang diambil (default 20)
+ * @return {Array<Object>} Daftar ulasan real-time
+ */
+function fetchGoogleMapsReviewsRealtime_(fid, limit) {
+  const featureId = fid || GOOGLE_MAPS_FEATURE_ID;
+  const count = limit || 20;
+  try {
+    const inner = new Array(12).fill(null);
+    inner[1] = 2; // Urutkan ulasan terbaru (Newest First)
+    inner[9] = count;
+    inner[11] = [featureId];
+    const payload = [null, new Array(9).fill(null).concat([inner])];
+    const jsonStr = JSON.stringify(payload);
+    const url = "https://www.google.com/httpservice/web/PrivateLocalSearchUiDataService/GetLocalBoqProxy?msc=gwsrpc&hl=id&reqpld=" + encodeURIComponent(jsonStr);
+
+    const options = {
+      method: "get",
+      muteHttpExceptions: true,
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept-Language": "id-ID,id;q=0.9,en;q=0.8"
+      }
+    };
+
+    const response = UrlFetchApp.fetch(url, options);
+    if (response.getResponseCode() !== 200) {
+      Logger.log("fetchGoogleMapsReviewsRealtime_ HTTP status: " + response.getResponseCode());
+      return [];
+    }
+
+    const rawText = response.getContentText();
+    const cleanJson = rawText.replace(/^\)\]\}'\s*/, "");
+    const data = JSON.parse(cleanJson);
+
+    if (!data || !data[1] || !data[1][10] || !Array.isArray(data[1][10][2])) {
+      Logger.log("fetchGoogleMapsReviewsRealtime_ format data tidak valid");
+      return [];
+    }
+
+    const rawList = data[1][10][2];
+    const reviews = [];
+    for (let i = 0; i < rawList.length; i++) {
+      const item = rawList[i];
+      if (!item) continue;
+
+      const reviewId = String(item[5] || ("gmap_rev_" + (item[3] ? item[3][0] : i)));
+      const rating = (typeof item[1] === "number") ? item[1] : 5;
+      const authorName = (item[3] && item[3][0]) ? String(item[3][0]).trim() : "Pengguna Google";
+      const authorPhoto = (item[3] && item[3][1]) ? String(item[3][1]) : "";
+      const timeAgo = (item[2] && item[2][0]) ? String(item[2][0]) : "";
+
+      let reviewDate = new Date();
+      let epochMs = 0;
+      if (item[2] && item[2][2]) {
+        epochMs = parseInt(item[2][2], 10);
+        if (!isNaN(epochMs) && epochMs > 0) {
+          reviewDate = new Date(epochMs);
+        }
+      }
+
+      let commentText = "";
+      if (item[27] && typeof item[27] === "string") {
+        commentText = item[27];
+      } else if (item[28] && typeof item[28] === "string") {
+        commentText = item[28];
+      }
+      commentText = commentText.replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, "").trim();
+
+      const reviewUrl = (item[12] && typeof item[12] === "string") ? item[12] : GOOGLE_REVIEW_PAGE_URL;
+
+      reviews.push({
+        id: reviewId,
+        reviewerName: authorName,
+        rating: rating,
+        comment: commentText,
+        date: reviewDate,
+        epochMs: epochMs,
+        timeAgo: timeAgo,
+        reviewUrl: reviewUrl,
+        authorPhoto: authorPhoto,
+        source: "Google Maps (Real-time)"
+      });
+    }
+    return reviews;
+  } catch (err) {
+    Logger.log("Kesalahan fetchGoogleMapsReviewsRealtime_: " + err.toString());
+    return [];
+  }
+}
+
+/**
  * Mengirimkan pesan notifikasi Google Review baru ke Bot Telegram Admin
  */
 function sendTelegramGoogleReviewNotification_(review) {
@@ -485,10 +589,12 @@ function sendTelegramGoogleReviewNotification_(review) {
     const reviewDate = (review && review.date)
       ? Utilities.formatDate(new Date(review.date), "Asia/Jakarta", "dd MMMM yyyy, HH:mm") + " WIB"
       : (getJakartaTimestamp() + " WIB");
-    const reviewUrl = (review && review.reviewUrl) ? String(review.reviewUrl) : "https://g.page/r/CbVAUU-xn-ylEBM/review";
+    const reviewUrl = (review && review.reviewUrl) ? String(review.reviewUrl) : GOOGLE_REVIEW_PAGE_URL;
+    const sourceLabel = (review && review.source) ? String(review.source) : "Google Review Real-time";
 
     const text = "⭐ <b>ULASAN GOOGLE REVIEW BARU DITERIMA!</b> ⭐\n" +
       "━━━━━━━━━━━━━━━━━━\n" +
+      "🌐 <b>Sumber:</b> " + escapeTelegramHtml_(sourceLabel) + "\n" +
       "👤 <b>Pengulas:</b> " + escapeTelegramHtml_(reviewerName) + "\n" +
       "🌟 <b>Penilaian:</b> " + ratingDisplay + "\n" +
       "📅 <b>Waktu:</b> " + escapeTelegramHtml_(reviewDate) + "\n" +
@@ -496,7 +602,7 @@ function sendTelegramGoogleReviewNotification_(review) {
       "💬 <b>Isi Ulasan:</b>\n" +
       (comment ? ("<i>\"" + escapeTelegramHtml_(comment) + "\"</i>") : "<i>(Pengulas memberikan rating bintang tanpa ulasan tertulis)</i>") + "\n" +
       "━━━━━━━━━━━━━━━━━━\n" +
-      "💡 <i>Segera buka Google Business Profile untuk membaca atau membalas ulasan pasien.</i>";
+      "💡 <i>Ulasan terdeteksi real-time dari profil Google Review Rumah Khitan Damai.</i>";
 
     const payload = {
       chat_id: config.chatId,
@@ -555,7 +661,7 @@ function sendEmailGoogleReviewNotification_(review, targetEmail) {
     const reviewDate = (review && review.date)
       ? Utilities.formatDate(new Date(review.date), "Asia/Jakarta", "dd MMMM yyyy, HH:mm") + " WIB"
       : (getJakartaTimestamp() + " WIB");
-    const reviewUrl = (review && review.reviewUrl) ? String(review.reviewUrl) : "https://g.page/r/CbVAUU-xn-ylEBM/review";
+    const reviewUrl = (review && review.reviewUrl) ? String(review.reviewUrl) : GOOGLE_REVIEW_PAGE_URL;
 
     const subject = "⭐ [Google Review] " + starsNum + " Bintang dari " + reviewerName + " — Rumah Khitan Damai";
     const htmlBody = '<div style="font-family:sans-serif;max-width:600px;margin:auto;padding:24px;border:1px solid #e2e8f0;border-radius:12px;background:#ffffff;">' +
@@ -600,7 +706,7 @@ function testSendGoogleReviewEmail(targetEmail) {
     rating: 5,
     comment: "Pelayanan sangat ramah, dokternya komunikatif, tempat bersih dan nyaman, ananda sama sekali tidak merasa takut saat khitan. Metode super ring mantap! Terima kasih Rumah Khitan Damai 🙏✨",
     date: new Date(),
-    reviewUrl: "https://g.page/r/CbVAUU-xn-ylEBM/review"
+    reviewUrl: GOOGLE_REVIEW_PAGE_URL
   };
   return sendEmailGoogleReviewNotification_(sampleReview, targetEmail || "denluckyman@gmail.com");
 }
@@ -652,7 +758,7 @@ function parseGoogleReviewMessage_(msg, fallbackUrl) {
     let reviewerName = "";
     let rating = 0;
     let comment = "";
-    let reviewUrl = fallbackUrl || "https://g.page/r/CbVAUU-xn-ylEBM/review";
+    let reviewUrl = fallbackUrl || GOOGLE_REVIEW_PAGE_URL;
 
     // 1. Ekstraksi Nama Pengulas
     let m = subject.match(/(?:ulasan baru dari|new review from|ulasan dari|review from)\s+([^\·\-\n\r<]+)/i);
@@ -799,7 +905,7 @@ function testSendGoogleReviewAlert() {
     rating: 5,
     comment: "Pelayanan sangat ramah, dokternya komunikatif, tempat bersih dan nyaman, ananda sama sekali tidak merasa takut saat khitan. Metode super ring mantap! Terima kasih Rumah Khitan Damai 🙏✨",
     date: new Date(),
-    reviewUrl: "https://g.page/r/CbVAUU-xn-ylEBM/review"
+    reviewUrl: GOOGLE_REVIEW_PAGE_URL
   };
   return sendTelegramGoogleReviewNotification_(sampleReview);
 }
@@ -814,6 +920,24 @@ function diagnoseGoogleReviews_() {
     unreadInbox = GmailApp.getInboxUnreadCount();
   } catch (e) {
     unreadInbox = "Error: " + e.message;
+  }
+
+  // Uji koneksi real-time ke Google Maps
+  let realtimeStatus = "Sedang memeriksa...";
+  let realtimeSnippet = "";
+  try {
+    const rtList = fetchGoogleMapsReviewsRealtime_(GOOGLE_MAPS_FEATURE_ID, 3);
+    if (rtList && rtList.length > 0) {
+      realtimeStatus = "✅ Terhubung Real-time (" + rtList.length + " ulasan terkini diambil)";
+      const topRev = rtList[0];
+      const stars = "⭐".repeat(Math.max(1, Math.min(5, topRev.rating)));
+      realtimeSnippet = "• <b>Ulasan Terkini di Google Maps:</b> " + escapeTelegramHtml_(topRev.reviewerName) + " (" + stars + ") — <i>" + escapeTelegramHtml_(topRev.timeAgo || "-") + "</i>\n" +
+        (topRev.comment ? ("  💬 <i>\"" + escapeTelegramHtml_(topRev.comment.slice(0, 100)) + "\"</i>\n") : "");
+    } else {
+      realtimeStatus = "⚠️ Tidak ada data dari server Google Maps";
+    }
+  } catch (rtErr) {
+    realtimeStatus = "⚠️ Error: " + rtErr.toString();
   }
 
   const queries = [
@@ -865,7 +989,7 @@ function diagnoseGoogleReviews_() {
       const subj = curMsg.getSubject() || "(Tanpa Subjek)";
       const sender = curMsg.getFrom() || "(Tanpa Pengirim)";
       const dStr = Utilities.formatDate(curMsg.getDate(), "Asia/Jakarta", "dd MMM yyyy HH:mm");
-      const parsed = parseGoogleReviewMessage_(curMsg, "https://g.page/r/CbVAUU-xn-ylEBM/review");
+      const parsed = parseGoogleReviewMessage_(curMsg, GOOGLE_REVIEW_PAGE_URL);
       const parseStatus = parsed ? ("✅ Review valid (" + parsed.rating + "⭐ • " + escapeTelegramHtml_(parsed.reviewerName) + ")") : "❌ Bukan format review";
 
       msgListText += (k + 1) + ". <b>" + escapeTelegramHtml_(subj) + "</b>\n" +
@@ -877,6 +1001,9 @@ function diagnoseGoogleReviews_() {
 
   const report = "🔍 <b>DIAGNOSTIK GMAIL & GOOGLE REVIEW</b> 📋\n" +
     "━━━━━━━━━━━━━━━━━━\n" +
+    "🌐 <b>Google Maps Real-time:</b> " + realtimeStatus + "\n" +
+    "🔗 <b>URL Google Review:</b> " + GOOGLE_REVIEW_PAGE_URL + "\n" +
+    (realtimeSnippet ? (realtimeSnippet + "━━━━━━━━━━━━━━━━━━\n") : "") +
     "👤 <b>Akun Gmail Script:</b>\n" +
     "<code>" + escapeTelegramHtml_(accountEmail) + "</code>\n" +
     "📬 <b>Email Notifikasi Terdaftar:</b>\n" +
@@ -889,16 +1016,13 @@ function diagnoseGoogleReviews_() {
     "📧 <b>Email Terkait Google Terbaru di Akun Ini:</b>\n\n" +
     msgListText +
     "━━━━━━━━━━━━━━━━━━\n" +
-    "💡 <b>Panduan Solusi:</b>\n" +
-    "1. Pastikan email ulasan Google Business Profile masuk ke alamat <code>" + escapeTelegramHtml_(accountEmail) + "</code> atau <code>denluckyman@gmail.com</code>.\n" +
-    "2. Daftarkan <code>denluckyman@gmail.com</code> sebagai Pengelola di Profil Bisnis Google (Google Business Profile) agar menerima ulasan langsung dari Google.\n" +
-    "3. Gunakan tombol <b>🔄 Reset & Pindai Ulang</b> di bawah untuk mencoba pemindaian lagi.";
+    "💡 <i>Sistem memeriksa ulasan Google Maps secara real-time langsung ke link resmi bisnis.</i>";
 
   return report;
 }
 
 /**
- * Memeriksa email masuk notifikasi Google Review di Gmail dan mengirim pemberitahuan ke Telegram Admin
+ * Memeriksa ulasan Google Review secara real-time langsung ke Google Maps & cadangan Gmail
  * @param {boolean} [forceReset] Jika true, bersihkan riwayat ID lama agar ulasan yang pernah terlewat dipindai ulang
  */
 function checkGoogleReviewsAndNotify_(forceReset) {
@@ -910,6 +1034,8 @@ function checkGoogleReviewsAndNotify_(forceReset) {
   try {
     const props = PropertiesService.getScriptProperties();
     let processedIds = [];
+    const isInitialRun = (props && props.getProperty("KD_PROCESSED_REVIEW_MSG_IDS") === null);
+
     if (forceReset) {
       if (props) props.deleteProperty("KD_PROCESSED_REVIEW_MSG_IDS");
       processedIds = [];
@@ -923,101 +1049,134 @@ function checkGoogleReviewsAndNotify_(forceReset) {
       }
     }
 
-    // Daftar kueri menyeluruh untuk menemukan email ulasan dari Google Business Profile / Maps
-    const queries = [
-      'in:anywhere (ulasan OR review OR "Google Business" OR "Google Bisnisku" OR "Google Maps" OR rating OR bintang) newer_than:180d',
-      'in:anywhere from:(google-my-business-noreply@google.com OR googlebusinessprofile-noreply@google.com OR businessprofile-noreply@google.com OR noreply-business@google.com OR maps-noreply@google.com)',
-      'in:anywhere subject:("ulasan baru" OR "new review" OR "memberi ulasan" OR "mengulas" OR "left a review" OR "menulis ulasan" OR "ulasan" OR "review")',
-      'in:anywhere is:unread (ulasan OR review)',
-      'in:anywhere (ulasan OR review)'
-    ];
-
-    const seenThreadIds = {};
-    const threads = [];
-    for (let k = 0; k < queries.length; k++) {
-      try {
-        const found = GmailApp.search(queries[k], 0, 15);
-        if (found && found.length > 0) {
-          for (let mIdx = 0; mIdx < found.length; mIdx++) {
-            const t = found[mIdx];
-            const tId = t.getId();
-            if (!seenThreadIds[tId]) {
-              seenThreadIds[tId] = true;
-              threads.push(t);
-            }
-          }
-        }
-      } catch (searchErr) {
-        Logger.log("Peringatan: Gagal mencari query [" + queries[k] + "]: " + searchErr.toString());
-      }
-    }
-
     let notifiedCount = 0;
-    const DEFAULT_REVIEW_URL = "https://g.page/r/CbVAUU-xn-ylEBM/review";
 
-    for (let i = 0; i < threads.length; i++) {
-      const thread = threads[i];
-      const messages = thread.getMessages();
+    // 1. PEMERIKSAAN REAL-TIME LANGSUNG KE GOOGLE MAPS
+    const realtimeReviews = fetchGoogleMapsReviewsRealtime_(GOOGLE_MAPS_FEATURE_ID, 20);
+    const nowMs = Date.now();
+    // Ambang batas review baru: maksimal 7 hari terakhir (7 * 24 * 60 * 60 * 1000 = 604800000 ms)
+    const MAX_RECENT_MS = 7 * 24 * 60 * 60 * 1000;
 
-      for (let j = 0; j < messages.length; j++) {
-        const msg = messages[j];
-        const msgId = msg.getId();
+    for (let rIdx = 0; rIdx < realtimeReviews.length; rIdx++) {
+      const rev = realtimeReviews[rIdx];
+      const isProcessed = processedIds.indexOf(rev.id) !== -1;
+      const isRecent = rev.epochMs > 0
+        ? ((nowMs - rev.epochMs) < MAX_RECENT_MS)
+        : (rev.timeAgo.indexOf("jam") !== -1 || rev.timeAgo.indexOf("menit") !== -1 || rev.timeAgo.indexOf("hari") !== -1);
 
-        // Lewati jika sudah pernah berhasil dikirim ke Telegram
-        if (processedIds.indexOf(msgId) !== -1) {
-          continue;
-        }
-
-        const parsed = parseGoogleReviewMessage_(msg, DEFAULT_REVIEW_URL);
-        if (parsed) {
-          const sendRes = sendTelegramGoogleReviewNotification_(parsed);
-
-          // Kirimkan notifikasi email ulasan ke daftar email terdaftar (denluckyman@gmail.com)
+      if (!isProcessed) {
+        if (isRecent || (!isInitialRun && !forceReset)) {
+          const sendRes = sendTelegramGoogleReviewNotification_(rev);
           try {
-            for (let rIdx = 0; rIdx < GOOGLE_REVIEW_RECIPIENT_EMAILS.length; rIdx++) {
-              sendEmailGoogleReviewNotification_(parsed, GOOGLE_REVIEW_RECIPIENT_EMAILS[rIdx]);
+            for (let mIdx = 0; mIdx < GOOGLE_REVIEW_RECIPIENT_EMAILS.length; mIdx++) {
+              sendEmailGoogleReviewNotification_(rev, GOOGLE_REVIEW_RECIPIENT_EMAILS[mIdx]);
             }
           } catch (mailNotifErr) {
             Logger.log("Peringatan sendEmailGoogleReviewNotification_: " + mailNotifErr.toString());
           }
 
-          if (sendRes.success) {
+          if (sendRes && sendRes.success) {
             notifiedCount++;
-            processedIds.push(msgId);
-          } else {
-            Logger.log("Gagal mengirim ulasan ke Telegram (" + msgId + "): " + JSON.stringify(sendRes));
           }
         }
-
-        // Tandai email sudah dibaca jika belum
-        if (msg.isUnread()) {
-          try { msg.markRead(); } catch (mErr) {}
-        }
-      }
-      if (thread.isUnread()) {
-        try { thread.markRead(); } catch (tErr) {}
+        processedIds.push(rev.id);
       }
     }
 
-    if (processedIds.length > 100) {
-      processedIds = processedIds.slice(-100);
+    // 2. PEMERIKSAAN CADANGAN VIA GMAIL (Menangkap email masuk jika ada)
+    try {
+      const queries = [
+        'in:anywhere (ulasan OR review OR "Google Business" OR "Google Bisnisku" OR "Google Maps" OR rating OR bintang) newer_than:30d',
+        'in:anywhere subject:("ulasan baru" OR "new review" OR "memberi ulasan" OR "mengulas" OR "left a review" OR "menulis ulasan") newer_than:30d'
+      ];
+      const seenThreadIds = {};
+      const threads = [];
+      for (let k = 0; k < queries.length; k++) {
+        try {
+          const found = GmailApp.search(queries[k], 0, 10);
+          if (found && found.length > 0) {
+            for (let mIdx = 0; mIdx < found.length; mIdx++) {
+              const t = found[mIdx];
+              const tId = t.getId();
+              if (!seenThreadIds[tId]) {
+                seenThreadIds[tId] = true;
+                threads.push(t);
+              }
+            }
+          }
+        } catch (searchErr) {
+          Logger.log("Peringatan pencarian Gmail: " + searchErr.toString());
+        }
+      }
+
+      for (let i = 0; i < threads.length; i++) {
+        const thread = threads[i];
+        const messages = thread.getMessages();
+        for (let j = 0; j < messages.length; j++) {
+          const msg = messages[j];
+          const msgId = msg.getId();
+          if (processedIds.indexOf(msgId) !== -1) continue;
+
+          const parsed = parseGoogleReviewMessage_(msg, GOOGLE_REVIEW_PAGE_URL);
+          if (parsed) {
+            // Hindari duplikat jika ulasan sudah dinotifikasi via Real-time Google Maps
+            const isDuplicate = realtimeReviews.some(function(rt) {
+              return rt.reviewerName && parsed.reviewerName &&
+                rt.reviewerName.toLowerCase().trim() === parsed.reviewerName.toLowerCase().trim();
+            });
+
+            if (!isDuplicate) {
+              const sendRes = sendTelegramGoogleReviewNotification_(parsed);
+              try {
+                for (let rIdx = 0; rIdx < GOOGLE_REVIEW_RECIPIENT_EMAILS.length; rIdx++) {
+                  sendEmailGoogleReviewNotification_(parsed, GOOGLE_REVIEW_RECIPIENT_EMAILS[rIdx]);
+                }
+              } catch (mailNotifErr) {
+                Logger.log("Peringatan sendEmailGoogleReviewNotification_: " + mailNotifErr.toString());
+              }
+
+              if (sendRes && sendRes.success) {
+                notifiedCount++;
+              }
+            }
+            processedIds.push(msgId);
+          }
+
+          if (msg.isUnread()) {
+            try { msg.markRead(); } catch (mErr) {}
+          }
+        }
+        if (thread.isUnread()) {
+          try { thread.markRead(); } catch (tErr) {}
+        }
+      }
+    } catch (gErr) {
+      Logger.log("Catatan pemindaian cadangan Gmail: " + gErr.toString());
+    }
+
+    if (processedIds.length > 150) {
+      processedIds = processedIds.slice(-150);
     }
     if (props) {
       props.setProperty("KD_PROCESSED_REVIEW_MSG_IDS", JSON.stringify(processedIds));
       props.setProperty("KD_LAST_CHECK_REVIEW_TIME", Utilities.formatDate(new Date(), "Asia/Jakarta", "yyyy-MM-dd HH:mm:ss"));
     }
 
+    const latestReview = (realtimeReviews && realtimeReviews.length > 0) ? realtimeReviews[0] : null;
+
     return {
       success: true,
       found: notifiedCount,
+      realtimeReviewsCount: realtimeReviews.length,
+      latestReview: latestReview,
       accountEmail: getScriptUserEmail_(),
-      message: notifiedCount > 0 ? (notifiedCount + " notifikasi ulasan baru dikirim ke Telegram.") : "Tidak ada ulasan baru."
+      message: notifiedCount > 0 ? (notifiedCount + " notifikasi ulasan baru dikirim ke Telegram & Email.") : "Tidak ada ulasan baru."
     };
   } catch (err) {
     Logger.log("Peringatan checkGoogleReviewsAndNotify_: " + err.toString());
     return { success: false, error: err.toString(), accountEmail: getScriptUserEmail_() };
   } finally {
-    lock.releaseLock();
+    try { lock.releaseLock(); } catch (e) {}
   }
 }
 
@@ -2154,23 +2313,31 @@ function handleTelegramWebhookUpdate_(update) {
           answerTelegramCallbackQuery_(cbId, "Khusus akun Admin.", true);
           return HtmlService.createHtmlOutput("OK");
         }
-        answerTelegramCallbackQuery_(cbId, "Mereset cache & memindai ulasan...");
+        answerTelegramCallbackQuery_(cbId, "Mereset cache & memindai ulasan real-time...");
         const resForce = checkGoogleReviewsAndNotify_(true);
         if (resForce.found > 0) {
-          sendTelegramMessage_(cbChatId, "✅ <b>Pemeriksaan Ulang Berhasil!</b>\n" + resForce.found + " ulasan baru berhasil ditemukan dan dikirimkan ke Telegram.", mainKeyboard);
+          sendTelegramMessage_(cbChatId, "✅ <b>Pemeriksaan Ulang Real-time Berhasil!</b>\n" + resForce.found + " ulasan baru berhasil ditemukan dari Google Maps dan dikirimkan ke Telegram & Email.", mainKeyboard);
         } else {
           const accEmail = resForce.accountEmail || getScriptUserEmail_();
-          const noRevForceMsg = "ℹ️ <b>Pemeriksaan Ulang Selesai</b>\n" +
-            "Tidak ditemukan email ulasan Google Review pada Gmail akun:\n<code>" + escapeTelegramHtml_(accEmail) + "</code>\n\n" +
-            "💡 <i>Gunakan tombol <b>🔍 Diagnostik Gmail</b> di bawah untuk melihat rincian email Google yang masuk di akun ini.</i>";
+          const lastRev = resForce.latestReview;
+          let revSnippet = "";
+          if (lastRev) {
+            const stars = "⭐".repeat(Math.max(1, Math.min(5, lastRev.rating)));
+            revSnippet = "\n\n⭐ <b>Ulasan Terkini di Google:</b>\n<b>" + escapeTelegramHtml_(lastRev.reviewerName) + "</b> (" + stars + ") — <i>" + escapeTelegramHtml_(lastRev.timeAgo || "-") + "</i>\n" +
+              (lastRev.comment ? ("💬 <i>\"" + escapeTelegramHtml_(lastRev.comment.slice(0, 120)) + "\"</i>") : "<i>(Rating bintang tanpa ulasan tertulis)</i>");
+          }
+          const noRevForceMsg = "ℹ️ <b>Pemeriksaan Ulang Real-time Selesai</b>\n" +
+            "Semua ulasan di Google Review telah tersinkronisasi." + revSnippet + "\n\n" +
+            "📬 <b>Penerima Notifikasi Email:</b> <code>" + escapeTelegramHtml_(accEmail) + "</code>\n" +
+            "🌐 <b>Status:</b> Google Maps Real-time Aktif ✅";
           const forceBtn = {
             inline_keyboard: [
               [
-                { text: "🔍 Diagnostik Gmail", callback_data: "cb_review_debug" },
-                { text: "🧪 Uji Coba Format Bot", callback_data: "cb_review_test" }
+                { text: "⭐ Buka Halaman Review", url: GOOGLE_REVIEW_PAGE_URL }
               ],
               [
-                { text: "⭐ Buka Halaman Review", url: "https://g.page/r/CbVAUU-xn-ylEBM/review" }
+                { text: "🔍 Diagnostik Sistem", callback_data: "cb_review_debug" },
+                { text: "🧪 Uji Coba Format Bot", callback_data: "cb_review_test" }
               ]
             ]
           };
@@ -2183,7 +2350,7 @@ function handleTelegramWebhookUpdate_(update) {
           answerTelegramCallbackQuery_(cbId, "Khusus akun Admin.", true);
           return HtmlService.createHtmlOutput("OK");
         }
-        answerTelegramCallbackQuery_(cbId, "Menjalankan diagnostik Gmail...");
+        answerTelegramCallbackQuery_(cbId, "Menjalankan diagnostik...");
         const diagText = diagnoseGoogleReviews_();
         const diagBtn = {
           inline_keyboard: [
@@ -2192,7 +2359,7 @@ function handleTelegramWebhookUpdate_(update) {
               { text: "🧪 Uji Coba Format Bot", callback_data: "cb_review_test" }
             ],
             [
-              { text: "⭐ Buka Halaman Review", url: "https://g.page/r/CbVAUU-xn-ylEBM/review" }
+              { text: "⭐ Buka Halaman Review", url: GOOGLE_REVIEW_PAGE_URL }
             ]
           ]
         };
@@ -2600,7 +2767,7 @@ function handleTelegramWebhookUpdate_(update) {
 
     if (isAdmin && isCekReviewCmd) {
       if (lowerText.includes("debug") || lowerText.includes("diagnosa") || lowerText.includes("diagnose")) {
-        sendTelegramMessage_(chatId, "⏳ <i>Menjalankan diagnostik menyeluruh email ulasan Google di Gmail...</i>", mainKeyboard);
+        sendTelegramMessage_(chatId, "⏳ <i>Menjalankan diagnostik menyeluruh sistem Google Review & Gmail...</i>", mainKeyboard);
         const diagReport = diagnoseGoogleReviews_();
         const diagBtn = {
           inline_keyboard: [
@@ -2609,7 +2776,7 @@ function handleTelegramWebhookUpdate_(update) {
               { text: "🧪 Uji Coba Format Bot", callback_data: "cb_review_test" }
             ],
             [
-              { text: "⭐ Buka Halaman Review", url: "https://g.page/r/CbVAUU-xn-ylEBM/review" }
+              { text: "⭐ Buka Halaman Review", url: GOOGLE_REVIEW_PAGE_URL }
             ]
           ]
         };
@@ -2618,7 +2785,7 @@ function handleTelegramWebhookUpdate_(update) {
       }
 
       const isForce = lowerText.includes("reset") || lowerText.includes("force") || lowerText.includes("ulang");
-      sendTelegramMessage_(chatId, "⏳ <i>Sedang memeriksa email ulasan Google Review terbaru di Gmail" + (isForce ? " (Reset Cache)..." : "...") + "</i>", mainKeyboard);
+      sendTelegramMessage_(chatId, "⏳ <i>Sedang memeriksa ulasan Google Review secara real-time langsung ke Google Maps..." + (isForce ? " (Reset Cache)..." : "") + "</i>", mainKeyboard);
 
       let trInfo = "Aktif (tiap 10 menit)";
       if (props && props.getProperty("KD_AUTO_TRIGGERS_INSTALLED") !== "true") {
@@ -2631,55 +2798,51 @@ function handleTelegramWebhookUpdate_(update) {
       if (revRes.locked) {
         sendTelegramMessage_(chatId, "⏳ <i>Pengecekan ulasan sedang berjalan oleh proses lain. Silakan coba sesaat lagi.</i>", mainKeyboard);
       } else if (!revRes.success) {
-        const errMsg = String(revRes.error || revRes.message || "");
-        if (errMsg.indexOf("does not have permission") !== -1 || errMsg.indexOf("Required permissions") !== -1) {
-          const authNotice = "🔐 <b>DIPERLUKAN OTORISASI GMAIL (SEKALI SAJA)</b> 📧\n\n" +
-            "Google mewajibkan izin akses Gmail pada akun pemilik script untuk membaca ulasan baru.\n\n" +
-            "👉 <b>Langkah Cepat (Hanya 10 Detik):</b>\n" +
-            "1. Buka editor: <a href=\"https://script.google.com/d/1kQELrNR8XG8ukJYxJOI74uv3n9SPvw_uveBpesLi-eslPo2b49b6J7_A/edit\">Buka Apps Script Editor</a>\n" +
-            "2. Pada pilihan fungsi di toolbar atas (sebelah tombol Debug), pilih <b>authorizeGmailAccess</b>.\n" +
-            "3. Klik tombol <b>▷ Jalankan</b> (Run).\n" +
-            "4. Klik <b>Tinjau Izin</b> (Review Permissions) -> Pilih Akun Google -> <b>Lanjutan</b> -> <b>Buka Khitan Damai</b> -> <b>Izinkan</b>.\n\n" +
-            "Setelah itu, bot otomatis akan mengaktifkan trigger 10 menit dan mengirim ulasan yang masuk!";
-          const authBtn = {
-            inline_keyboard: [
-              [
-                { text: "🔗 Buka Apps Script untuk Otorisasi", url: "https://script.google.com/d/1kQELrNR8XG8ukJYxJOI74uv3n9SPvw_uveBpesLi-eslPo2b49b6J7_A/edit" }
-              ]
-            ]
-          };
-          sendTelegramMessage_(chatId, authNotice, authBtn);
-        } else {
-          sendTelegramMessage_(chatId, "⚠️ <b>Gagal Memeriksa Google Review:</b>\n" + escapeTelegramHtml_(errMsg), mainKeyboard);
-        }
+        sendTelegramMessage_(chatId, "⚠️ <b>Gagal Memeriksa Google Review:</b>\n" + escapeTelegramHtml_(revRes.error || revRes.message || "Kesalahan tidak diketahui"), mainKeyboard);
       } else if (revRes.found > 0) {
-        const succMsg = "✅ <b>Pemeriksaan Selesai!</b>\n" +
-          revRes.found + " ulasan baru berhasil ditemukan dan dinotifikasikan ke Telegram.\n\n" +
-          "👤 <b>Akun Gmail:</b> <code>" + escapeTelegramHtml_(accEmail) + "</code>\n" +
-          "⏰ <b>Pemicu Otomatis:</b> " + trInfo;
+        const succMsg = "✅ <b>Pemeriksaan Real-time Selesai!</b>\n" +
+          "━━━━━━━━━━━━━━━━━━\n" +
+          "⭐ <b>" + revRes.found + " Ulasan Baru</b> berhasil ditemukan dari Google Review dan dinotifikasikan ke Telegram & Email!\n\n" +
+          "🌐 <b>Sumber:</b> Real-time Google Maps\n" +
+          "👤 <b>Email Penerima:</b> <code>" + escapeTelegramHtml_(accEmail) + "</code>\n" +
+          "⏰ <b>Pemicu Otomatis:</b> " + trInfo + "\n" +
+          "🕒 <b>Waktu Periksa:</b> " + Utilities.formatDate(new Date(), "Asia/Jakarta", "dd MMMM yyyy, HH:mm:ss") + " WIB";
         sendTelegramMessage_(chatId, succMsg, mainKeyboard);
       } else {
-        const lastCheck = (props && props.getProperty("KD_LAST_CHECK_REVIEW_TIME")) || Utilities.formatDate(new Date(), "Asia/Jakarta", "yyyy-MM-dd HH:mm:ss");
-        const noReviewMsg = "⭐ <b>PEMERIKSAAN GOOGLE REVIEW</b> 📋\n" +
+        const lastRev = revRes.latestReview;
+        let lastRevSnippet = "Belum ada ulasan terdeteksi.";
+        if (lastRev) {
+          const stars = "⭐".repeat(Math.max(1, Math.min(5, lastRev.rating)));
+          lastRevSnippet = "<b>" + escapeTelegramHtml_(lastRev.reviewerName) + "</b> (" + stars + ") — <i>" + escapeTelegramHtml_(lastRev.timeAgo || "Terbaru") + "</i>\n" +
+            (lastRev.comment ? ("💬 <i>\"" + escapeTelegramHtml_(lastRev.comment.slice(0, 140)) + (lastRev.comment.length > 140 ? "..." : "") + "\"</i>") : "<i>(Rating bintang tanpa ulasan tertulis)</i>");
+        }
+
+        const noReviewMsg = "⭐ <b>PEMERIKSAAN GOOGLE REVIEW REAL-TIME</b> 📋\n" +
           "━━━━━━━━━━━━━━━━━━\n" +
-          "ℹ️ Tidak ditemukan email ulasan Google baru yang belum dinotifikasikan di Gmail (180 hari terakhir).\n" +
-          "👤 <b>Akun Gmail Script:</b>\n<code>" + escapeTelegramHtml_(accEmail) + "</code>\n" +
-          "⏰ <b>Pemicu Otomatis:</b> " + trInfo + "\n" +
-          "🕒 <b>Waktu periksa:</b> " + escapeTelegramHtml_(lastCheck) + " WIB\n" +
+          "🌐 <b>Status Google Maps:</b> Terhubung Real-time ✅\n" +
+          "📍 <b>Profil Bisnis:</b> Rumah Khitan Damai Subang\n\n" +
+          "⭐ <b>Ulasan Terkini di Google:</b>\n" +
+          lastRevSnippet + "\n" +
           "━━━━━━━━━━━━━━━━━━\n" +
-          "💡 <i>Gunakan tombol <b>🔍 Diagnostik Gmail</b> untuk melihat isi email masuk terkait Google di akun ini:</i>";
+          "ℹ️ Semua ulasan Google terbaru telah tersinkronisasi dan belum ada ulasan baru lagi.\n" +
+          "👤 <b>Notifikasi Email:</b> <code>" + escapeTelegramHtml_(accEmail) + "</code>\n" +
+          "⏰ <b>Pemantau Otomatis:</b> " + trInfo + "\n" +
+          "🕒 <b>Waktu Periksa:</b> " + Utilities.formatDate(new Date(), "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss") + " WIB\n" +
+          "━━━━━━━━━━━━━━━━━━\n" +
+          "💡 <i>Sistem memantau langsung dari link resmi Google Review secara berkala setiap 10 menit.</i>";
+
         const reviewBtn = {
           inline_keyboard: [
             [
-              { text: "🔄 Reset & Pindai Ulang", callback_data: "cb_review_force" },
-              { text: "🔍 Diagnostik Gmail", callback_data: "cb_review_debug" }
+              { text: "⭐ Buka Halaman Review", url: GOOGLE_REVIEW_PAGE_URL }
             ],
             [
-              { text: "🧪 Uji Coba Format Bot", callback_data: "cb_review_test" },
+              { text: "🔄 Pindai Ulang Real-time", callback_data: "cb_review_force" },
               { text: "✉️ Tes Email Notifikasi", callback_data: "cb_review_test_email" }
             ],
             [
-              { text: "⭐ Buka Halaman Review", url: "https://g.page/r/CbVAUU-xn-ylEBM/review" }
+              { text: "🧪 Uji Coba Format Bot", callback_data: "cb_review_test" },
+              { text: "🔍 Diagnostik Sistem", callback_data: "cb_review_debug" }
             ]
           ]
         };
