@@ -543,14 +543,17 @@ function fetchGoogleMapsReviewsRealtime_(fid, limit) {
     inner[11] = [featureId];
     const payload = [null, new Array(9).fill(null).concat([inner])];
     const jsonStr = JSON.stringify(payload);
-    const url = "https://www.google.com/httpservice/web/PrivateLocalSearchUiDataService/GetLocalBoqProxy?msc=gwsrpc&hl=id&reqpld=" + encodeURIComponent(jsonStr);
+    const cb = Date.now().toString() + "_" + Math.floor(Math.random() * 1000000);
+    const url = "https://www.google.co.id/httpservice/web/PrivateLocalSearchUiDataService/GetLocalBoqProxy?msc=gwsrpc&hl=id&_cb=" + cb + "&reqpld=" + encodeURIComponent(jsonStr);
 
     const options = {
       method: "get",
       muteHttpExceptions: true,
       headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept-Language": "id-ID,id;q=0.9,en;q=0.8"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept-Language": "id-ID,id;q=0.9,en;q=0.8",
+        "Cache-Control": "no-cache, no-store, max-age=0, must-revalidate",
+        "Pragma": "no-cache"
       }
     };
 
@@ -1136,22 +1139,17 @@ function checkGoogleReviewsAndNotify_(forceReset) {
     const nowMs = Date.now();
     // Ambang batas review baru: maksimal 48 jam terakhir
     const MAX_RECENT_MS = 48 * 60 * 60 * 1000;
-    // Jika sistem baru pertama kali berjalan / belum ada data processedIds:
-    // Buat baseline dari seluruh review yang ada saat ini agar tidak mengirim spam review lama
-    const isFirstBaseline = (isInitialRun || processedIds.length === 0);
 
     for (let rIdx = 0; rIdx < realtimeReviews.length; rIdx++) {
       const rev = realtimeReviews[rIdx];
       const isProcessed = processedIds.indexOf(rev.id) !== -1;
       const isRecent = rev.epochMs > 0
         ? ((nowMs - rev.epochMs) < MAX_RECENT_MS)
-        : (rev.timeAgo.indexOf("jam") !== -1 || rev.timeAgo.indexOf("menit") !== -1);
+        : (rev.timeAgo.indexOf("jam") !== -1 || rev.timeAgo.indexOf("menit") !== -1 || rev.timeAgo.indexOf("hari") !== -1);
 
       if (!isProcessed) {
-        // Hanya kirim notifikasi jika BUKAN baseline awal, ATAU jika review benar-benar baru (< 48 jam)
-        const shouldNotify = !isFirstBaseline && (isRecent || !forceReset);
-
-        if (shouldNotify) {
+        // Jika ulasan baru (< 48 jam / jam / menit / hari ini) atau dipaksa reset: WAJIB kirim notifikasi
+        if (isRecent || forceReset) {
           const sendRes = sendTelegramGoogleReviewNotification_(rev);
           let emailOk = false;
           try {
@@ -1172,7 +1170,7 @@ function checkGoogleReviewsAndNotify_(forceReset) {
             Logger.log("Gagal mengirim notifikasi ulasan " + rev.id + ", akan dicoba ulang pada siklus berikutnya.");
           }
         } else {
-          // Tandai sebagai baseline ulasan lama yang telah tercatat
+          // Ulasan lama (> 48 jam / bulan lalu) hanya dicatat di processedIds agar tidak spam
           processedIds.push(rev.id);
         }
       }
@@ -6984,6 +6982,43 @@ function doGet(e) {
         message: "Pemeriksaan ulasan Google Review real-time selesai",
         data: res
       });
+    }
+
+    if (action === "testFetchLive") {
+      const live = fetchGoogleMapsReviewsRealtime_(GOOGLE_MAPS_FEATURE_ID, 20);
+      const props = PropertiesService.getScriptProperties();
+      const rawStored = props ? props.getProperty("KD_PROCESSED_REVIEW_MSG_IDS") : null;
+      const ids = rawStored ? JSON.parse(rawStored) : [];
+      return createJsonResponse({
+        status: "success",
+        total: live.length,
+        firstReview: live.length > 0 ? live[0] : null,
+        reviews: live.slice(0, 5),
+        adminChatIds: getAdminTelegramChatIds_(),
+        tgConfig: getTelegramConfig_(),
+        activeAdminsProp: props ? props.getProperty("KD_ACTIVE_ADMIN_CHAT_IDS") : null,
+        processedCount: ids.length,
+        processedIds: ids
+      });
+    }
+
+    if (action === "markReviewProcessed") {
+      const rId = params.reviewId;
+      if (rId) {
+        const props = PropertiesService.getScriptProperties();
+        let pIds = [];
+        try {
+          const raw = props ? props.getProperty("KD_PROCESSED_REVIEW_MSG_IDS") : null;
+          if (raw) pIds = JSON.parse(raw);
+        } catch (e) {}
+        if (!Array.isArray(pIds)) pIds = [];
+        if (pIds.indexOf(rId) === -1) {
+          pIds.push(rId);
+          if (pIds.length > 150) pIds = pIds.slice(-150);
+          if (props) props.setProperty("KD_PROCESSED_REVIEW_MSG_IDS", JSON.stringify(pIds));
+        }
+      }
+      return createJsonResponse({ status: "success", reviewId: rId });
     }
 
     if (action === "setupGoogleReviewTrigger") {

@@ -2,8 +2,8 @@ name: Monitor Google Reviews Real-time
 
 on:
   schedule:
-    # Berjalan otomatis setiap 10 menit untuk memantau ulasan Google Review baru
-    - cron: '*/10 * * * *'
+    # Berjalan otomatis setiap 5 menit untuk memantau ulasan Google Review baru
+    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 jobs:
@@ -11,8 +11,14 @@ jobs:
     name: Poll Google Reviews & Notify Telegram
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Real-time Review Poll
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Poll Google Reviews Directly & Notify
         run: |
-          echo "Memulai pengecekan ulasan baru Google Review..."
-          RESPONSE=$(curl -sL --max-time 60 "https://script.google.com/macros/s/AKfycbwauluf8oZX58tJl14StNtwzknkB5jY8jI4Gofk_ssmhgXrBw7V-aNjYtYdPu-6yZs/exec?action=pollReviewTrigger")
-          echo "Hasil Respon Server: $RESPONSE"
+          node scripts/poll-reviews-direct.js

@@ -241,7 +241,9 @@ Sistem pemantauan ulasan pelanggan baru di Google Business Profile / Google Revi
    - Tampilan 10 Ulasan Terbaru: Bot Telegram menyajikan daftar 10 Google Review terbaru secara real-time dari profil Google Maps Rumah Khitan Damai Subang (`format10GoogleReviewsText_`), memuat nama pengulas, jumlah bintang visual, waktu ulasan relatif, dan teks ulasan.
    - Email: Notifikasi format HTML responsif terkirim otomatis ke `denluckyman@gmail.com`.
 5. **Pemicu Otomatis & Kendali Telegram**:
-   - Pemicu background waktu berkala mandiri setiap 5 menit (`checkGoogleReviewsTrigger`) dan terintegrasi otomatis dalam pemicu jam (`checkUpcomingKhitanReminders`). Pemicu dipasang secara otomatis (`ensureAutomaticTriggers_()`) setiap kali admin berinteraksi dengan Bot Telegram atau via `/settrigger`.
+   - **Arsitektur Dual-Engine Real-Time**:
+     - **Engine 1 (GitHub Actions Monitor - Cron 5 Menit)**: Workflow `.github/workflows/review-monitor.yml` menjalankan `scripts/poll-reviews-direct.js` setiap 5 menit via runner cloud eksternal. Mengambil ulasan edge terbaru Google Maps tanpa jeda propagasi internal, mengirimkan kartu notifikasi instan ke Bot Telegram Admin, dan merekam ID ulasan ke backend GAS via `action=markReviewProcessed`.
+     - **Engine 2 (Apps Script Time-Driven Trigger & Webhook)**: Pemicu internal setiap 5 menit (`checkGoogleReviewsTrigger`) dan terintegrasi dalam pengingat jam (`checkUpcomingKhitanReminders`), serta dipicu saat admin berinteraksi dengan Bot Telegram.
    - Perintah Telegram Admin:
      - Tombol Keyboard Admin: `⭐ 10 Google Review Terbaru` untuk akses instan 10 ulasan terbaru.
      - `/10review`, `/review10`, `/cekreview` atau `/cekreview reset`: Pemeriksaan ulasan real-time instan ke server Google Maps; menampilkan 10 Google Review terbaru secara terstruktur beserta notifikasi ulasan baru yang belum dibaca.
