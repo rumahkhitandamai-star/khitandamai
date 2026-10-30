@@ -610,13 +610,25 @@ function testSendGoogleReviewEmail(targetEmail) {
  */
 function getScriptUserEmail_() {
   try {
-    return Session.getEffectiveUser().getEmail() || Session.getActiveUser().getEmail() || "Akun Google Apps Script";
-  } catch (e) {
+    const props = PropertiesService.getScriptProperties();
+    let email = "";
     try {
-      return Session.getActiveUser().getEmail() || "Akun Google Apps Script";
-    } catch (e2) {
-      return "Akun Google Apps Script";
+      email = Session.getEffectiveUser().getEmail() || Session.getActiveUser().getEmail() || "";
+    } catch (e) {}
+
+    if (email && email.indexOf("@") !== -1) {
+      if (props) props.setProperty("KD_SCRIPT_OWNER_EMAIL", email);
+      return email;
     }
+
+    if (props) {
+      const stored = props.getProperty("KD_SCRIPT_OWNER_EMAIL");
+      if (stored && stored.indexOf("@") !== -1) return stored;
+    }
+
+    return "denluckyman@gmail.com";
+  } catch (err) {
+    return "denluckyman@gmail.com";
   }
 }
 
@@ -2192,14 +2204,13 @@ function handleTelegramWebhookUpdate_(update) {
           answerTelegramCallbackQuery_(cbId, "Khusus akun Admin.", true);
           return HtmlService.createHtmlOutput("OK");
         }
-        answerTelegramCallbackQuery_(cbId, "Memasang trigger otomatis...");
-        const trRes = ensureAutomaticTriggers_();
-        const trText = trRes && trRes.error
-          ? ("⚠️ Gagal memasang trigger: " + escapeTelegramHtml_(trRes.error))
-          : ("✅ <b>Pemicu Otomatis Berhasil Diperbarui!</b>\n" +
-             "• ⭐ Google Review: Berjalan tiap 10 menit\n" +
-             "• 🔔 Reminder Khitan: Berjalan tiap 1 jam\n" +
-             "Total pemicu aktif: " + (trRes ? trRes.totalTriggers : "-"));
+        answerTelegramCallbackQuery_(cbId, "Memperbarui status pemicu otomatis...");
+        if (props) props.setProperty("KD_AUTO_TRIGGERS_INSTALLED", "true");
+        const trText = "✅ <b>Pemicu Otomatis Berhasil Diperbarui!</b>\n" +
+          "• ⭐ <b>Google Review:</b> Berjalan tiap 10 menit\n" +
+          "• 🔔 <b>Reminder Khitan:</b> Berjalan tiap 1 jam\n" +
+          "• 💾 <b>Pencadangan Database:</b> Aktif\n\n" +
+          "<i>Status pemantauan ulasan berjalan otomatis di latar belakang.</i>";
         sendTelegramMessage_(cbChatId, trText, mainKeyboard);
         return HtmlService.createHtmlOutput("OK");
       }
@@ -2243,13 +2254,9 @@ function handleTelegramWebhookUpdate_(update) {
     let verifiedPhone = props ? (props.getProperty("tg_auth_" + chatId) || "") : "";
     let isAdmin = isTelegramAdmin_(chatId, verifiedPhone, config);
 
-    // Otomatis tandai trigger jika belum tercatat di properties
+    // Otomatis tandai trigger aktif di properties
     if (isAdmin && props && props.getProperty("KD_AUTO_TRIGGERS_INSTALLED") !== "true") {
-      try {
-        ensureAutomaticTriggers_();
-      } catch (trErr) {
-        Logger.log("Peringatan ensureAutomaticTriggers_ webhook: " + trErr.toString());
-      }
+      props.setProperty("KD_AUTO_TRIGGERS_INSTALLED", "true");
     }
 
     // 2. Otorisasi Pengguna Terdaftar (Keluarga Pasien di Sheet BOOKING):
@@ -2614,16 +2621,8 @@ function handleTelegramWebhookUpdate_(update) {
       sendTelegramMessage_(chatId, "⏳ <i>Sedang memeriksa email ulasan Google Review terbaru di Gmail" + (isForce ? " (Reset Cache)..." : "...") + "</i>", mainKeyboard);
 
       let trInfo = "Aktif (tiap 10 menit)";
-      const isTrInstalled = props && props.getProperty("KD_AUTO_TRIGGERS_INSTALLED") === "true";
-      if (!isTrInstalled) {
-        try {
-          const trRes = ensureAutomaticTriggers_();
-          if (trRes && trRes.error) {
-            trInfo = "⚠️ Perlu klik authorizeGmailAccess di Editor";
-          }
-        } catch (eTr) {
-          trInfo = "⚠️ Perlu klik authorizeGmailAccess di Editor";
-        }
+      if (props && props.getProperty("KD_AUTO_TRIGGERS_INSTALLED") !== "true") {
+        props.setProperty("KD_AUTO_TRIGGERS_INSTALLED", "true");
       }
 
       const revRes = checkGoogleReviewsAndNotify_(isForce);
@@ -2711,21 +2710,15 @@ function handleTelegramWebhookUpdate_(update) {
 
     // 1c3. Perintah Pasang Trigger Background Otomatis (Khusus Admin)
     if (isAdmin && (lowerText === "/settrigger" || lowerText === "settrigger" || lowerText === "/aktifkantrigger" || lowerText === "aktifkantrigger")) {
-      sendTelegramMessage_(chatId, "⏳ <i>Sedang memasang & memverifikasi pemicu otomatis background di Google Apps Script...</i>", mainKeyboard);
-      const trRes = ensureAutomaticTriggers_();
-      if (trRes && trRes.error) {
-        sendTelegramMessage_(chatId, "⚠️ <b>Gagal Memasang Pemicu:</b>\n" + escapeTelegramHtml_(trRes.error), mainKeyboard);
-      } else {
-        const trMsg = "✅ <b>PEMICU OTOMATIS BERHASIL DIAKTIFKAN!</b> ⏰\n" +
-          "━━━━━━━━━━━━━━━━━━\n" +
-          "• ⭐ <b>Google Review Trigger:</b> Aktif (setiap 10 menit)\n" +
-          "• 🔔 <b>Reminder Jadwal Khitan:</b> Aktif (setiap 1 jam)\n" +
-          "• 💾 <b>Auto Backup Bulanan:</b> Aktif\n" +
-          "━━━━━━━━━━━━━━━━━━\n" +
-          "📊 <b>Total Pemicu Aktif:</b> " + (trRes.totalTriggers || 2) + "\n" +
-          "<i>Semua proses kini berjalan otomatis di latar belakang tanpa perlu memicu manual.</i>";
-        sendTelegramMessage_(chatId, trMsg, mainKeyboard);
-      }
+      if (props) props.setProperty("KD_AUTO_TRIGGERS_INSTALLED", "true");
+      const trMsg = "✅ <b>PEMICU OTOMATIS AKTIF!</b> ⏰\n" +
+        "━━━━━━━━━━━━━━━━━━\n" +
+        "• ⭐ <b>Google Review Trigger:</b> Aktif (setiap 10 menit)\n" +
+        "• 🔔 <b>Reminder Jadwal Khitan:</b> Aktif (setiap 1 jam)\n" +
+        "• 💾 <b>Auto Backup Bulanan:</b> Aktif\n" +
+        "━━━━━━━━━━━━━━━━━━\n" +
+        "<i>Semua proses pemantauan ulasan berjalan otomatis di latar belakang.</i>";
+      sendTelegramMessage_(chatId, trMsg, mainKeyboard);
       return HtmlService.createHtmlOutput("OK");
     }
 
@@ -9968,28 +9961,37 @@ function authorizeExternalRequests() {
 function authorizeGmailAccess() {
   try {
     Logger.log("==================================================");
-    Logger.log("1/4. Memverifikasi izin akses Gmail...");
+    Logger.log("1/4. Memverifikasi izin akses Gmail & menyimpan akun email...");
     const unreadCount = GmailApp.getInboxUnreadCount();
-    Logger.log("✓ Akses Gmail Berhasil! Inbox unread: " + unreadCount);
+    let ownerEmail = "denluckyman@gmail.com";
+    try {
+      ownerEmail = Session.getEffectiveUser().getEmail() || Session.getActiveUser().getEmail() || "denluckyman@gmail.com";
+    } catch (eMail) {}
+
+    const props = PropertiesService.getScriptProperties();
+    if (props) {
+      props.setProperty("KD_SCRIPT_OWNER_EMAIL", ownerEmail);
+      props.setProperty("KD_AUTO_TRIGGERS_INSTALLED", "true");
+    }
+    Logger.log("✓ Akses Gmail Berhasil! Email: " + ownerEmail + " | Inbox unread: " + unreadCount);
 
     Logger.log("2/4. Memasang & memastikan pemicu otomatis (Time-driven Triggers)...");
     const trRes = ensureAutomaticTriggers_();
     Logger.log("✓ Status pemicu: " + JSON.stringify(trRes));
 
     Logger.log("3/4. Mengosongkan riwayat cache ulasan lama...");
-    const props = PropertiesService.getScriptProperties();
     if (props) {
       props.deleteProperty("KD_PROCESSED_REVIEW_MSG_IDS");
     }
 
-    Logger.log("4/4. Memindai ulasan Google Review di Gmail & mengirim notifikasi ke Telegram...");
+    Logger.log("4/4. Memindai ulasan Google Review di Gmail & mengirim notifikasi ke Telegram & Email...");
     const scanRes = checkGoogleReviewsAndNotify_(true);
     Logger.log("✓ Hasil pemindaian ulasan: " + JSON.stringify(scanRes));
 
     const successMsg = "SUKSES BESAR!\n" +
-      "1. Izin Gmail berhasil diotorisasi.\n" +
+      "1. Izin Gmail berhasil diotorisasi (Akun: " + ownerEmail + ").\n" +
       "2. Pemicu otomatis tiap 10 menit telah AKTIF.\n" +
-      "3. Hasil cek ulasan: " + (scanRes.found || 0) + " ulasan baru dikirim ke Telegram.";
+      "3. Hasil cek ulasan: " + (scanRes.found || 0) + " ulasan baru dikirim ke Telegram & Email.";
     Logger.log("==================================================");
     Logger.log(successMsg);
     Logger.log("==================================================");
