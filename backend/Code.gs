@@ -170,6 +170,56 @@ function getTelegramConfig_() {
 }
 
 /**
+ * Mengambil seluruh Chat ID Admin Telegram yang aktif & terdaftar
+ * (Mencakup TELEGRAM_ADMIN_CHAT_ID di konfigurasi, Script Properties, akun admin yang terverifikasi nomor HP, dan riwayat admin)
+ * @return {Array<string>} Daftar Chat ID Admin yang unik
+ */
+function getAdminTelegramChatIds_() {
+  const config = getTelegramConfig_();
+  const idMap = {};
+
+  function addId(val) {
+    if (!val) return;
+    const str = String(val).trim();
+    if (!str) return;
+    const parts = str.split(",");
+    for (let i = 0; i < parts.length; i++) {
+      const p = parts[i].trim();
+      if (p && /^-?\d+$/.test(p)) {
+        idMap[p] = true;
+      }
+    }
+  }
+
+  // 1. Dari TELEGRAM_CONFIG default
+  addId(TELEGRAM_CONFIG.ADMIN_CHAT_ID);
+
+  // 2. Dari getTelegramConfig_()
+  if (config && config.chatId) {
+    addId(config.chatId);
+  }
+
+  // 3. Dari Script Properties (termasuk verifikasi admin HP & admin aktif)
+  try {
+    const props = PropertiesService.getScriptProperties();
+    if (props) {
+      addId(props.getProperty("TELEGRAM_ADMIN_CHAT_ID"));
+      const cleanAdminPhone = cleanPhoneNumber(config.adminPhone || TELEGRAM_CONFIG.ADMIN_PHONE || "081222531978");
+      addId(props.getProperty("tg_phone_chat_" + cleanAdminPhone));
+      const activeAdminIds = props.getProperty("KD_ACTIVE_ADMIN_CHAT_IDS");
+      if (activeAdminIds) {
+        addId(activeAdminIds);
+      }
+    }
+  } catch (e) {
+    Logger.log("Catatan getAdminTelegramChatIds_: " + e.toString());
+  }
+
+  const result = Object.keys(idMap);
+  return result.length > 0 ? result : [String(TELEGRAM_CONFIG.ADMIN_CHAT_ID)];
+}
+
+/**
  * Mengambil token rahasia webhook Telegram dari Script Properties.
  * Otomatis menghasilkan secret token acak (UUID + entropy) jika belum disetel.
  */
@@ -576,9 +626,15 @@ function fetchGoogleMapsReviewsRealtime_(fid, limit) {
 function sendTelegramGoogleReviewNotification_(review) {
   try {
     const config = getTelegramConfig_();
-    if (!config.botToken || !config.chatId) {
-      Logger.log("Peringatan: Telegram Bot Token atau Chat ID belum dikonfigurasi.");
-      return { success: false, message: "Token atau Chat ID kosong" };
+    if (!config.botToken) {
+      Logger.log("Peringatan: Telegram Bot Token belum dikonfigurasi.");
+      return { success: false, message: "Token bot kosong" };
+    }
+
+    const adminChatIds = getAdminTelegramChatIds_();
+    if (!adminChatIds || adminChatIds.length === 0) {
+      Logger.log("Peringatan: Telegram Admin Chat ID belum dikonfigurasi.");
+      return { success: false, message: "Chat ID Admin kosong" };
     }
 
     const reviewerName = (review && review.reviewerName) ? String(review.reviewerName).trim() : "Pengguna Google";
@@ -590,51 +646,75 @@ function sendTelegramGoogleReviewNotification_(review) {
       ? Utilities.formatDate(new Date(review.date), "Asia/Jakarta", "dd MMMM yyyy, HH:mm") + " WIB"
       : (getJakartaTimestamp() + " WIB");
     const reviewUrl = (review && review.reviewUrl) ? String(review.reviewUrl) : GOOGLE_REVIEW_PAGE_URL;
-    const sourceLabel = (review && review.source) ? String(review.source) : "Google Review Real-time";
+    const sourceLabel = (review && review.source) ? String(review.source) : "Google Maps (Real-time)";
 
     const text = "⭐ <b>ULASAN GOOGLE REVIEW BARU DITERIMA!</b> ⭐\n" +
       "━━━━━━━━━━━━━━━━━━\n" +
-      "🌐 <b>Sumber:</b> " + escapeTelegramHtml_(sourceLabel) + "\n" +
-      "👤 <b>Pengulas:</b> " + escapeTelegramHtml_(reviewerName) + "\n" +
+      "📍 <b>Profil:</b> Rumah Khitan Damai Subang\n" +
+      "🌐 <b>Sumber:</b> " + escapeTelegramHtml_(sourceLabel) + " ✅\n" +
+      "👤 <b>Pengulas:</b> <b>" + escapeTelegramHtml_(reviewerName) + "</b>\n" +
       "🌟 <b>Penilaian:</b> " + ratingDisplay + "\n" +
       "📅 <b>Waktu:</b> " + escapeTelegramHtml_(reviewDate) + "\n" +
       "━━━━━━━━━━━━━━━━━━\n" +
       "💬 <b>Isi Ulasan:</b>\n" +
       (comment ? ("<i>\"" + escapeTelegramHtml_(comment) + "\"</i>") : "<i>(Pengulas memberikan rating bintang tanpa ulasan tertulis)</i>") + "\n" +
       "━━━━━━━━━━━━━━━━━━\n" +
-      "💡 <i>Ulasan terdeteksi real-time dari profil Google Review Rumah Khitan Damai.</i>";
+      "💡 <i>Ulasan baru terdeteksi secara real-time dari profil Google Review Rumah Khitan Damai.</i>";
 
-    const payload = {
-      chat_id: config.chatId,
-      text: text,
-      parse_mode: "HTML",
-      disable_web_page_preview: false,
-      reply_markup: {
-        inline_keyboard: [
-          [
-            {
-              text: "⭐ Buka di Google Review",
-              url: reviewUrl
-            }
-          ]
+    const replyMarkup = {
+      inline_keyboard: [
+        [
+          {
+            text: "⭐ Buka di Google Review",
+            url: reviewUrl
+          }
+        ],
+        [
+          {
+            text: "🔄 Cek 10 Ulasan Terbaru",
+            callback_data: "cb_review_force"
+          }
         ]
+      ]
+    };
+
+    let anySuccess = false;
+    let lastResponse = "";
+
+    for (let i = 0; i < adminChatIds.length; i++) {
+      const targetId = adminChatIds[i];
+      const payload = {
+        chat_id: targetId,
+        text: text,
+        parse_mode: "HTML",
+        disable_web_page_preview: false,
+        reply_markup: replyMarkup
+      };
+
+      const url = "https://api.telegram.org/bot" + config.botToken + "/sendMessage";
+      const options = {
+        method: "post",
+        contentType: "application/json",
+        payload: JSON.stringify(payload),
+        muteHttpExceptions: true
+      };
+
+      try {
+        const response = UrlFetchApp.fetch(url, options);
+        const responseCode = response.getResponseCode();
+        const responseText = response.getContentText();
+        Logger.log("Telegram Google Review notif to " + targetId + " (" + responseCode + "): " + responseText);
+        const resData = JSON.parse(responseText || "{}");
+        if (resData.ok === true || responseCode === 200) {
+          anySuccess = true;
+        }
+        lastResponse = responseText;
+      } catch (sendErr) {
+        Logger.log("Gagal kirim notif review ke targetId " + targetId + ": " + sendErr.toString());
       }
-    };
+    }
 
-    const url = "https://api.telegram.org/bot" + config.botToken + "/sendMessage";
-    const options = {
-      method: "post",
-      contentType: "application/json",
-      payload: JSON.stringify(payload),
-      muteHttpExceptions: true
-    };
-
-    const response = UrlFetchApp.fetch(url, options);
-    const responseCode = response.getResponseCode();
-    const responseText = response.getContentText();
-    Logger.log("Telegram Google Review response (" + responseCode + "): " + responseText);
-    const resData = JSON.parse(responseText || "{}");
-    return { success: resData.ok === true || responseCode === 200, response: responseText };
+    return { success: anySuccess, response: lastResponse };
   } catch (err) {
     Logger.log("Peringatan sendTelegramGoogleReviewNotification_: " + err.toString());
     return { success: false, error: err.toString() };
@@ -1054,32 +1134,47 @@ function checkGoogleReviewsAndNotify_(forceReset) {
     // 1. PEMERIKSAAN REAL-TIME LANGSUNG KE GOOGLE MAPS
     const realtimeReviews = fetchGoogleMapsReviewsRealtime_(GOOGLE_MAPS_FEATURE_ID, 20);
     const nowMs = Date.now();
-    // Ambang batas review baru: maksimal 7 hari terakhir (7 * 24 * 60 * 60 * 1000 = 604800000 ms)
-    const MAX_RECENT_MS = 7 * 24 * 60 * 60 * 1000;
+    // Ambang batas review baru: maksimal 48 jam terakhir
+    const MAX_RECENT_MS = 48 * 60 * 60 * 1000;
+    // Jika sistem baru pertama kali berjalan / belum ada data processedIds:
+    // Buat baseline dari seluruh review yang ada saat ini agar tidak mengirim spam review lama
+    const isFirstBaseline = (isInitialRun || processedIds.length === 0);
 
     for (let rIdx = 0; rIdx < realtimeReviews.length; rIdx++) {
       const rev = realtimeReviews[rIdx];
       const isProcessed = processedIds.indexOf(rev.id) !== -1;
       const isRecent = rev.epochMs > 0
         ? ((nowMs - rev.epochMs) < MAX_RECENT_MS)
-        : (rev.timeAgo.indexOf("jam") !== -1 || rev.timeAgo.indexOf("menit") !== -1 || rev.timeAgo.indexOf("hari") !== -1);
+        : (rev.timeAgo.indexOf("jam") !== -1 || rev.timeAgo.indexOf("menit") !== -1);
 
       if (!isProcessed) {
-        if (isRecent || (!isInitialRun && !forceReset)) {
+        // Hanya kirim notifikasi jika BUKAN baseline awal, ATAU jika review benar-benar baru (< 48 jam)
+        const shouldNotify = !isFirstBaseline && (isRecent || !forceReset);
+
+        if (shouldNotify) {
           const sendRes = sendTelegramGoogleReviewNotification_(rev);
+          let emailOk = false;
           try {
             for (let mIdx = 0; mIdx < GOOGLE_REVIEW_RECIPIENT_EMAILS.length; mIdx++) {
               sendEmailGoogleReviewNotification_(rev, GOOGLE_REVIEW_RECIPIENT_EMAILS[mIdx]);
             }
+            emailOk = true;
           } catch (mailNotifErr) {
             Logger.log("Peringatan sendEmailGoogleReviewNotification_: " + mailNotifErr.toString());
           }
 
           if (sendRes && sendRes.success) {
             notifiedCount++;
+            processedIds.push(rev.id);
+          } else if (emailOk) {
+            processedIds.push(rev.id);
+          } else {
+            Logger.log("Gagal mengirim notifikasi ulasan " + rev.id + ", akan dicoba ulang pada siklus berikutnya.");
           }
+        } else {
+          // Tandai sebagai baseline ulasan lama yang telah tercatat
+          processedIds.push(rev.id);
         }
-        processedIds.push(rev.id);
       }
     }
 
@@ -1231,21 +1326,21 @@ function format10GoogleReviewsText_(reviews, accountEmail) {
 
   text += "━━━━━━━━━━━━━━━━━━\n" +
     "📬 <b>Penerima Email:</b> <code>" + escapeTelegramHtml_(emailDisplay) + "</code>\n" +
-    "⏰ <b>Pemantau Otomatis:</b> Aktif (tiap 10 menit)\n" +
-    "💡 <i>Tekan tombol di bawah untuk membuka & membalas langsung di Google Review.</i>";
+    "⏰ <b>Pemantau Otomatis:</b> Aktif (tiap 5 menit)\n" +
+    "💡 <i>Tekan tombol di bawah untuk membuka langsung di Google Review.</i>";
 
   return text;
 }
 
 /**
- * Handler Time-Driven Trigger khusus pengecekan ulasan Google Review (berjalan tiap 10 menit)
+ * Handler Time-Driven Trigger khusus pengecekan ulasan Google Review (berjalan tiap 5 menit)
  */
 function checkGoogleReviewsTrigger() {
   return checkGoogleReviewsAndNotify_();
 }
 
 /**
- * Memastikan trigger otomatis untuk Google Review (setiap 10 menit)
+ * Memastikan trigger otomatis untuk Google Review (setiap 5 menit)
  * dan Reminder Jadwal Khitan (setiap 1 jam) sudah terpasang rapi di Apps Script
  */
 function ensureAutomaticTriggers_() {
@@ -1274,9 +1369,9 @@ function ensureAutomaticTriggers_() {
     if (reviewCount === 0) {
       ScriptApp.newTrigger("checkGoogleReviewsTrigger")
         .timeBased()
-        .everyMinutes(10)
+        .everyMinutes(5)
         .create();
-      Logger.log("✓ Trigger checkGoogleReviewsTrigger (10 menit) berhasil dibuat.");
+      Logger.log("✓ Trigger checkGoogleReviewsTrigger (5 menit) berhasil dibuat.");
     }
 
     if (reminderCount === 0) {
@@ -1309,12 +1404,12 @@ function ensureAutomaticTriggers_() {
 }
 
 /**
- * Memasang trigger berkala khusus pengecekan Google Review (default: setiap 10 menit)
+ * Memasang trigger berkala khusus pengecekan Google Review (default: setiap 5 menit)
  */
 function setupGoogleReviewTrigger(minutes) {
   try {
     const validMinutes = [1, 5, 10, 15, 30];
-    const interval = (minutes && validMinutes.indexOf(minutes) !== -1) ? minutes : 10;
+    const interval = (minutes && validMinutes.indexOf(minutes) !== -1) ? minutes : 5;
     const triggers = ScriptApp.getProjectTriggers();
     for (let i = 0; i < triggers.length; i++) {
       if (triggers[i].getHandlerFunction() === "checkGoogleReviewsTrigger") {
@@ -2468,9 +2563,20 @@ function handleTelegramWebhookUpdate_(update) {
     let verifiedPhone = props ? (props.getProperty("tg_auth_" + chatId) || "") : "";
     let isAdmin = isTelegramAdmin_(chatId, verifiedPhone, config);
 
-    // Otomatis tandai trigger aktif di properties
-    if (isAdmin && props && props.getProperty("KD_AUTO_TRIGGERS_INSTALLED") !== "true") {
-      props.setProperty("KD_AUTO_TRIGGERS_INSTALLED", "true");
+    // Otomatis rekam chat ID Admin & pastikan pemicu ulasan aktif
+    if (isAdmin && props) {
+      try {
+        let activeAdmins = props.getProperty("KD_ACTIVE_ADMIN_CHAT_IDS") || "";
+        const parts = activeAdmins.split(",").map(function(s) { return s.trim(); }).filter(Boolean);
+        if (chatId && parts.indexOf(String(chatId)) === -1) {
+          parts.push(String(chatId));
+          props.setProperty("KD_ACTIVE_ADMIN_CHAT_IDS", parts.join(","));
+        }
+      } catch (e) {}
+
+      if (props.getProperty("KD_AUTO_TRIGGERS_INSTALLED") !== "true") {
+        try { ensureAutomaticTriggers_(); } catch (trErr) {}
+      }
     }
 
     // 2. Otorisasi Pengguna Terdaftar (Keluarga Pasien di Sheet BOOKING):
@@ -2905,14 +3011,18 @@ function handleTelegramWebhookUpdate_(update) {
 
     // 1c3. Perintah Pasang Trigger Background Otomatis (Khusus Admin)
     if (isAdmin && (lowerText === "/settrigger" || lowerText === "settrigger" || lowerText === "/aktifkantrigger" || lowerText === "aktifkantrigger")) {
-      if (props) props.setProperty("KD_AUTO_TRIGGERS_INSTALLED", "true");
+      const trRes = ensureAutomaticTriggers_();
+      let statusDetail = "Aktif (setiap 5 menit)";
+      if (!trRes.success && trRes.error) {
+        statusDetail = "⚠️ " + trRes.error;
+      }
       const trMsg = "✅ <b>PEMICU OTOMATIS AKTIF!</b> ⏰\n" +
         "━━━━━━━━━━━━━━━━━━\n" +
-        "• ⭐ <b>Google Review Trigger:</b> Aktif (setiap 10 menit)\n" +
+        "• ⭐ <b>Google Review Trigger:</b> " + statusDetail + "\n" +
         "• 🔔 <b>Reminder Jadwal Khitan:</b> Aktif (setiap 1 jam)\n" +
         "• 💾 <b>Auto Backup Bulanan:</b> Aktif\n" +
         "━━━━━━━━━━━━━━━━━━\n" +
-        "<i>Semua proses pemantauan ulasan berjalan otomatis di latar belakang.</i>";
+        "<i>Semua proses pemantauan ulasan berjalan otomatis di latar belakang setiap 5 menit. Setiap ulasan baru akan langsung dinotifikasikan ke bot Telegram ini dan email admin.</i>";
       sendTelegramMessage_(chatId, trMsg, mainKeyboard);
       return HtmlService.createHtmlOutput("OK");
     }
@@ -6867,15 +6977,33 @@ function doGet(e) {
       });
     }
 
+    if (action === "pollReviewTrigger" || action === "checkReviewsPublic") {
+      const res = checkGoogleReviewsAndNotify_();
+      return createJsonResponse({
+        status: res.success ? "success" : "error",
+        message: "Pemeriksaan ulasan Google Review real-time selesai",
+        data: res
+      });
+    }
+
     if (action === "setupGoogleReviewTrigger") {
       if (!validateSessionToken(params.token)) {
         return unauthorizedResponse();
       }
-      const intervalMinutes = parseInt(params.minutes, 10) || 15;
+      const intervalMinutes = parseInt(params.minutes, 10) || 5;
       const res = setupGoogleReviewTrigger(intervalMinutes);
       return createJsonResponse({
         status: "success",
         message: res
+      });
+    }
+
+    if (action === "ensureTriggers") {
+      const res = ensureAutomaticTriggers_();
+      return createJsonResponse({
+        status: res.success ? "success" : "error",
+        message: "Sinkronisasi pemicu otomatis background selesai",
+        data: res
       });
     }
 

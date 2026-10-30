@@ -1,0 +1,18 @@
+name: Monitor Google Reviews Real-time
+
+on:
+  schedule:
+    # Berjalan otomatis setiap 10 menit untuk memantau ulasan Google Review baru
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  check_reviews:
+    name: Poll Google Reviews & Notify Telegram
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Real-time Review Poll
+        run: |
+          echo "Memulai pengecekan ulasan baru Google Review..."
+          RESPONSE=$(curl -sL --max-time 60 "https://script.google.com/macros/s/AKfycbwauluf8oZX58tJl14StNtwzknkB5jY8jI4Gofk_ssmhgXrBw7V-aNjYtYdPu-6yZs/exec?action=pollReviewTrigger")
+          echo "Hasil Respon Server: $RESPONSE"
