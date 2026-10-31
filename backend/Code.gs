@@ -262,22 +262,25 @@ function getGasWebAppUrl_() {
 }
 
 /**
- * Membangun URL tracking WhatsApp untuk tombol Bot Telegram.
- * Saat tombol diklik oleh Admin, URL ini membuka endpoint GAS untuk mengubah status
- * pendaftaran menjadi "Confirmed" secara otomatis, lalu langsung redirect ke WhatsApp.
- * Jika bookingId tidak valid, kembalikan URL langsung ke WhatsApp (fallback).
+ * Membangun URL WhatsApp untuk tombol Bot Telegram.
+ * Mengembalikan direct WhatsApp URL (https://wa.me/...) dengan nomor telepon pendaftar
+ * dan template teks lengkap, agar saat tombol di Bot Telegram diklik oleh Admin,
+ * chat WhatsApp pendaftar langsung terbuka secara instan tanpa hambatan sandbox browser.
  * @param {string} bookingId - ID Booking (misal: "KD-ABC1234")
  * @param {string} mode - "sambutan" | "reminder"
- * @param {string} directFallbackUrl - URL fallback langsung ke WhatsApp jika ID tidak tersedia
+ * @param {string} directFallbackUrl - URL langsung ke WhatsApp pendaftar dengan template teks
  * @return {string}
  */
 function buildWaTrackingUrl_(bookingId, mode, directFallbackUrl) {
+  if (directFallbackUrl) {
+    return directFallbackUrl;
+  }
   const cleanId = String(bookingId || "").trim();
   if (cleanId && cleanId !== "-") {
     const actionName = (mode === "reminder") ? "waReminder" : "waSambutan";
     return getGasWebAppUrl_() + "?action=" + actionName + "&id=" + encodeURIComponent(cleanId);
   }
-  return directFallbackUrl || "";
+  return "";
 }
 
 /**
@@ -425,11 +428,18 @@ function formatIndonesianDateFull_(val) {
  */
 function cleanPhoneForWa_(phone) {
   if (!phone) return "";
-  let digits = String(phone).replace(/\D/g, "");
+  let digits = String(phone).trim().replace(/\D/g, "");
+  if (digits.startsWith("62")) {
+    if (digits.startsWith("620")) {
+      digits = "62" + digits.slice(3);
+    }
+    return digits;
+  }
   if (digits.startsWith("0")) {
-    digits = "62" + digits.slice(1);
-  } else if (digits.startsWith("8")) {
-    digits = "62" + digits;
+    return "62" + digits.slice(1);
+  }
+  if (digits.startsWith("8")) {
+    return "62" + digits;
   }
   return digits;
 }
@@ -536,21 +546,30 @@ function sendTelegramBookingNotification_(booking, source) {
       disable_web_page_preview: true
     };
 
-    // Tambahkan tombol interaktif WhatsApp Sambutan (dengan redirect tracking untuk auto-Confirmed)
+    // Tambahkan tombol interaktif WhatsApp Sambutan langsung ke wa.me dengan template teks lengkap
+    // serta tombol konfirmasi pendaftaran
     const cleanPhone = cleanPhoneForWa_(noHp);
     if (cleanPhone) {
       const sambutanText = buildWaSambutanText_(booking);
       const directWaUrl = "https://wa.me/" + cleanPhone + "?text=" + encodeURIComponent(sambutanText);
-      const waUrl = buildWaTrackingUrl_(idBooking, "sambutan", directWaUrl);
-      payload.reply_markup = {
-        inline_keyboard: [
-          [
-            {
-              text: "💬 Kirim WhatsApp Sambutan",
-              url: waUrl
-            }
-          ]
+      const keyboard = [
+        [
+          {
+            text: "💬 Kirim WhatsApp Sambutan",
+            url: directWaUrl
+          }
         ]
+      ];
+      if (idBooking && idBooking !== "-") {
+        keyboard.push([
+          {
+            text: "✅ Konfirmasi Booking (Confirmed)",
+            callback_data: "cb_konfirmasi:" + idBooking
+          }
+        ]);
+      }
+      payload.reply_markup = {
+        inline_keyboard: keyboard
       };
     }
 
@@ -658,8 +677,10 @@ function checkAndSendUrgentBookingAlert_(booking) {
         hubunganKeluarga: hubungan
       });
       const directWaUrl = "https://wa.me/" + cleanPhone + "?text=" + encodeURIComponent(waText);
-      const waUrl = buildWaTrackingUrl_(id, "reminder", directWaUrl);
-      inlineButtons.push([{ text: "📞 Konfirmasi ke Keluarga via WA", url: waUrl }]);
+      inlineButtons.push([{ text: "📞 Konfirmasi ke Keluarga via WA", url: directWaUrl }]);
+      if (id && id !== "-") {
+        inlineButtons.push([{ text: "✅ Konfirmasi Booking (Confirmed)", callback_data: "cb_konfirmasi:" + id }]);
+      }
     }
 
     const targetChatIds = getAdminTelegramChatIds_();
@@ -1723,17 +1744,26 @@ function sendTelegramReminderNotification_(item, diffHours) {
     const cleanPhone = cleanPhoneForWa_(noHp);
     const waText = buildWaReminderText_(item);
     const directWaUrl = "https://wa.me/" + cleanPhone + "?text=" + encodeURIComponent(waText);
-    const waUrl = buildWaTrackingUrl_(id, "reminder", directWaUrl);
+
+    const keyboard = [
+      [
+        {
+          text: "🔔 Kirim WhatsApp Reminder",
+          url: directWaUrl
+        }
+      ]
+    ];
+    if (id && id !== "-") {
+      keyboard.push([
+        {
+          text: "✅ Konfirmasi Booking (Confirmed)",
+          callback_data: "cb_konfirmasi:" + id
+        }
+      ]);
+    }
 
     const replyMarkup = {
-      inline_keyboard: [
-        [
-          {
-            text: "🔔 Kirim WhatsApp Reminder",
-            url: waUrl
-          }
-        ]
-      ]
+      inline_keyboard: keyboard
     };
 
     const targetChatIds = getAdminTelegramChatIds_();
@@ -2943,7 +2973,7 @@ function buildBookingActionInlineKeyboard_(booking) {
   if (curStatus !== "selesai") {
     actionRow.push({ text: "🏁 Tandai Selesai", callback_data: "cb_selesai:" + booking.idBooking });
   }
-  if (curStatus !== "terkonfirmasi") {
+  if (curStatus !== "terkonfirmasi" && curStatus !== "confirmed") {
     actionRow.push({ text: "✅ Konfirmasi", callback_data: "cb_konfirmasi:" + booking.idBooking });
   }
   if (actionRow.length > 0) {
@@ -3636,8 +3666,8 @@ function handleTelegramWebhookUpdate_(update) {
         }
         const isSelesai = cbData.startsWith("cb_selesai:");
         const bId = (isSelesai ? cbData.replace("cb_selesai:", "") : cbData.replace("cb_konfirmasi:", "")).trim();
-        const targetStatus = isSelesai ? "Selesai" : "Terkonfirmasi";
-        answerTelegramCallbackQuery_(cbId, "Mengubah status " + bId + "...");
+        const targetStatus = isSelesai ? "Selesai" : "Confirmed";
+        answerTelegramCallbackQuery_(cbId, "Mengubah status " + bId + " menjadi " + targetStatus + "...");
         const updRes = updateBookingStatusFromTelegram_(bId, targetStatus);
         const detailBtn = {
           inline_keyboard: [
@@ -8208,8 +8238,9 @@ function doGet(e) {
           if (lastRow > 1) {
             const idValues = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
             let rowIndex = -1;
+            const bIdUpper = bId.toUpperCase();
             for (let i = 0; i < idValues.length; i++) {
-              if (String(idValues[i][0] || "").trim() === bId) {
+              if (String(idValues[i][0] || "").trim().toUpperCase() === bIdUpper) {
                 rowIndex = i + 2;
                 break;
               }
@@ -8218,7 +8249,7 @@ function doGet(e) {
             if (rowIndex > 1) {
               const rowVals = sheet.getRange(rowIndex, 1, 1, HEADERS.length).getValues()[0];
               const curStatus = String(rowVals[21] || "Pending").trim();
-              const noHp = String(rowVals[14] || "");
+              const noHp = String(sheet.getRange(rowIndex, 15).getDisplayValue() || rowVals[14] || "").trim();
               const namaAnanda = String(rowVals[1] || "");
               bookingName = namaAnanda;
 
@@ -8274,7 +8305,7 @@ function doGet(e) {
         }
       }
 
-      // Sajikan halaman transisi cepat yang langsung redirect ke WhatsApp
+      // Sajikan halaman transisi cepat yang aman (tanpa crash iframe sandbox)
       const safeTargetUrl = escapeTelegramHtml_(targetWaUrl).replace(/"/g, "&quot;");
       const statusNotice = statusUpdated
         ? "✅ Status pendaftaran (" + escapeTelegramHtml_(bId) + ") berhasil diubah menjadi <b>Confirmed</b>."
@@ -8282,12 +8313,12 @@ function doGet(e) {
       const jsTargetUrl = targetWaUrl.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 
       const html = '<!DOCTYPE html>' +
-        '<html><head><meta charset="utf-8">' +
+        '<html><head><base target="_top"><meta charset="utf-8">' +
         '<meta name="viewport" content="width=device-width, initial-scale=1">' +
         '<title>Membuka ' + modeTitle + '...</title>' +
         '<style>' +
         'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0fdf4; color: #166534; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; padding: 16px; box-sizing: border-box; text-align: center; }' +
-        '.card { background: #ffffff; border-radius: 16px; padding: 24px 20px; max-width: 380px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); border: 1px solid #bbf7d0; }' +
+        '.card { background: #ffffff; border-radius: 16px; padding: 24px 20px; max-width: 400px; width: 100%; box-shadow: 0 4px 16px rgba(0,0,0,0.08); border: 1px solid #bbf7d0; }' +
         '.icon { font-size: 40px; margin-bottom: 12px; }' +
         'h2 { font-size: 18px; margin: 0 0 8px 0; color: #047857; }' +
         'p { font-size: 13px; color: #374151; margin: 0 0 16px 0; line-height: 1.5; }' +
@@ -8298,8 +8329,8 @@ function doGet(e) {
         '<div class="card">' +
         '<div class="icon">' + modeIcon + '</div>' +
         '<h2>Membuka WhatsApp...</h2>' +
-        '<p>' + statusNotice + '<br><small style="color:#6b7280;">Jika WhatsApp tidak terbuka otomatis dalam 2 detik, sentuh tombol di bawah:</small></p>' +
-        '<a id="btnWa" class="btn" href="' + safeTargetUrl + '" target="_top" rel="noopener noreferrer">Buka WhatsApp Sekarang</a>' +
+        '<p>' + statusNotice + '<br><small style="color:#6b7280;">Sentuh tombol di bawah untuk langsung membuka chat WhatsApp pendaftar:</small></p>' +
+        '<a id="btnWa" class="btn" href="' + safeTargetUrl + '" target="_top" rel="noopener noreferrer">💬 Buka WhatsApp Sekarang</a>' +
         '</div>' +
         '<script>' +
         '(function() {' +
@@ -8307,12 +8338,8 @@ function doGet(e) {
         '  try {' +
         '    if (window.top && window.top !== window) {' +
         '      window.top.location.href = targetUrl;' +
-        '      return;' +
         '    }' +
         '  } catch (e) {}' +
-        '  try {' +
-        '    window.location.href = targetUrl;' +
-        '  } catch (e2) {}' +
         '})();' +
         '</script>' +
         '</body></html>';

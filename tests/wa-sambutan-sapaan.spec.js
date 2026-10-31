@@ -151,6 +151,16 @@ test('Verify WhatsApp Sambutan & Reminder dynamic greeting based on Hubungan Kel
   const feReminder = await page.evaluate((b) => window.__kdBuildWaReminderText(b), testBooking);
   expect(beReminder).toBe(feReminder);
 
+  // ================= 5. PENGUJIAN TOMBOL WHATSAPP TELEGRAM BOT =================
+  const cleanPhone = gsSandbox.cleanPhoneForWa_('081234567890');
+  expect(cleanPhone).toBe('6281234567890');
+
+  const directWaUrl = 'https://wa.me/' + cleanPhone + '?text=' + encodeURIComponent(beSambutan);
+  const waBtnUrl = gsSandbox.buildWaTrackingUrl_('KD-TEST01', 'sambutan', directWaUrl);
+  expect(waBtnUrl).toBe(directWaUrl);
+  expect(waBtnUrl).toContain('https://wa.me/6281234567890?text=');
+  expect(waBtnUrl).toContain(encodeURIComponent('Rayyan Al-Fatih'));
+
   // Pastikan tidak ada console error fatal
   const fatalErrors = consoleErrors.filter(e => !e.includes('favicon'));
   expect(fatalErrors).toHaveLength(0);
