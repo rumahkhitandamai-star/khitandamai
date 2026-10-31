@@ -122,6 +122,35 @@ test('Verify WhatsApp Sambutan & Reminder dynamic greeting based on Hubungan Kel
   expect(reminderFallback).toContain('Mohon Ayah, Bunda serta Ananda untuk beristirahat yang cukup malam ini');
   expect(reminderFallback).toContain('Terima kasih atas perhatian Ayah/Bunda 🙏');
 
+  // ================= 4. SINKRONISASI TEMPLATE BACKEND (Code.gs) & FRONTEND =================
+  const fs = require('fs');
+  const vm = require('vm');
+  const codeContent = fs.readFileSync(path.resolve(__dirname, '../asset/Code.gs'), 'utf8');
+  const gsSandbox = {
+    Utilities: {
+      formatDate: (d, tz, fmt) => {
+        const pad = n => String(n).padStart(2, '0');
+        return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+      }
+    },
+    Logger: { log: () => {} }
+  };
+  vm.createContext(gsSandbox);
+  vm.runInContext(codeContent, gsSandbox);
+
+  const testBooking = {
+    ...baseBooking,
+    hubunganKeluarga: 'Ayah'
+  };
+
+  const beSambutan = gsSandbox.buildWaSambutanText_(testBooking);
+  const feSambutan = await page.evaluate((b) => window.__kdBuildWaSambutanText(b), testBooking);
+  expect(beSambutan).toBe(feSambutan);
+
+  const beReminder = gsSandbox.buildWaReminderText_(testBooking);
+  const feReminder = await page.evaluate((b) => window.__kdBuildWaReminderText(b), testBooking);
+  expect(beReminder).toBe(feReminder);
+
   // Pastikan tidak ada console error fatal
   const fatalErrors = consoleErrors.filter(e => !e.includes('favicon'));
   expect(fatalErrors).toHaveLength(0);

@@ -371,6 +371,56 @@ function formatIndonesianDateStr_(ymdStr) {
 }
 
 /**
+ * Format tanggal Indonesia lengkap dengan nama hari: "Rabu, 11 Februari 2026"
+ * Identik dengan formatIndonesianDate() di Panel Admin Menu Booking (Index.html).
+ * Mendukung Date object, string YYYY-MM-DD, maupun format tanggal Indonesia lainnya.
+ */
+function formatIndonesianDateFull_(val) {
+  if (!val) return "-";
+  let ymd = "";
+  if (val instanceof Date || (val && typeof val.getTime === "function") || Object.prototype.toString.call(val) === "[object Date]") {
+    try {
+      ymd = Utilities.formatDate(val, "Asia/Jakarta", "yyyy-MM-dd");
+    } catch (e) {
+      const pad = function(n) { return String(n).length < 2 ? "0" + n : String(n); };
+      ymd = val.getFullYear() + "-" + pad(val.getMonth() + 1) + "-" + pad(val.getDate());
+    }
+  } else {
+    ymd = normalizeYmd_(val);
+    if (!ymd || ymd.indexOf("-") === -1 || ymd.length < 10) {
+      const parsedTime = Date.parse(val);
+      if (!isNaN(parsedTime)) {
+        const dtParsed = new Date(parsedTime);
+        const pad = function(n) { return String(n).length < 2 ? "0" + n : String(n); };
+        ymd = dtParsed.getFullYear() + "-" + pad(dtParsed.getMonth() + 1) + "-" + pad(dtParsed.getDate());
+      }
+    }
+  }
+  if (!ymd) return String(val);
+
+  const parts = ymd.split("-");
+  if (parts.length !== 3) return String(val);
+
+  const y = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10);
+  const d = parseInt(parts[2], 10);
+  if (isNaN(y) || isNaN(m) || isNaN(d)) return String(val);
+
+  const days = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+  const months = [
+    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+    "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+  ];
+
+  // Hitung index hari dengan jam 12 UTC agar tidak terpengaruh pergeseran zona waktu
+  const dt = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+  const dayName = days[dt.getUTCDay()];
+  const monthName = (m >= 1 && m <= 12) ? months[m - 1] : parts[1];
+
+  return dayName + ", " + d + " " + monthName + " " + y;
+}
+
+/**
  * Membersihkan nomor HP untuk format link WhatsApp (628xxxx)
  */
 function cleanPhoneForWa_(phone) {
@@ -401,7 +451,7 @@ function buildWaSambutanText_(b) {
   if (!b) return "";
   const namaOrtu = b.namaPenanggungJawab || b.namaOrtu || "-";
   const namaAnanda = b.namaAnanda || b.namaAnak || "-";
-  const tglKhitan = (b.tanggalKhitan || b.tglKhitan) ? formatIndonesianDateStr_(b.tanggalKhitan || b.tglKhitan) : "-";
+  const tglKhitan = (b.tanggalKhitan || b.tglKhitan) ? formatIndonesianDateFull_(b.tanggalKhitan || b.tglKhitan) : "-";
   const jamKhitan = b.jamKhitan || "-";
   const metodeKhitan = b.metodeKhitan || "-";
   const sapaan = resolveSapaanWa_(b.hubunganKeluarga);
@@ -490,7 +540,7 @@ function sendTelegramBookingNotification_(booking, source) {
     const cleanPhone = cleanPhoneForWa_(noHp);
     if (cleanPhone) {
       const sambutanText = buildWaSambutanText_(booking);
-      const directWaUrl = "https://api.whatsapp.com/send?phone=" + cleanPhone + "&text=" + encodeURIComponent(sambutanText);
+      const directWaUrl = "https://wa.me/" + cleanPhone + "?text=" + encodeURIComponent(sambutanText);
       const waUrl = buildWaTrackingUrl_(idBooking, "sambutan", directWaUrl);
       payload.reply_markup = {
         inline_keyboard: [
@@ -603,11 +653,11 @@ function checkAndSendUrgentBookingAlert_(booking) {
       const waText = buildWaReminderText_({
         namaPenanggungJawab: namaPj,
         namaAnanda: namaAnanda,
-        tanggalKhitan: tglKhitan,
-        jamKhitan: jamDisplay,
+        tanggalKhitan: booking.tanggalKhitan || booking.tglKhitan || tglKhitan,
+        jamKhitan: booking.jamKhitan || jamDisplay,
         hubunganKeluarga: hubungan
       });
-      const directWaUrl = "https://api.whatsapp.com/send?phone=" + cleanPhone + "&text=" + encodeURIComponent(waText);
+      const directWaUrl = "https://wa.me/" + cleanPhone + "?text=" + encodeURIComponent(waText);
       const waUrl = buildWaTrackingUrl_(id, "reminder", directWaUrl);
       inlineButtons.push([{ text: "📞 Konfirmasi ke Keluarga via WA", url: waUrl }]);
     }
@@ -1590,7 +1640,7 @@ function buildWaReminderText_(b) {
   if (!b) return "";
   const namaOrtu = b.namaPenanggungJawab || b.namaOrtu || "-";
   const namaAnanda = b.namaAnanda || b.namaAnak || "-";
-  const tglKhitan = (b.tanggalKhitan || b.tglKhitan) ? formatIndonesianDateStr_(b.tanggalKhitan || b.tglKhitan) : "-";
+  const tglKhitan = (b.tanggalKhitan || b.tglKhitan) ? formatIndonesianDateFull_(b.tanggalKhitan || b.tglKhitan) : "-";
   const jamKhitan = b.jamKhitan || "-";
   const sapaan = resolveSapaanWa_(b.hubunganKeluarga);
 
@@ -1672,7 +1722,7 @@ function sendTelegramReminderNotification_(item, diffHours) {
 
     const cleanPhone = cleanPhoneForWa_(noHp);
     const waText = buildWaReminderText_(item);
-    const directWaUrl = "https://api.whatsapp.com/send?phone=" + cleanPhone + "&text=" + encodeURIComponent(waText);
+    const directWaUrl = "https://wa.me/" + cleanPhone + "?text=" + encodeURIComponent(waText);
     const waUrl = buildWaTrackingUrl_(id, "reminder", directWaUrl);
 
     const replyMarkup = {
@@ -2468,7 +2518,7 @@ function buildWaReminderInlineKeyboard_(scheduleData) {
       const cleanPhone = cleanPhoneForWa_(it.nomorHp);
       if (cleanPhone) {
         const waText = buildWaReminderText_(it);
-        const directWaUrl = "https://api.whatsapp.com/send?phone=" + cleanPhone + "&text=" + encodeURIComponent(waText);
+        const directWaUrl = "https://wa.me/" + cleanPhone + "?text=" + encodeURIComponent(waText);
         const waUrl = buildWaTrackingUrl_(it.idBooking, "reminder", directWaUrl);
         const jamDisplay = (it.jamKhitan && it.jamKhitan !== "-") ? String(it.jamKhitan).replace(/wib/gi, "").trim() : "08:00";
         buttons.push([
@@ -2878,8 +2928,8 @@ function buildBookingActionInlineKeyboard_(booking) {
   if (booking.nomorHp) {
     const cleanPhone = cleanPhoneForWa_(booking.nomorHp);
     if (cleanPhone) {
-      const directSambutanUrl = "https://api.whatsapp.com/send?phone=" + cleanPhone + "&text=" + encodeURIComponent(buildWaSambutanText_(booking));
-      const directReminderUrl = "https://api.whatsapp.com/send?phone=" + cleanPhone + "&text=" + encodeURIComponent(buildWaReminderText_(booking));
+      const directSambutanUrl = "https://wa.me/" + cleanPhone + "?text=" + encodeURIComponent(buildWaSambutanText_(booking));
+      const directReminderUrl = "https://wa.me/" + cleanPhone + "?text=" + encodeURIComponent(buildWaReminderText_(booking));
       const sambutanUrl = buildWaTrackingUrl_(booking.idBooking, "sambutan", directSambutanUrl);
       const reminderUrl = buildWaTrackingUrl_(booking.idBooking, "reminder", directReminderUrl);
       rows.push([
@@ -4009,7 +4059,7 @@ function handleTelegramWebhookUpdate_(update) {
           const cleanPhone = cleanPhoneForWa_(it.nomorHp);
           if (cleanPhone) {
             const waText = buildWaReminderText_(it);
-            const directWaUrl = "https://api.whatsapp.com/send?phone=" + cleanPhone + "&text=" + encodeURIComponent(waText);
+            const directWaUrl = "https://wa.me/" + cleanPhone + "?text=" + encodeURIComponent(waText);
             const waUrl = buildWaTrackingUrl_(it.idBooking, "reminder", directWaUrl);
             buttons.push([
               {
@@ -8175,17 +8225,30 @@ function doGet(e) {
               // Bangun URL WhatsApp pendaftar sesuai mode
               const cleanPhone = cleanPhoneForWa_(noHp);
               if (cleanPhone) {
+                let tglVal = rowVals[5];
+                if (tglVal instanceof Date) {
+                  tglVal = Utilities.formatDate(tglVal, "Asia/Jakarta", "yyyy-MM-dd");
+                } else {
+                  tglVal = normalizeYmd_(tglVal);
+                }
+                let jamVal = rowVals[6];
+                if (jamVal instanceof Date) {
+                  jamVal = Utilities.formatDate(jamVal, "Asia/Jakarta", "HH:mm");
+                } else {
+                  jamVal = String(jamVal || "").trim();
+                }
+
                 const bookingObj = {
                   idBooking: bId,
                   namaAnanda: namaAnanda,
                   namaPenanggungJawab: String(rowVals[10] || ""),
                   hubunganKeluarga: String(rowVals[13] || ""),
-                  tanggalKhitan: rowVals[5],
-                  jamKhitan: String(rowVals[6] || ""),
+                  tanggalKhitan: tglVal,
+                  jamKhitan: jamVal,
                   metodeKhitan: String(rowVals[7] || "")
                 };
                 const waText = isReminder ? buildWaReminderText_(bookingObj) : buildWaSambutanText_(bookingObj);
-                targetWaUrl = "https://api.whatsapp.com/send?phone=" + cleanPhone + "&text=" + encodeURIComponent(waText);
+                targetWaUrl = "https://wa.me/" + cleanPhone + "?text=" + encodeURIComponent(waText);
               }
 
               // Update status menjadi 'Confirmed' jika saat ini masih 'Pending' (atau belum terkonfirmasi)
@@ -8216,11 +8279,11 @@ function doGet(e) {
       const statusNotice = statusUpdated
         ? "✅ Status pendaftaran (" + escapeTelegramHtml_(bId) + ") berhasil diubah menjadi <b>Confirmed</b>."
         : "Membuka WhatsApp untuk ananda " + escapeTelegramHtml_(bookingName || bId) + "...";
+      const jsTargetUrl = targetWaUrl.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 
       const html = '<!DOCTYPE html>' +
         '<html><head><meta charset="utf-8">' +
         '<meta name="viewport" content="width=device-width, initial-scale=1">' +
-        '<meta http-equiv="refresh" content="0;url=' + safeTargetUrl + '">' +
         '<title>Membuka ' + modeTitle + '...</title>' +
         '<style>' +
         'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0fdf4; color: #166534; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; padding: 16px; box-sizing: border-box; text-align: center; }' +
@@ -8228,18 +8291,30 @@ function doGet(e) {
         '.icon { font-size: 40px; margin-bottom: 12px; }' +
         'h2 { font-size: 18px; margin: 0 0 8px 0; color: #047857; }' +
         'p { font-size: 13px; color: #374151; margin: 0 0 16px 0; line-height: 1.5; }' +
-        '.btn { display: inline-block; background: #059669; color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; font-size: 14px; }' +
+        '.btn { display: inline-block; background: #059669; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; font-size: 15px; margin-top: 8px; box-shadow: 0 2px 8px rgba(5,150,105,0.3); }' +
+        '.btn:active { background: #047857; }' +
         '</style>' +
-        '<script>' +
-        'window.location.href = "' + targetWaUrl.replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '";' +
-        '</script>' +
         '</head><body>' +
         '<div class="card">' +
         '<div class="icon">' + modeIcon + '</div>' +
         '<h2>Membuka WhatsApp...</h2>' +
-        '<p>' + statusNotice + '<br><small style="color:#6b7280;">Jika WhatsApp tidak terbuka otomatis, sentuh tombol di bawah:</small></p>' +
-        '<a class="btn" href="' + safeTargetUrl + '">Buka WhatsApp Sekarang</a>' +
+        '<p>' + statusNotice + '<br><small style="color:#6b7280;">Jika WhatsApp tidak terbuka otomatis dalam 2 detik, sentuh tombol di bawah:</small></p>' +
+        '<a id="btnWa" class="btn" href="' + safeTargetUrl + '" target="_top" rel="noopener noreferrer">Buka WhatsApp Sekarang</a>' +
         '</div>' +
+        '<script>' +
+        '(function() {' +
+        '  var targetUrl = "' + jsTargetUrl + '";' +
+        '  try {' +
+        '    if (window.top && window.top !== window) {' +
+        '      window.top.location.href = targetUrl;' +
+        '      return;' +
+        '    }' +
+        '  } catch (e) {}' +
+        '  try {' +
+        '    window.location.href = targetUrl;' +
+        '  } catch (e2) {}' +
+        '})();' +
+        '</script>' +
         '</body></html>';
 
       return HtmlService.createHtmlOutput(html)
