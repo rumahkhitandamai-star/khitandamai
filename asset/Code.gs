@@ -262,6 +262,25 @@ function getGasWebAppUrl_() {
 }
 
 /**
+ * Membangun URL tracking WhatsApp untuk tombol Bot Telegram.
+ * Saat tombol diklik oleh Admin, URL ini membuka endpoint GAS untuk mengubah status
+ * pendaftaran menjadi "Confirmed" secara otomatis, lalu langsung redirect ke WhatsApp.
+ * Jika bookingId tidak valid, kembalikan URL langsung ke WhatsApp (fallback).
+ * @param {string} bookingId - ID Booking (misal: "KD-ABC1234")
+ * @param {string} mode - "sambutan" | "reminder"
+ * @param {string} directFallbackUrl - URL fallback langsung ke WhatsApp jika ID tidak tersedia
+ * @return {string}
+ */
+function buildWaTrackingUrl_(bookingId, mode, directFallbackUrl) {
+  const cleanId = String(bookingId || "").trim();
+  if (cleanId && cleanId !== "-") {
+    const actionName = (mode === "reminder") ? "waReminder" : "waSambutan";
+    return getGasWebAppUrl_() + "?action=" + actionName + "&id=" + encodeURIComponent(cleanId);
+  }
+  return directFallbackUrl || "";
+}
+
+/**
  * Format badge status booking untuk pesan Telegram
  */
 function formatStatusBadgeTelegram_(status) {
@@ -470,13 +489,9 @@ function sendTelegramBookingNotification_(booking, source) {
     // Tambahkan tombol interaktif WhatsApp Sambutan (dengan redirect tracking untuk auto-Confirmed)
     const cleanPhone = cleanPhoneForWa_(noHp);
     if (cleanPhone) {
-      let waUrl = "";
-      if (idBooking && idBooking !== "-") {
-        waUrl = getGasWebAppUrl_() + "?action=waSambutan&id=" + encodeURIComponent(idBooking);
-      } else {
-        const sambutanText = buildWaSambutanText_(booking);
-        waUrl = "https://api.whatsapp.com/send?phone=" + cleanPhone + "&text=" + encodeURIComponent(sambutanText);
-      }
+      const sambutanText = buildWaSambutanText_(booking);
+      const directWaUrl = "https://api.whatsapp.com/send?phone=" + cleanPhone + "&text=" + encodeURIComponent(sambutanText);
+      const waUrl = buildWaTrackingUrl_(idBooking, "sambutan", directWaUrl);
       payload.reply_markup = {
         inline_keyboard: [
           [
@@ -581,7 +596,7 @@ function checkAndSendUrgentBookingAlert_(booking) {
       "━━━━━━━━━━━━━━━━━━\n" +
       "💡 <i>Segera hubungi keluarga pasien untuk konfirmasi kehadiran & kesiapan tindakan hari ini.</i>";
 
-    // Tombol: konfirmasi ke keluarga via WhatsApp (teks sapaan reminder)
+    // Tombol: konfirmasi ke keluarga via WhatsApp (teks sapaan reminder + auto-Confirmed tracking)
     const inlineButtons = [];
     const cleanPhone = cleanPhoneForWa_(noHp);
     if (cleanPhone) {
@@ -592,7 +607,8 @@ function checkAndSendUrgentBookingAlert_(booking) {
         jamKhitan: jamDisplay,
         hubunganKeluarga: hubungan
       });
-      const waUrl = "https://api.whatsapp.com/send?phone=" + cleanPhone + "&text=" + encodeURIComponent(waText);
+      const directWaUrl = "https://api.whatsapp.com/send?phone=" + cleanPhone + "&text=" + encodeURIComponent(waText);
+      const waUrl = buildWaTrackingUrl_(id, "reminder", directWaUrl);
       inlineButtons.push([{ text: "📞 Konfirmasi ke Keluarga via WA", url: waUrl }]);
     }
 
@@ -1656,7 +1672,8 @@ function sendTelegramReminderNotification_(item, diffHours) {
 
     const cleanPhone = cleanPhoneForWa_(noHp);
     const waText = buildWaReminderText_(item);
-    const waUrl = "https://api.whatsapp.com/send?phone=" + cleanPhone + "&text=" + encodeURIComponent(waText);
+    const directWaUrl = "https://api.whatsapp.com/send?phone=" + cleanPhone + "&text=" + encodeURIComponent(waText);
+    const waUrl = buildWaTrackingUrl_(id, "reminder", directWaUrl);
 
     const replyMarkup = {
       inline_keyboard: [
@@ -2451,7 +2468,8 @@ function buildWaReminderInlineKeyboard_(scheduleData) {
       const cleanPhone = cleanPhoneForWa_(it.nomorHp);
       if (cleanPhone) {
         const waText = buildWaReminderText_(it);
-        const waUrl = "https://api.whatsapp.com/send?phone=" + cleanPhone + "&text=" + encodeURIComponent(waText);
+        const directWaUrl = "https://api.whatsapp.com/send?phone=" + cleanPhone + "&text=" + encodeURIComponent(waText);
+        const waUrl = buildWaTrackingUrl_(it.idBooking, "reminder", directWaUrl);
         const jamDisplay = (it.jamKhitan && it.jamKhitan !== "-") ? String(it.jamKhitan).replace(/wib/gi, "").trim() : "08:00";
         buttons.push([
           {
@@ -2860,8 +2878,10 @@ function buildBookingActionInlineKeyboard_(booking) {
   if (booking.nomorHp) {
     const cleanPhone = cleanPhoneForWa_(booking.nomorHp);
     if (cleanPhone) {
-      const sambutanUrl = "https://api.whatsapp.com/send?phone=" + cleanPhone + "&text=" + encodeURIComponent(buildWaSambutanText_(booking));
-      const reminderUrl = "https://api.whatsapp.com/send?phone=" + cleanPhone + "&text=" + encodeURIComponent(buildWaReminderText_(booking));
+      const directSambutanUrl = "https://api.whatsapp.com/send?phone=" + cleanPhone + "&text=" + encodeURIComponent(buildWaSambutanText_(booking));
+      const directReminderUrl = "https://api.whatsapp.com/send?phone=" + cleanPhone + "&text=" + encodeURIComponent(buildWaReminderText_(booking));
+      const sambutanUrl = buildWaTrackingUrl_(booking.idBooking, "sambutan", directSambutanUrl);
+      const reminderUrl = buildWaTrackingUrl_(booking.idBooking, "reminder", directReminderUrl);
       rows.push([
         { text: "💬 WA Sambutan", url: sambutanUrl },
         { text: "🔔 WA Reminder", url: reminderUrl }
@@ -3989,7 +4009,8 @@ function handleTelegramWebhookUpdate_(update) {
           const cleanPhone = cleanPhoneForWa_(it.nomorHp);
           if (cleanPhone) {
             const waText = buildWaReminderText_(it);
-            const waUrl = "https://api.whatsapp.com/send?phone=" + cleanPhone + "&text=" + encodeURIComponent(waText);
+            const directWaUrl = "https://api.whatsapp.com/send?phone=" + cleanPhone + "&text=" + encodeURIComponent(waText);
+            const waUrl = buildWaTrackingUrl_(it.idBooking, "reminder", directWaUrl);
             buttons.push([
               {
                 text: "🔔 WA Reminder • " + it.namaAnanda + " (" + sisaText + ")",
@@ -8118,11 +8139,14 @@ function doGet(e) {
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
     }
 
-    // 0. Redirect tracking untuk kirim WhatsApp Sambutan dari Bot Telegram
+    // 0. Redirect tracking untuk kirim WhatsApp (Sambutan / Reminder) dari Bot Telegram
     // Mengubah status booking dari 'Pending' menjadi 'Confirmed' secara otomatis
     // lalu melakukan instant redirect ke URL WhatsApp pendaftar.
-    if (action === "waSambutan") {
+    if (action === "waSambutan" || action === "waReminder") {
       const bId = String(params.id || "").trim();
+      const isReminder = (action === "waReminder");
+      const modeTitle = isReminder ? "WhatsApp Reminder" : "WhatsApp Sambutan";
+      const modeIcon = isReminder ? "🔔✨" : "💬✨";
       let targetWaUrl = "https://wa.me/6281222531978"; // Fallback ke nomor klinik
       let bookingName = "";
       let statusUpdated = false;
@@ -8148,7 +8172,7 @@ function doGet(e) {
               const namaAnanda = String(rowVals[1] || "");
               bookingName = namaAnanda;
 
-              // Bangun URL WhatsApp pendaftar
+              // Bangun URL WhatsApp pendaftar sesuai mode
               const cleanPhone = cleanPhoneForWa_(noHp);
               if (cleanPhone) {
                 const bookingObj = {
@@ -8160,7 +8184,7 @@ function doGet(e) {
                   jamKhitan: String(rowVals[6] || ""),
                   metodeKhitan: String(rowVals[7] || "")
                 };
-                const waText = buildWaSambutanText_(bookingObj);
+                const waText = isReminder ? buildWaReminderText_(bookingObj) : buildWaSambutanText_(bookingObj);
                 targetWaUrl = "https://api.whatsapp.com/send?phone=" + cleanPhone + "&text=" + encodeURIComponent(waText);
               }
 
@@ -8171,11 +8195,11 @@ function doGet(e) {
                 sheet.getRange(rowIndex, statusColIndex > 0 ? statusColIndex : 22).setValue("Confirmed");
                 invalidateDataset_(SERVER_CACHE_KEYS.BOOKINGS, "bookings");
                 logHistory_({
-                  user: "Telegram Bot (WA Sambutan)",
+                  user: "Telegram Bot (" + modeTitle + ")",
                   aksi: "UBAH",
                   dataset: "BOOKINGS",
                   idRecord: bId,
-                  ringkasan: "Status booking " + bId + " otomatis diubah ke Confirmed saat admin membuka link WA Sambutan",
+                  ringkasan: "Status booking " + bId + " otomatis diubah ke Confirmed saat admin membuka link " + modeTitle,
                   sumber: "telegram-bot"
                 });
                 statusUpdated = true;
@@ -8183,7 +8207,7 @@ function doGet(e) {
             }
           }
         } catch (trackErr) {
-          Logger.log("Peringatan action waSambutan: " + trackErr.toString());
+          Logger.log("Peringatan action " + action + ": " + trackErr.toString());
         }
       }
 
@@ -8197,7 +8221,7 @@ function doGet(e) {
         '<html><head><meta charset="utf-8">' +
         '<meta name="viewport" content="width=device-width, initial-scale=1">' +
         '<meta http-equiv="refresh" content="0;url=' + safeTargetUrl + '">' +
-        '<title>Membuka WhatsApp Sambutan...</title>' +
+        '<title>Membuka ' + modeTitle + '...</title>' +
         '<style>' +
         'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0fdf4; color: #166534; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; padding: 16px; box-sizing: border-box; text-align: center; }' +
         '.card { background: #ffffff; border-radius: 16px; padding: 24px 20px; max-width: 380px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); border: 1px solid #bbf7d0; }' +
@@ -8211,7 +8235,7 @@ function doGet(e) {
         '</script>' +
         '</head><body>' +
         '<div class="card">' +
-        '<div class="icon">💬✨</div>' +
+        '<div class="icon">' + modeIcon + '</div>' +
         '<h2>Membuka WhatsApp...</h2>' +
         '<p>' + statusNotice + '<br><small style="color:#6b7280;">Jika WhatsApp tidak terbuka otomatis, sentuh tombol di bawah:</small></p>' +
         '<a class="btn" href="' + safeTargetUrl + '">Buka WhatsApp Sekarang</a>' +
@@ -8219,7 +8243,7 @@ function doGet(e) {
         '</body></html>';
 
       return HtmlService.createHtmlOutput(html)
-        .setTitle('Membuka WhatsApp Sambutan...')
+        .setTitle('Membuka ' + modeTitle + '...')
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
     }
 
