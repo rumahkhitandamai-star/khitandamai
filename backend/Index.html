@@ -3,7 +3,64 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Khitan Damai — Aku Berani Khitan</title>
+  <title>Khitan Damai Subang — Layanan Khitan Modern & Ramah Anak</title>
+
+  <!-- Primary Meta Tags -->
+  <meta name="title" content="Khitan Damai Subang — Layanan Khitan Modern & Ramah Anak">
+  <meta name="description" content="Rumah Khitan Damai Subang melayani khitan / sunat modern ramah anak, metode klamp & lem minim nyeri, bius tanpa jarum suntik, higienis dan ditangani oleh praktisi berpengalaman di Subang.">
+  <meta name="keywords" content="khitan damai, khitan damai subang, sunat subang, rumah khitan subang, klinik khitan subang, khitan modern subang, sunat tanpa jarum subang, sunat anak subang">
+  <meta name="author" content="Rumah Khitan Damai">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://khitandamai.my.id/">
+
+  <!-- Open Graph / Facebook / WhatsApp -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://khitandamai.my.id/">
+  <meta property="og:title" content="Khitan Damai Subang — Layanan Khitan Modern & Ramah Anak">
+  <meta property="og:description" content="Rumah Khitan Damai Subang melayani khitan modern ramah anak, metode klamp & lem minim nyeri, bius nyaman tanpa jarum, higienis & bersertifikat.">
+  <meta property="og:image" content="https://lh3.googleusercontent.com/d/1xojWL7OqLA63kdKenCXE-twj6TNZYrDs=w1200">
+  <meta property="og:locale" content="id_ID">
+  <meta property="og:site_name" content="Rumah Khitan Damai">
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image">
+  <meta property="twitter:url" content="https://khitandamai.my.id/">
+  <meta property="twitter:title" content="Khitan Damai Subang — Layanan Khitan Modern & Ramah Anak">
+  <meta property="twitter:description" content="Rumah Khitan Damai Subang melayani khitan modern ramah anak, metode klamp & lem minim nyeri, bius nyaman tanpa jarum, higienis & bersertifikat.">
+  <meta property="twitter:image" content="https://lh3.googleusercontent.com/d/1xojWL7OqLA63kdKenCXE-twj6TNZYrDs=w1200">
+
+  <!-- Structured Data: JSON-LD LocalBusiness / MedicalBusiness -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "MedicalBusiness",
+    "name": "Rumah Khitan Damai",
+    "alternateName": "Khitan Damai Subang",
+    "url": "https://khitandamai.my.id/",
+    "logo": "https://lh3.googleusercontent.com/d/1xojWL7OqLA63kdKenCXE-twj6TNZYrDs=w1200",
+    "image": "https://lh3.googleusercontent.com/d/1xojWL7OqLA63kdKenCXE-twj6TNZYrDs=w1200",
+    "description": "Layanan khitan modern anak & bayi ramah anak, metode minim rasa sakit dengan bius tanpa jarum suntik di Kabupaten Subang.",
+    "telephone": "+6281222531978",
+    "priceRange": "$$",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "Perum Bumi Abdi Praja Blok D2 No.13, RT. 061 RW.016",
+      "addressLocality": "Kelurahan Sukamelang, Kecamatan Subang",
+      "addressRegion": "Jawa Barat",
+      "postalCode": "41211",
+      "addressCountry": "ID"
+    },
+    "hasMap": "https://maps.app.goo.gl/W3pZFZupzuNU4Cdi9",
+    "openingHoursSpecification": [
+      {
+        "@type": "OpeningHoursSpecification",
+        "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+        "opens": "06:00",
+        "closes": "20:00"
+      }
+    ]
+  }
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Carter+One&display=swap" rel="stylesheet">
@@ -4204,15 +4261,9 @@
         <!-- Hero Card / Featuring Card -->
         <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-tosca-700 via-tosca-600 to-teal-500 text-white p-5 shadow-lg text-center flex flex-col items-center">
           <div class="relative z-10 space-y-2.5 flex flex-col items-center w-full max-w-sm mx-auto">
-            <span class="inline-block text-[11px] font-bold uppercase tracking-wider bg-white/20 backdrop-blur-sm px-2.5 py-1 rounded-full text-white mx-auto">
-              {{ heroCardConfig.badgeText || 'Layanan Khitan Modern & Nyaman' }}
-            </span>
-            <h2 class="text-xl font-extrabold leading-snug">
-              {{ heroCardConfig.titleText || 'Pengalaman Khitan Ceria & Ramah Anak di Subang' }}
-            </h2>
-            <p class="text-xs text-teal-50 leading-relaxed max-w-xs mx-auto">
-              {{ heroCardConfig.descriptionText || 'Setiap anak hebat, dan setiap momen berharganya layak dirayakan dengan damai. di Khitan Damai, kami percaya khitan bukan momen yang menakutkan, tapi langkah berani pertama si kecil menuju tumbuh dewasa. Dengan metode modern minim nyeri, Praktisi Khitan berpengalaman, dan suasana yang ramah anak, Ananda bisa khitan sambil senyum.' }}
-            </p>
+            <span class="inline-block text-[11px] font-bold uppercase tracking-wider bg-white/20 backdrop-blur-sm px-2.5 py-1 rounded-full text-white mx-auto" v-text="heroCardConfig.badgeText || 'Layanan Khitan Modern & Nyaman'"></span>
+            <h2 class="text-xl font-extrabold leading-snug" v-text="heroCardConfig.titleText || 'Pengalaman Khitan Ceria & Ramah Anak di Subang'"></h2>
+            <p class="text-xs text-teal-50 leading-relaxed max-w-xs mx-auto" v-text="heroCardConfig.descriptionText || 'Setiap anak hebat, dan setiap momen berharganya layak dirayakan dengan damai. di Khitan Damai, kami percaya khitan bukan momen yang menakutkan, tapi langkah berani pertama si kecil menuju tumbuh dewasa. Dengan metode modern minim nyeri, Praktisi Khitan berpengalaman, dan suasana yang ramah anak, Ananda bisa khitan sambil senyum.'"></p>
             <div class="pt-2 flex justify-center items-center w-full">
               <!-- Tombol Daftar Sekarang -->
               <a href="#/booking" class="btn-press w-full h-[44px] bg-amber-400 hover:bg-amber-300 text-slate-900 text-xs font-bold px-4 rounded-xl shadow-[0_4px_15px_rgba(255,255,255,0.45)] hover:shadow-[0_4px_20px_rgba(255,255,255,0.7)] transition flex items-center justify-center gap-1.5 animate-blink">
@@ -9763,15 +9814,9 @@
                     <!-- Box Hero Card Preview -->
                     <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-tosca-700 via-tosca-600 to-teal-500 text-white p-5 shadow-lg text-center flex flex-col items-center">
                       <div class="relative z-10 space-y-2.5 flex flex-col items-center w-full max-w-sm mx-auto">
-                        <span class="inline-block text-[11px] font-bold uppercase tracking-wider backdrop-blur-sm px-2.5 py-1 rounded-full mx-auto" style="background-color: rgba(255, 255, 255, 0.2) !important; color: #ffffff !important;">
-                          {{ heroCardDraft.badgeText || 'Layanan Khitan Modern & Nyaman' }}
-                        </span>
-                        <h2 class="text-xl font-extrabold leading-snug" style="color: #ffffff !important;">
-                          {{ heroCardDraft.titleText || 'Pengalaman Khitan Ceria & Ramah Anak di Subang' }}
-                        </h2>
-                        <p class="text-xs leading-relaxed max-w-xs mx-auto" style="color: #f0fdfa !important;">
-                          {{ heroCardDraft.descriptionText || 'Setiap anak hebat, dan setiap momen berharganya layak dirayakan dengan damai. di Khitan Damai, kami percaya khitan bukan momen yang menakutkan, tapi langkah berani pertama si kecil menuju tumbuh dewasa. Dengan metode modern minim nyeri, Praktisi Khitan berpengalaman, dan suasana yang ramah anak, Ananda bisa khitan sambil senyum.' }}
-                        </p>
+                        <span class="inline-block text-[11px] font-bold uppercase tracking-wider backdrop-blur-sm px-2.5 py-1 rounded-full mx-auto" style="background-color: rgba(255, 255, 255, 0.2) !important; color: #ffffff !important;" v-text="heroCardDraft.badgeText || 'Layanan Khitan Modern & Nyaman'"></span>
+                        <h2 class="text-xl font-extrabold leading-snug" style="color: #ffffff !important;" v-text="heroCardDraft.titleText || 'Pengalaman Khitan Ceria & Ramah Anak di Subang'"></h2>
+                        <p class="text-xs leading-relaxed max-w-xs mx-auto" style="color: #f0fdfa !important;" v-text="heroCardDraft.descriptionText || 'Setiap anak hebat, dan setiap momen berharganya layak dirayakan dengan damai. di Khitan Damai, kami percaya khitan bukan momen yang menakutkan, tapi langkah berani pertama si kecil menuju tumbuh dewasa. Dengan metode modern minim nyeri, Praktisi Khitan berpengalaman, dan suasana yang ramah anak, Ananda bisa khitan sambil senyum.'"></p>
                         <div class="pt-2 flex justify-center items-center w-full">
                           <div class="w-full h-[40px] text-xs font-bold px-4 rounded-xl flex items-center justify-center gap-1.5 shadow-sm opacity-90 cursor-default" style="background-color: #fbbf24 !important; color: #0f172a !important;">
                             <span>Daftar Sekarang (Tombol Publik)</span>
