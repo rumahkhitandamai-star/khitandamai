@@ -3993,13 +3993,13 @@
             >
               <div v-if="isUploadingGalleryPhoto" class="space-y-1.5 py-2">
                 <div class="inline-block animate-spin text-xl text-tosca-700"><v-icon name="rotate"></v-icon></div>
-                <p class="text-xs font-bold text-slate-700">Mengunggah ke Google Drive...</p>
-                <p class="text-[10px] text-slate-400">Menyimpan berkas di folder Galeri</p>
+                <p class="text-xs font-bold text-slate-700">{{ galleryUploadStatusText || 'Mengunggah ke Google Drive...' }}</p>
+                <p class="text-[10px] text-slate-400">{{ galleryUploadStatusSubText || 'Menyimpan berkas di folder Galeri' }}</p>
               </div>
               <div v-else class="space-y-1">
                 <div class="text-2xl text-tosca-600"><v-icon name="folder-open"></v-icon></div>
                 <p class="text-xs font-bold text-slate-700">Klik untuk Pilih Foto</p>
-                <p class="text-[10px] text-slate-400">Format: JPG, JPEG, PNG, WEBP (Maks 5MB)</p>
+                <p class="text-[10px] text-slate-400">Format: JPG, JPEG, PNG, WEBP (Otomatis kompresi jika > 5MB)</p>
               </div>
             </div>
 
@@ -4114,7 +4114,7 @@
                 class="w-full py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition flex items-center justify-center gap-1.5 btn-press"
               >
                 <v-icon name="rotate" :class="{'animate-spin inline-block': isUploadingGalleryPhoto}"></v-icon>
-                <span>{{ isUploadingGalleryPhoto ? 'Mengunggah Foto Baru...' : 'Ganti Foto' }}</span>
+                <span>{{ isUploadingGalleryPhoto ? (galleryUploadStatusText || 'Mengunggah Foto Baru...') : 'Ganti Foto' }}</span>
               </button>
             </div>
 
@@ -4126,12 +4126,13 @@
             >
               <div v-if="isUploadingGalleryPhoto" class="space-y-1.5 py-2">
                 <div class="inline-block animate-spin text-xl text-tosca-700"><v-icon name="rotate"></v-icon></div>
-                <p class="text-xs font-bold text-slate-700">Mengunggah ke Google Drive...</p>
+                <p class="text-xs font-bold text-slate-700">{{ galleryUploadStatusText || 'Mengunggah ke Google Drive...' }}</p>
+                <p class="text-[10px] text-slate-400">{{ galleryUploadStatusSubText || 'Menyimpan berkas di folder Galeri' }}</p>
               </div>
               <div v-else class="space-y-1">
                 <div class="text-2xl text-tosca-600"><v-icon name="folder-open"></v-icon></div>
                 <p class="text-xs font-bold text-slate-700">Klik untuk Unggah Foto</p>
-                <p class="text-[10px] text-slate-400">Format: JPG, JPEG, PNG, WEBP (Maks 5MB)</p>
+                <p class="text-[10px] text-slate-400">Format: JPG, JPEG, PNG, WEBP (Otomatis kompresi jika > 5MB)</p>
               </div>
             </div>
 
@@ -16476,6 +16477,8 @@
         const hasLoadedPublicGallery = ref(false);
         const isSavingGallery = ref(false);
         const isUploadingGalleryPhoto = ref(false);
+        const galleryUploadStatusText = ref('Mengunggah ke Google Drive...');
+        const galleryUploadStatusSubText = ref('Menyimpan berkas di folder Galeri');
         const adminGallerySearch = ref('');
         const adminGallerySort = ref('terbaru'); // 'terbaru' | 'terlama'
 
@@ -20599,6 +20602,101 @@
           if (fileInputGalleryEditRef.value) fileInputGalleryEditRef.value.value = '';
         };
 
+        const compressImageIfNeeded = async (file, maxBytes = 5 * 1024 * 1024) => {
+          if (file.size <= maxBytes) {
+            const dataUrl = await new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result);
+              reader.onerror = (err) => reject(err);
+              reader.readAsDataURL(file);
+            });
+            return {
+              dataUrl: dataUrl,
+              fileName: file.name,
+              mimeType: file.type || 'image/jpeg',
+              wasCompressed: false,
+              originalSize: file.size,
+              finalSize: file.size
+            };
+          }
+
+          return new Promise((resolve, reject) => {
+            const img = new Image();
+            const objectUrl = URL.createObjectURL(file);
+
+            img.onload = () => {
+              URL.revokeObjectURL(objectUrl);
+              try {
+                let width = img.naturalWidth || img.width;
+                let height = img.naturalHeight || img.height;
+
+                // Batasi dimensi maksimum (2560px) agar performa dan kualitas foto tetap tajam & proporsional
+                const MAX_DIMENSION = 2560;
+                if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+                  if (width > height) {
+                    height = Math.round((height * MAX_DIMENSION) / width);
+                    width = MAX_DIMENSION;
+                  } else {
+                    width = Math.round((width * MAX_DIMENSION) / height);
+                    height = MAX_DIMENSION;
+                  }
+                }
+
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, width, height);
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // Target kompresi aman di bawah batas maksimal 5MB (4.5MB untuk toleransi base64 GAS)
+                const safeTargetBytes = Math.min(maxBytes, 4.5 * 1024 * 1024);
+                let quality = 0.88;
+                let currentDataUrl = canvas.toDataURL('image/jpeg', quality);
+                let currentBytes = Math.round((currentDataUrl.length - 22) * 3 / 4);
+
+                while (currentBytes > safeTargetBytes && quality > 0.35) {
+                  quality -= 0.12;
+                  currentDataUrl = canvas.toDataURL('image/jpeg', quality);
+                  currentBytes = Math.round((currentDataUrl.length - 22) * 3 / 4);
+                }
+
+                while (currentBytes > safeTargetBytes && width > 800) {
+                  width = Math.round(width * 0.8);
+                  height = Math.round(height * 0.8);
+                  canvas.width = width;
+                  canvas.height = height;
+                  ctx.fillStyle = '#ffffff';
+                  ctx.fillRect(0, 0, width, height);
+                  ctx.drawImage(img, 0, 0, width, height);
+                  currentDataUrl = canvas.toDataURL('image/jpeg', Math.max(quality, 0.6));
+                  currentBytes = Math.round((currentDataUrl.length - 22) * 3 / 4);
+                }
+
+                const newFileName = file.name.replace(/\.[^/.]+$/, "") + '.jpg';
+                resolve({
+                  dataUrl: currentDataUrl,
+                  fileName: newFileName,
+                  mimeType: 'image/jpeg',
+                  wasCompressed: true,
+                  originalSize: file.size,
+                  finalSize: currentBytes
+                });
+              } catch (err) {
+                reject(err);
+              }
+            };
+
+            img.onerror = (err) => {
+              URL.revokeObjectURL(objectUrl);
+              reject(new Error('Gagal memproses file foto untuk dikompresi.'));
+            };
+
+            img.src = objectUrl;
+          });
+        };
+
         const handleGalleryPhotoSelected = async (e, target = 'add') => {
           const file = e.target.files && e.target.files[0];
           if (!file) return;
@@ -20614,46 +20712,45 @@
             return;
           }
 
+          isUploadingGalleryPhoto.value = true;
           if (file.size > GALERI_MAX_MB * 1024 * 1024) {
-            openAlertDialog({
-              type: 'warning',
-              title: 'Ukuran Terlalu Besar',
-              message: "Ukuran foto melebihi batas maksimal " + (GALERI_MAX_MB) + "MB."
-            });
-            e.target.value = '';
-            return;
+            galleryUploadStatusText.value = 'Mengompresi foto...';
+            galleryUploadStatusSubText.value = 'Menyesuaikan ukuran foto agar maksimal 5MB';
+          } else {
+            galleryUploadStatusText.value = 'Mengunggah ke Google Drive...';
+            galleryUploadStatusSubText.value = 'Menyimpan berkas di folder Galeri';
           }
 
-          isUploadingGalleryPhoto.value = true;
           try {
-            const base64DataUrl = await new Promise((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onload = () => resolve(reader.result);
-              reader.onerror = (err) => reject(err);
-              reader.readAsDataURL(file);
-            });
+            const processed = await compressImageIfNeeded(file, GALERI_MAX_MB * 1024 * 1024);
 
-            const cleanBase64 = String(base64DataUrl).replace(/^data:image\/[a-zA-Z+]+;base64,/, '');
+            galleryUploadStatusText.value = 'Mengunggah ke Google Drive...';
+            galleryUploadStatusSubText.value = 'Menyimpan berkas di folder Galeri';
+
+            const cleanBase64 = String(processed.dataUrl).replace(/^data:image\/[a-zA-Z+]+;base64,/, '');
 
             if (USE_MOCK) {
               const mockUploaded = {
                 fileId: 'mock_galeri_' + Date.now(),
-                src: base64DataUrl
+                src: processed.dataUrl
               };
               if (target === 'add') {
                 galleryAddForm.value.foto = mockUploaded;
               } else {
                 galleryEditForm.value.foto = mockUploaded;
               }
-              showToastNotification('Foto galeri berhasil dipilih (Mock).');
+              const sizeMsg = processed.wasCompressed 
+                ? 'Foto (' + (file.size / (1024 * 1024)).toFixed(1) + 'MB) berhasil dikompresi menjadi ' + (processed.finalSize / (1024 * 1024)).toFixed(1) + 'MB (Mock).'
+                : 'Foto galeri berhasil dipilih (Mock).';
+              showToastNotification(sizeMsg);
               return;
             }
 
             const payload = {
               action: 'uploadGaleriImage',
               token: adminUser.value ? adminUser.value.token : '',
-              fileName: file.name,
-              mimeType: file.type,
+              fileName: processed.fileName,
+              mimeType: processed.mimeType,
               dataBase64: cleanBase64
             };
 
@@ -20680,7 +20777,10 @@
               } else {
                 galleryEditForm.value.foto = uploadedObj;
               }
-              showToastNotification('Foto galeri berhasil diunggah ke Google Drive.');
+              const successMsg = processed.wasCompressed 
+                ? 'Foto (' + (file.size / (1024 * 1024)).toFixed(1) + 'MB) berhasil dikompresi menjadi ' + (processed.finalSize / (1024 * 1024)).toFixed(1) + 'MB & diunggah.'
+                : 'Foto galeri berhasil diunggah ke Google Drive.';
+              showToastNotification(successMsg);
             } else {
               throw new Error(json.message || 'Gagal mengunggah foto ke Google Drive.');
             }
@@ -20689,10 +20789,12 @@
             openAlertDialog({
               type: 'warning',
               title: 'Gagal Mengunggah Foto',
-              message: 'Terjadi kesalahan saat mengunggah foto: ' + (err.message || 'Koneksi terputus')
+              message: 'Terjadi kesalahan saat memproses atau mengunggah foto: ' + (err.message || 'Koneksi terputus')
             });
           } finally {
             isUploadingGalleryPhoto.value = false;
+            galleryUploadStatusText.value = 'Mengunggah ke Google Drive...';
+            galleryUploadStatusSubText.value = 'Menyimpan berkas di folder Galeri';
             e.target.value = '';
           }
         };
@@ -25587,6 +25689,8 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
           normalizeGalleryPhotoUrl,
           isSavingGallery,
           isUploadingGalleryPhoto,
+          galleryUploadStatusText,
+          galleryUploadStatusSubText,
           adminGallerySearch,
           adminGallerySort,
           showGalleryAddModal,
