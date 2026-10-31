@@ -91,7 +91,7 @@ test('Inspect all text contrast across all admin tabs and modals in dark mode', 
     expect(modalIssues.length).toBe(0);
 
     // Close modal
-    const closeBtn = page.locator('.kunjungan-compact button:has-text("Batal"), .kunjungan-compact button:has-text("Tutup")').first();
+    const closeBtn = page.locator('button:has-text("Batal"), button:has-text("Tutup")').first();
     if (await closeBtn.isVisible()) {
       await closeBtn.click();
       await page.waitForTimeout(400);

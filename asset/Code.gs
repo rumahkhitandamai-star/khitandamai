@@ -113,13 +113,19 @@ const SERVER_CACHE_KEYS = {
   SARAN: "kd_server_saran_cache",
   JUMAT_BERKAH: "kd_server_jumatberkah_cache",
   VERSIONS: "kd_server_versions_cache",
-  HISTORY: "kd_server_history_cache"
+  HISTORY: "kd_server_history_cache",
+  REFERENSI: "kd_server_referensi_cache",
+  ALAMAT: "kd_server_alamat_cache",
+  KUOTA_SUMMARY_VERSION: "kd_server_kuota_ver"
 };
 const GALERI_CACHE_KEY = SERVER_CACHE_KEYS.GALERI;
 const GALERI_CACHE_TTL = 600; // 10 Menit
 const SETTINGS_CACHE_KEY = SERVER_CACHE_KEYS.SETTINGS;
 const SETTINGS_CACHE_TTL = 900; // 15 Menit
 const SERVER_CACHE_DEFAULT_TTL = 600; // 10 Menit
+const REFERENSI_CACHE_KEY = SERVER_CACHE_KEYS.REFERENSI;
+const REFERENSI_CACHE_TTL = 600; // 10 Menit
+const KUOTA_SUMMARY_CACHE_TTL = 60; // 60 Detik
 
 // ==========================================
 // KONFIGURASI NOTIFIKASI TELEGRAM ADMIN
@@ -3155,8 +3161,8 @@ function rescheduleBookingFromTelegram_(bookingId, newDateYmd, newJamStr, chatId
     const cleanDate = normalizeYmd_(newDateYmd);
     if (!cleanDate) return { success: false, message: "⚠️ Format tanggal tidak valid." };
 
-    // 1. Revalidasi kuota slot waktu
-    const kuotaInfo = getKuotaJamSummary_(cleanDate);
+    // 1. Revalidasi kuota slot waktu (force fresh check)
+    const kuotaInfo = getKuotaJamSummary_(cleanDate, true);
     const slotKey = newJamStr.replace(/wib/gi, "").trim();
     let matchedSlotKey = "";
     for (const k in (kuotaInfo.slots || {})) {
@@ -4708,6 +4714,32 @@ function updateDatasetVersionMeta_(datasetName, version, sizeBytes, count) {
 }
 
 /**
+ * Mengambil versi cache kuota ringkasan
+ */
+function getKuotaCacheVersion_() {
+  try {
+    const cache = CacheService.getScriptCache();
+    const ver = cache.get(SERVER_CACHE_KEYS.KUOTA_SUMMARY_VERSION);
+    return ver || "1";
+  } catch (e) {
+    return "1";
+  }
+}
+
+/**
+ * Memperbarui versi cache kuota agar semua ringkasan kuota ter-invalidasi instan
+ */
+function bumpKuotaCacheVersion_() {
+  try {
+    const cache = CacheService.getScriptCache();
+    const newVer = String(Date.now());
+    cache.put(SERVER_CACHE_KEYS.KUOTA_SUMMARY_VERSION, newVer, SERVER_CACHE_DEFAULT_TTL);
+  } catch (e) {
+    Logger.log("Peringatan bumpKuotaCacheVersion_: " + e.message);
+  }
+}
+
+/**
  * Menghapus cache dataset dan membersihkan versinya dari registry
  */
 function invalidateDataset_(cacheKey, datasetName) {
@@ -4719,6 +4751,9 @@ function invalidateDataset_(cacheKey, datasetName) {
       if (registry && registry[datasetName]) {
         delete registry[datasetName];
         cache.put(SERVER_CACHE_KEYS.VERSIONS, JSON.stringify(registry), SERVER_CACHE_DEFAULT_TTL);
+      }
+      if (datasetName === "bookings") {
+        bumpKuotaCacheVersion_();
       }
     }
   } catch (e) {
@@ -4740,11 +4775,21 @@ function clearAllServerCaches() {
       SERVER_CACHE_KEYS.SARAN,
       SERVER_CACHE_KEYS.JUMAT_BERKAH,
       SERVER_CACHE_KEYS.VERSIONS,
-      SERVER_CACHE_KEYS.HISTORY
+      SERVER_CACHE_KEYS.HISTORY,
+      SERVER_CACHE_KEYS.REFERENSI,
+      SERVER_CACHE_KEYS.ALAMAT,
+      SERVER_CACHE_KEYS.KUOTA_SUMMARY_VERSION
     ];
     for (let i = 0; i < keys.length; i++) {
       removeChunkedCache(keys[i]);
     }
+    try {
+      const cache = CacheService.getScriptCache();
+      cache.remove("referensi:all");
+      cache.remove(SERVER_CACHE_KEYS.REFERENSI);
+      cache.remove(SERVER_CACHE_KEYS.KUOTA_SUMMARY_VERSION);
+    } catch (e) {}
+    bumpKuotaCacheVersion_();
     return true;
   } catch (err) {
     Logger.log("Peringatan clearAllServerCaches: " + err.message);
@@ -6939,6 +6984,55 @@ function readReferensiOptions() {
 }
 
 /**
+ * Membaca opsi referensi dengan cache server CacheService (10 menit)
+ */
+function readReferensiOptionsCached(forceRefresh) {
+  const cacheKey = SERVER_CACHE_KEYS.REFERENSI || "kd_server_referensi_cache";
+  if (!forceRefresh) {
+    try {
+      const cache = CacheService.getScriptCache();
+      const cached = cache.get(cacheKey) || cache.get("referensi:all");
+      if (cached) {
+        recordCacheTelemetry_("referensi", "hit");
+        return JSON.parse(cached);
+      }
+    } catch (e) {
+      Logger.log("Peringatan readReferensiOptionsCached hit: " + e.message);
+    }
+  }
+  recordCacheTelemetry_("referensi", "miss");
+
+  const options = readReferensiOptions();
+
+  try {
+    const cache = CacheService.getScriptCache();
+    const jsonStr = JSON.stringify(options);
+    if (jsonStr.length < 100000) {
+      cache.put(cacheKey, jsonStr, REFERENSI_CACHE_TTL || 600);
+      cache.put("referensi:all", jsonStr, REFERENSI_CACHE_TTL || 600);
+    }
+  } catch (e) {
+    Logger.log("Peringatan readReferensiOptionsCached put: " + e.message);
+  }
+
+  return options;
+}
+
+/**
+ * Menghapus cache opsi referensi
+ */
+function invalidateReferensiCache_() {
+  try {
+    const cache = CacheService.getScriptCache();
+    cache.remove(SERVER_CACHE_KEYS.REFERENSI || "kd_server_referensi_cache");
+    cache.remove("referensi:all");
+    invalidateDataset_(SERVER_CACHE_KEYS.REFERENSI, "referensi");
+  } catch (e) {
+    Logger.log("Peringatan invalidateReferensiCache_: " + e.message);
+  }
+}
+
+/**
  * Mendapatkan atau membuat sheet KUNJUNGAN
  */
 function getKunjunganSheet() {
@@ -7488,12 +7582,27 @@ function readBookingsFromSheet(sheet, forceRefresh) {
  * Menghitung rekap kuota jam khitan per slot pada tanggal tertentu
  * Mengabaikan booking berstatus "batal" / "dibatalkan"
  */
-function getKuotaJamSummary_(targetDate) {
+function getKuotaJamSummary_(targetDate, forceRefresh) {
   const normDate = normalizeYmd_(targetDate);
+  const kuotaVer = getKuotaCacheVersion_();
+  const cacheKey = "kuota:summary:" + kuotaVer + ":" + (normDate || "empty");
+
+  if (!forceRefresh && normDate) {
+    try {
+      const cache = CacheService.getScriptCache();
+      const cached = cache.get(cacheKey);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch (e) {
+      Logger.log("Peringatan getKuotaJamSummary_ cache hit: " + e.message);
+    }
+  }
+
   const settings = readSettings();
   const defaultKuota = (settings && typeof settings.kuota_jam === "number") ? settings.kuota_jam : DEFAULT_KUOTA_JAM;
 
-  const ref = readReferensiOptions();
+  const ref = readReferensiOptionsCached(forceRefresh);
   const allSlots = (ref && Array.isArray(ref.jamKhitan)) ? ref.jamKhitan : [];
   const refQuotas = (ref && ref.jamKhitanQuota) || {};
 
@@ -7521,7 +7630,7 @@ function getKuotaJamSummary_(targetDate) {
     };
   }
 
-  const allBookings = readBookingsFromSheet();
+  const allBookings = readBookingsFromSheet(null, forceRefresh);
   for (let i = 0; i < allBookings.length; i++) {
     const b = allBookings[i];
     const bTgl = normalizeYmd_(b.tanggalKhitan || b.tglKhitan);
@@ -7560,13 +7669,27 @@ function getKuotaJamSummary_(targetDate) {
   const total = slotKeys.length;
   const semuaPenuh = total > 0 && fullCount >= total;
 
-  return {
+  const result = {
     tanggal: normDate,
     kuotaPerSlot: defaultKuota,
     slots: slotsMap,
     totalSlots: total,
     semuaPenuh: semuaPenuh
   };
+
+  if (normDate) {
+    try {
+      const cache = CacheService.getScriptCache();
+      const jsonStr = JSON.stringify(result);
+      if (jsonStr.length < 100000) {
+        cache.put(cacheKey, jsonStr, KUOTA_SUMMARY_CACHE_TTL);
+      }
+    } catch (e) {
+      Logger.log("Peringatan getKuotaJamSummary_ cache put: " + e.message);
+    }
+  }
+
+  return result;
 }
 
 /**
@@ -7717,6 +7840,22 @@ function handleSyncAdminData(params) {
     saran = { length: rCount };
   }
 
+  // 7. Referensi
+  let referensi = null;
+  let refVer = (registry.referensi && registry.referensi.version) ? registry.referensi.version : null;
+  let refCount = (registry.referensi && typeof registry.referensi.count === "number") ? registry.referensi.count : 0;
+  let refSizeBytes = (registry.referensi && typeof registry.referensi.sizeBytes === "number") ? registry.referensi.sizeBytes : 0;
+  if (forceRefresh || !refVer || clientVersions.referensi !== refVer) {
+    referensi = readReferensiOptionsCached(forceRefresh);
+    refVer = computeDatasetVersion_(referensi);
+    refCount = (referensi && Array.isArray(referensi.jamKhitan)) ? referensi.jamKhitan.length : 0;
+    refSizeBytes = JSON.stringify(referensi).length;
+    updateDatasetVersionMeta_("referensi", refVer, refSizeBytes, refCount);
+  } else {
+    recordCacheTelemetry_("referensi", "hit");
+    referensi = { length: refCount };
+  }
+
   const versions = {
     bookings: bVer,
     kunjungan: kVer,
@@ -7725,7 +7864,8 @@ function handleSyncAdminData(params) {
     users: uVer,
     settings: sVer,
     galeri: gVer,
-    saran: rVer
+    saran: rVer,
+    referensi: refVer
   };
 
   const versionsMeta = {
@@ -7735,7 +7875,8 @@ function handleSyncAdminData(params) {
     users: { version: uVer, sizeBytes: uSizeBytes, count: uCount },
     settings: { version: sVer, sizeBytes: sSizeBytes, count: 1 },
     galeri: { version: gVer, sizeBytes: gSizeBytes, count: gCount },
-    saran: { version: rVer, sizeBytes: rSizeBytes, count: rCount }
+    saran: { version: rVer, sizeBytes: rSizeBytes, count: rCount },
+    referensi: { version: refVer, sizeBytes: refSizeBytes, count: refCount }
   };
 
   // Evaluasi unchanged flag per dataset
@@ -7747,7 +7888,8 @@ function handleSyncAdminData(params) {
     users: Boolean(!forceRefresh && clientVersions.users && clientVersions.users === uVer),
     settings: Boolean(!forceRefresh && clientVersions.settings && clientVersions.settings === sVer),
     galeri: Boolean(!forceRefresh && clientVersions.galeri && clientVersions.galeri === gVer),
-    saran: Boolean(!forceRefresh && clientVersions.saran && clientVersions.saran === rVer)
+    saran: Boolean(!forceRefresh && clientVersions.saran && clientVersions.saran === rVer),
+    referensi: Boolean(!forceRefresh && clientVersions.referensi && clientVersions.referensi === refVer)
   };
 
   const responseData = {};
@@ -7804,6 +7946,13 @@ function handleSyncAdminData(params) {
     responseData.saran = saran;
   }
 
+  if (unchanged.referensi) {
+    unchangedCount++;
+  } else {
+    changedCount++;
+    responseData.referensi = referensi;
+  }
+
   const durationMs = Date.now() - startTime;
   const now = new Date();
   const serverTime = Utilities.formatDate(now, "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss") + " WIB";
@@ -7829,7 +7978,8 @@ function handleSyncAdminData(params) {
       jumatberkah: jCount,
       users: uCount,
       galeri: gCount,
-      saran: rCount
+      saran: rCount,
+      referensi: refCount
     },
     data: responseData
   });
@@ -9013,40 +9163,39 @@ function doGet(e) {
         });
       }
       const sheet = getSheet();
-      const lastRow = sheet.getLastRow();
-      if (lastRow <= 1) {
+      const allBookings = readBookingsFromSheet(sheet, false);
+      if (!allBookings || allBookings.length === 0) {
         return createJsonResponse({
           status: "not_found",
           found: false,
           message: "Belum ada data pendaftaran di sheet BOOKING."
         });
       }
-      const values = sheet.getRange(2, 1, lastRow - 1, HEADERS.length).getValues();
       let matched = null;
-      for (let i = values.length - 1; i >= 0; i--) {
-        const row = values[i];
-        if (String(row[0] || "").trim().toUpperCase() === targetId) {
+      for (let i = 0; i < allBookings.length; i++) {
+        const b = allBookings[i];
+        if (String(b.id || b.idBooking || "").trim().toUpperCase() === targetId) {
           matched = {
-            idBooking: String(row[0] || "").trim().toUpperCase(),
-            namaAnanda: toProperCase_(row[1]),
-            tempatLahir: toProperCase_(row[2]),
-            tanggalLahir: normalizeYmd_(row[3]),
-            beratBadan: String(row[4] || "").trim(),
-            tanggalKhitan: normalizeYmd_(row[5]),
-            jamKhitan: String(row[6] || "").trim(),
-            metodeKhitan: String(row[7] || "").trim(),
-            ukuranCelana: String(row[8] || "").trim(),
-            obat: String(row[9] || "").trim(),
-            namaPenanggungJawab: toProperCase_(row[10]),
-            usiaPenanggungJawab: String(row[11] || "").trim(),
-            pekerjaan: String(row[12] || "").trim(),
-            hubunganKeluarga: String(row[13] || "").trim(),
-            nomorHp: formatDisplayPhone(row[14]),
-            alamat: String(row[15] || "").trim(),
-            provinsi: String(row[16] || "").trim(),
-            kabupaten: String(row[17] || "").trim(),
-            kecamatan: String(row[18] || "").trim(),
-            kelurahan: String(row[19] || "").trim()
+            idBooking: String(b.id || b.idBooking || "").trim().toUpperCase(),
+            namaAnanda: toProperCase_(b.namaAnanda || b.namaAnak),
+            tempatLahir: toProperCase_(b.tempatLahir),
+            tanggalLahir: normalizeYmd_(b.tanggalLahir),
+            beratBadan: String(b.beratBadan || "").trim(),
+            tanggalKhitan: normalizeYmd_(b.tanggalKhitan || b.tglKhitan),
+            jamKhitan: String(b.jamKhitan || "").trim(),
+            metodeKhitan: String(b.metodeKhitan || "").trim(),
+            ukuranCelana: String(b.ukuranCelana || "").trim(),
+            obat: String(b.obat || "").trim(),
+            namaPenanggungJawab: toProperCase_(b.namaPenanggungJawab || b.namaOrtu),
+            usiaPenanggungJawab: String(b.usiaPenanggungJawab || "").trim(),
+            pekerjaan: String(b.pekerjaan || "").trim(),
+            hubunganKeluarga: String(b.hubunganKeluarga || "").trim(),
+            nomorHp: formatDisplayPhone(b.noHp || b.nomorHp),
+            alamat: String(b.alamat || "").trim(),
+            provinsi: String(b.provinsi || "").trim(),
+            kabupaten: String(b.kabupaten || "").trim(),
+            kecamatan: String(b.kecamatan || "").trim(),
+            kelurahan: String(b.kelurahan || "").trim()
           };
           break;
         }
@@ -9067,47 +9216,19 @@ function doGet(e) {
     }
 
     if (action === "getReferensi") {
-      const cacheKey = "referensi:all";
       const isForceRefresh = (e && e.parameter && (e.parameter.refresh === "true" || e.parameter.forceRefresh === "true"));
-      try {
-        if (!isForceRefresh) {
-          const cache = CacheService.getScriptCache();
-          const cached = cache.get(cacheKey);
-          if (cached) {
-            const parsed = JSON.parse(cached);
-            return createJsonResponse({
-              status: "success",
-              cached: true,
-              data: parsed
-            });
-          }
-        }
-      } catch (cacheErr) {
-        Logger.log("CacheService referensi get error: " + cacheErr.toString());
-      }
-
-      const options = readReferensiOptions();
-
-      try {
-        const cache = CacheService.getScriptCache();
-        const jsonStr = JSON.stringify(options);
-        if (jsonStr.length < 100000) {
-          cache.put(cacheKey, jsonStr, 600); // 10 menit agar update kuota cepat tersinkron
-        }
-      } catch (cachePutErr) {
-        Logger.log("CacheService referensi put error: " + cachePutErr.toString());
-      }
-
+      const options = readReferensiOptionsCached(isForceRefresh);
       return createJsonResponse({
         status: "success",
-        cached: false,
+        cached: !isForceRefresh,
         data: options
       });
     }
 
     if (action === "getKuotaJam") {
       const tglParam = (e && e.parameter && (e.parameter.tanggal || e.parameter.tanggalKhitan)) || "";
-      const summary = getKuotaJamSummary_(tglParam);
+      const isForceRefresh = (e && e.parameter && (e.parameter.refresh === "true" || e.parameter.forceRefresh === "true"));
+      const summary = getKuotaJamSummary_(tglParam, isForceRefresh);
       return createJsonResponse({
         status: "success",
         data: summary
@@ -10207,8 +10328,8 @@ function deleteBookingRowById_(bookingId) {
       }
 
       const sheet = getSheet();
-      const lastRow = sheet.getLastRow();
-      if (lastRow <= 1) {
+      const allBookings = readBookingsFromSheet(sheet, false);
+      if (!allBookings || allBookings.length === 0) {
         return createJsonResponse({
           status: "not_found",
           found: false,
@@ -10216,32 +10337,31 @@ function deleteBookingRowById_(bookingId) {
         });
       }
 
-      const values = sheet.getRange(2, 1, lastRow - 1, HEADERS.length).getValues();
       let matched = null;
-      for (let i = values.length - 1; i >= 0; i--) {
-        const row = values[i];
-        if (String(row[0] || "").trim().toUpperCase() === targetId) {
+      for (let i = 0; i < allBookings.length; i++) {
+        const b = allBookings[i];
+        if (String(b.id || b.idBooking || "").trim().toUpperCase() === targetId) {
           matched = {
-            idBooking: String(row[0] || "").trim().toUpperCase(),
-            namaAnanda: toProperCase_(row[1]),
-            tempatLahir: toProperCase_(row[2]),
-            tanggalLahir: normalizeYmd_(row[3]),
-            beratBadan: String(row[4] || "").trim(),
-            tanggalKhitan: normalizeYmd_(row[5]),
-            jamKhitan: String(row[6] || "").trim(),
-            metodeKhitan: String(row[7] || "").trim(),
-            ukuranCelana: String(row[8] || "").trim(),
-            obat: String(row[9] || "").trim(),
-            namaPenanggungJawab: toProperCase_(row[10]),
-            usiaPenanggungJawab: String(row[11] || "").trim(),
-            pekerjaan: String(row[12] || "").trim(),
-            hubunganKeluarga: String(row[13] || "").trim(),
-            nomorHp: formatDisplayPhone(row[14]),
-            alamat: String(row[15] || "").trim(),
-            provinsi: String(row[16] || "").trim(),
-            kabupaten: String(row[17] || "").trim(),
-            kecamatan: String(row[18] || "").trim(),
-            kelurahan: String(row[19] || "").trim()
+            idBooking: String(b.id || b.idBooking || "").trim().toUpperCase(),
+            namaAnanda: toProperCase_(b.namaAnanda || b.namaAnak),
+            tempatLahir: toProperCase_(b.tempatLahir),
+            tanggalLahir: normalizeYmd_(b.tanggalLahir),
+            beratBadan: String(b.beratBadan || "").trim(),
+            tanggalKhitan: normalizeYmd_(b.tanggalKhitan || b.tglKhitan),
+            jamKhitan: String(b.jamKhitan || "").trim(),
+            metodeKhitan: String(b.metodeKhitan || "").trim(),
+            ukuranCelana: String(b.ukuranCelana || "").trim(),
+            obat: String(b.obat || "").trim(),
+            namaPenanggungJawab: toProperCase_(b.namaPenanggungJawab || b.namaOrtu),
+            usiaPenanggungJawab: String(b.usiaPenanggungJawab || "").trim(),
+            pekerjaan: String(b.pekerjaan || "").trim(),
+            hubunganKeluarga: String(b.hubunganKeluarga || "").trim(),
+            nomorHp: formatDisplayPhone(b.noHp || b.nomorHp),
+            alamat: String(b.alamat || "").trim(),
+            provinsi: String(b.provinsi || "").trim(),
+            kabupaten: String(b.kabupaten || "").trim(),
+            kecamatan: String(b.kecamatan || "").trim(),
+            kelurahan: String(b.kelurahan || "").trim()
           };
           break;
         }
@@ -10850,16 +10970,19 @@ function deleteBookingRowById_(bookingId) {
     }
 
     if (action === "getReferensi") {
-      const options = readReferensiOptions();
+      const forceRefresh = Boolean(payload && (payload.refresh === true || payload.forceRefresh === true || (payload.data && (payload.data.refresh === true || payload.data.forceRefresh === true))));
+      const options = readReferensiOptionsCached(forceRefresh);
       return createJsonResponse({
         status: "success",
+        cached: !forceRefresh,
         data: options
       });
     }
 
     if (action === "getKuotaJam") {
       const tglParam = payload.tanggal || payload.tanggalKhitan || (payload.data && (payload.data.tanggal || payload.data.tanggalKhitan)) || "";
-      const summary = getKuotaJamSummary_(tglParam);
+      const isForceRefresh = Boolean(payload && (payload.refresh === true || payload.forceRefresh === true || (payload.data && (payload.data.refresh === true || payload.data.forceRefresh === true))));
+      const summary = getKuotaJamSummary_(tglParam, isForceRefresh);
       return createJsonResponse({
         status: "success",
         data: summary
@@ -10908,7 +11031,7 @@ function deleteBookingRowById_(bookingId) {
 
       // Validasi Kuota Jam Khitan (Opsi A: tolak jika kuota slot sudah penuh)
       if (jamKhitan) {
-        const quotaSummary = getKuotaJamSummary_(tanggalKhitan);
+        const quotaSummary = getKuotaJamSummary_(tanggalKhitan, true);
         const slotInfo = quotaSummary.slots && quotaSummary.slots[jamKhitan];
         const kuotaSlot = (slotInfo && typeof slotInfo.kuota === "number")
           ? slotInfo.kuota

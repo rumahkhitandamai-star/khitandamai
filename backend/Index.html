@@ -13271,7 +13271,7 @@
 
           const endpoint = GAS_ENDPOINT_URL + '?' + q.toString();
           const res = await fetch(endpoint, { redirect: 'follow' });
-          const json = await res.json();
+          const json = await parseApiResponse(res);
           if (json.status === 'success' && Array.isArray(json.data)) {
             alamatOptionsCache[cacheKey] = json.data;
             persistAlamatOptionsCache();
@@ -13922,6 +13922,7 @@
             { key: 'galeri', name: 'Galeri Fasilitas', icon: 'fa-solid fa-images', desc: 'Sheet GALERI', countLabel: 'foto' },
             { key: 'saran', name: 'Saran & Kritik', icon: 'fa-solid fa-comment-dots', desc: 'Sheet SARAN', countLabel: 'pesan' },
             { key: 'alamat', name: 'Wilayah Alamat', icon: 'fa-solid fa-location-dot', desc: 'Dropdown Cascader', customKey: 'kd_alamat_cache', countLabel: 'level' },
+            { key: 'referensi', name: 'Opsi Referensi', icon: 'fa-solid fa-list-check', desc: 'Sheet REFERENSI', customKey: 'kd_referensi_cache', countLabel: 'opsi' },
             { key: 'login_history', name: 'Riwayat Akun Login', icon: 'fa-solid fa-key', desc: 'Kredensial Form', customKey: 'kd_login_history', countLabel: 'akun' }
           ];
 
@@ -13950,6 +13951,8 @@
                     count = parsed.count;
                   } else if (Array.isArray(parsed.data)) {
                     count = parsed.data.length;
+                  } else if (parsed.data && typeof parsed.data === 'object') {
+                    count = Object.keys(parsed.data).reduce((acc, k) => acc + (Array.isArray(parsed.data[k]) ? parsed.data[k].length : 0), 0) || Object.keys(parsed.data).length;
                   } else if (Array.isArray(parsed)) {
                     count = parsed.length;
                   } else if (typeof parsed === 'object') {
@@ -16685,7 +16688,37 @@
         const isGeneratingReceiptImage = ref(false);
         const showSuccessModal = ref(false); // Legacy modal retained for backward compatibility
         const lastBookingData = ref(null);
+
+        // Referensi Cache System (Local Storage + In-Memory + Multi-Layer Fast Sync)
+        const LOCAL_STORAGE_REFERENSI_KEY = 'kd_referensi_cache';
+        const REFERENSI_CLIENT_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 Jam
         const referensiOptionsCache = ref(null);
+
+        // Hydrate opsi referensi dari localStorage saat startup agar form booking langsung siap
+        try {
+          const rawStoredRef = localStorage.getItem(LOCAL_STORAGE_REFERENSI_KEY);
+          if (rawStoredRef) {
+            const parsed = JSON.parse(rawStoredRef);
+            if (parsed && parsed.ts && (Date.now() - parsed.ts < REFERENSI_CLIENT_CACHE_TTL) && parsed.data) {
+              referensiOptionsCache.value = parsed.data;
+            }
+          }
+        } catch (e) {
+          console.warn('Gagal membaca cache referensi lokal:', e);
+        }
+
+        const persistReferensiCache = (data) => {
+          try {
+            if (data && typeof data === 'object') {
+              localStorage.setItem(LOCAL_STORAGE_REFERENSI_KEY, JSON.stringify({
+                ts: Date.now(),
+                data: data
+              }));
+            }
+          } catch (e) {
+            console.warn('Gagal menyimpan cache referensi lokal:', e);
+          }
+        };
 
         // Helper Proper Case untuk input teks
         const toProperCase = (str) => {
@@ -16847,33 +16880,47 @@
           formBooking.value.nomorHpInput = val;
         };
 
-        // Memuat opsi referensi dari sheet REFERENSI (dengan cache)
-        const loadReferensi = async () => {
-          if (referensiOptionsCache.value) {
+        let referensiInFlightPromise = null;
+
+        // Memuat opsi referensi dari sheet REFERENSI (dengan multi-layer cache & request deduplication)
+        const loadReferensi = async (force = false) => {
+          if (!force && referensiOptionsCache.value) {
             return referensiOptionsCache.value;
           }
           if (USE_MOCK) {
             referensiOptionsCache.value = LOCAL_MOCK_REFERENSI;
+            persistReferensiCache(LOCAL_MOCK_REFERENSI);
             return LOCAL_MOCK_REFERENSI;
           }
-          isLoadingReferensi.value = true;
-          try {
-            const res = await fetch(GAS_ENDPOINT_URL + '?action=getReferensi', {
-              method: 'GET',
-              redirect: 'follow'
-            });
-            const json = await parseApiResponse(res);
-            if (json.status === 'success' && json.data) {
-              referensiOptionsCache.value = json.data;
-              return json.data;
-            }
-          } catch (err) {
-            console.error('Gagal memuat opsi referensi:', err);
-          } finally {
-            isLoadingReferensi.value = false;
+          if (referensiInFlightPromise && !force) {
+            return referensiInFlightPromise;
           }
-          referensiOptionsCache.value = LOCAL_MOCK_REFERENSI;
-          return LOCAL_MOCK_REFERENSI;
+          isLoadingReferensi.value = true;
+          referensiInFlightPromise = (async () => {
+            try {
+              const res = await fetch(GAS_ENDPOINT_URL + '?action=getReferensi' + (force ? '&refresh=true' : ''), {
+                method: 'GET',
+                redirect: 'follow'
+              });
+              const json = await parseApiResponse(res);
+              if (json && json.status === 'success' && json.data) {
+                referensiOptionsCache.value = json.data;
+                persistReferensiCache(json.data);
+                return json.data;
+              }
+            } catch (err) {
+              console.error('Gagal memuat opsi referensi:', err);
+            } finally {
+              isLoadingReferensi.value = false;
+              referensiInFlightPromise = null;
+            }
+            if (!referensiOptionsCache.value) {
+              referensiOptionsCache.value = LOCAL_MOCK_REFERENSI;
+            }
+            return referensiOptionsCache.value;
+          })();
+
+          return referensiInFlightPromise;
         };
 
         // Mengambil ID Booking 7 karakter alfanumerik dari server
@@ -16911,73 +16958,99 @@
           return id;
         };
 
-        // Kuota Jam Khitan State & Helper
+        // Kuota Jam Khitan State & Helper (dedupe request dan in-memory cache)
         const kuotaSummaryData = ref(null);
         const isLoadingKuotaJam = ref(false);
+        const kuotaClientCache = {};
+        let kuotaInFlightPromise = null;
 
-        const fetchKuotaJam = async (tanggal) => {
+        const fetchKuotaJam = async (tanggal, force = false) => {
           if (!tanggal) {
             kuotaSummaryData.value = null;
             return null;
           }
+
+          if (!force && kuotaClientCache[tanggal] && (Date.now() - kuotaClientCache[tanggal].ts < 30000)) {
+            kuotaSummaryData.value = kuotaClientCache[tanggal].data;
+            if (kuotaClientCache[tanggal].data.kuotaPerSlot) {
+              kuotaPerSlotConfig.value = kuotaClientCache[tanggal].data.kuotaPerSlot;
+            }
+            return kuotaClientCache[tanggal].data;
+          }
+
+          if (kuotaInFlightPromise && kuotaInFlightPromise._tanggal === tanggal && !force) {
+            return kuotaInFlightPromise;
+          }
+
           isLoadingKuotaJam.value = true;
-          try {
-            if (USE_MOCK) {
-              await new Promise(r => setTimeout(r, 150));
-              const defaultKuota = kuotaPerSlotConfig.value || DEFAULT_KUOTA_JAM;
-              const refData = referensiOptionsCache.value || LOCAL_MOCK_REFERENSI;
-              const allSlots = (refData && refData.jamKhitan) || [];
-              const refQuotas = (refData && refData.jamKhitanQuota) || {};
-              const slotsMap = {};
-              allSlots.forEach(s => {
-                const slotK = (typeof refQuotas[s] === 'number' && refQuotas[s] > 0) ? refQuotas[s] : defaultKuota;
-                slotsMap[s] = { terpakai: 0, kuota: slotK, sisa: slotK, penuh: false };
-              });
-              LOCAL_MOCK_DATABASE.forEach(b => {
-                const bTgl = b.tanggalKhitan || b.tglKhitan;
-                if (bTgl === tanggal && b.jamKhitan && slotsMap[b.jamKhitan]) {
-                  const st = String(b.status || '').toLowerCase();
-                  if (st !== 'batal' && st !== 'dibatalkan') {
-                    slotsMap[b.jamKhitan].terpakai += 1;
+          const reqPromise = (async () => {
+            try {
+              if (USE_MOCK) {
+                await new Promise(r => setTimeout(r, 150));
+                const defaultKuota = kuotaPerSlotConfig.value || DEFAULT_KUOTA_JAM;
+                const refData = referensiOptionsCache.value || LOCAL_MOCK_REFERENSI;
+                const allSlots = (refData && refData.jamKhitan) || [];
+                const refQuotas = (refData && refData.jamKhitanQuota) || {};
+                const slotsMap = {};
+                allSlots.forEach(s => {
+                  const slotK = (typeof refQuotas[s] === 'number' && refQuotas[s] > 0) ? refQuotas[s] : defaultKuota;
+                  slotsMap[s] = { terpakai: 0, kuota: slotK, sisa: slotK, penuh: false };
+                });
+                LOCAL_MOCK_DATABASE.forEach(b => {
+                  const bTgl = b.tanggalKhitan || b.tglKhitan;
+                  if (bTgl === tanggal && b.jamKhitan && slotsMap[b.jamKhitan]) {
+                    const st = String(b.status || '').toLowerCase();
+                    if (st !== 'batal' && st !== 'dibatalkan') {
+                      slotsMap[b.jamKhitan].terpakai += 1;
+                    }
                   }
+                });
+                let fullCount = 0;
+                Object.keys(slotsMap).forEach(k => {
+                  const item = slotsMap[k];
+                  item.sisa = Math.max(0, item.kuota - item.terpakai);
+                  item.penuh = item.terpakai >= item.kuota;
+                  if (item.penuh) fullCount++;
+                });
+                const summary = {
+                  tanggal: tanggal,
+                  kuotaPerSlot: defaultKuota,
+                  slots: slotsMap,
+                  totalSlots: allSlots.length,
+                  semuaPenuh: allSlots.length > 0 && fullCount >= allSlots.length
+                };
+                kuotaSummaryData.value = summary;
+                kuotaClientCache[tanggal] = { data: summary, ts: Date.now() };
+                return summary;
+              } else {
+                const res = await fetch(GAS_ENDPOINT_URL + '?action=getKuotaJam&tanggal=' + encodeURIComponent(tanggal) + (force ? '&refresh=true&t=' + Date.now() : ''), {
+                  method: 'GET',
+                  redirect: 'follow'
+                });
+                const json = await parseApiResponse(res);
+                if (json && json.status === 'success' && json.data) {
+                  kuotaSummaryData.value = json.data;
+                  kuotaClientCache[tanggal] = { data: json.data, ts: Date.now() };
+                  if (json.data.kuotaPerSlot) {
+                    kuotaPerSlotConfig.value = json.data.kuotaPerSlot;
+                  }
+                  return json.data;
                 }
-              });
-              let fullCount = 0;
-              Object.keys(slotsMap).forEach(k => {
-                const item = slotsMap[k];
-                item.sisa = Math.max(0, item.kuota - item.terpakai);
-                item.penuh = item.terpakai >= item.kuota;
-                if (item.penuh) fullCount++;
-              });
-              const summary = {
-                tanggal: tanggal,
-                kuotaPerSlot: defaultKuota,
-                slots: slotsMap,
-                totalSlots: allSlots.length,
-                semuaPenuh: allSlots.length > 0 && fullCount >= allSlots.length
-              };
-              kuotaSummaryData.value = summary;
-              return summary;
-            } else {
-              const res = await fetch(GAS_ENDPOINT_URL + '?action=getKuotaJam&tanggal=' + encodeURIComponent(tanggal) + '&t=' + Date.now(), {
-                method: 'GET',
-                redirect: 'follow'
-              });
-              const json = await parseApiResponse(res);
-              if (json && json.status === 'success' && json.data) {
-                kuotaSummaryData.value = json.data;
-                if (json.data.kuotaPerSlot) {
-                  kuotaPerSlotConfig.value = json.data.kuotaPerSlot;
-                }
-                return json.data;
+              }
+            } catch (err) {
+              console.error('Gagal mengambil kuota jam khitan:', err);
+            } finally {
+              isLoadingKuotaJam.value = false;
+              if (kuotaInFlightPromise === reqPromise) {
+                kuotaInFlightPromise = null;
               }
             }
-          } catch (err) {
-            console.error('Gagal mengambil kuota jam khitan:', err);
-          } finally {
-            isLoadingKuotaJam.value = false;
-          }
-          return null;
+            return null;
+          })();
+
+          reqPromise._tanggal = tanggal;
+          kuotaInFlightPromise = reqPromise;
+          return reqPromise;
         };
 
         // Watcher perubahan Tanggal Khitan untuk auto-fetch kuota dan reset jam jika slot tidak valid
@@ -17037,6 +17110,9 @@
           if (!showBookingReceipt.value) {
             loadReferensi();
             fetchBookingId();
+            if (typeof loadAlamatOptions === 'function') {
+              loadAlamatOptions('provinsi', {});
+            }
             if (formBooking.value.tanggalKhitan) {
               fetchKuotaJam(formBooking.value.tanggalKhitan);
             }
@@ -17221,6 +17297,10 @@
               lastBookingData.value = json.data || payloadData;
             }
 
+            if (payloadData && payloadData.tanggalKhitan) {
+              delete kuotaClientCache[payloadData.tanggalKhitan];
+            }
+
             recordSyncEntry({
               type: 'perubahan',
               target: 'booking',
@@ -17244,7 +17324,8 @@
               bookingStep.value = 2;
               formBooking.value.jamKhitan = '';
               if (formBooking.value.tanggalKhitan) {
-                fetchKuotaJam(formBooking.value.tanggalKhitan);
+                delete kuotaClientCache[formBooking.value.tanggalKhitan];
+                fetchKuotaJam(formBooking.value.tanggalKhitan, true);
               }
             } else {
               openAlertDialog({
@@ -18300,6 +18381,8 @@
             localStorage.removeItem('kd_cache_galeri');
             localStorage.removeItem('kd_cache_saran');
             localStorage.removeItem('kd_alamat_cache');
+            localStorage.removeItem('kd_referensi_cache');
+            referensiOptionsCache.value = null;
             syncHistory.value = [];
             cacheSnapshotHistory.value = [];
             showToastNotification('Seluruh cache data lokal dan riwayat sinkronisasi berhasil dibersihkan.');
@@ -24744,6 +24827,15 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
                     changedDatasetsCount++;
                     adminSaran.value = json.data.saran.slice().reverse();
                     saveCacheSnapshot('saran', json.data.saran, trigger);
+                  }
+
+                  // 7. Referensi
+                  if (unchangedMap.referensi) {
+                    unchangedDatasetsCount++;
+                  } else if (json.data.referensi) {
+                    changedDatasetsCount++;
+                    referensiOptionsCache.value = json.data.referensi;
+                    persistReferensiCache(json.data.referensi);
                   }
 
                   // Simpan hash versi dataset terbaru dari server

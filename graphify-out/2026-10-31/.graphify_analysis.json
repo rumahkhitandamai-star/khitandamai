@@ -63,8 +63,8 @@
       "asset_code_cleanphonenumber",
       "asset_code_edittelegrammessage",
       "asset_code_escapetelegramhtml",
+      "asset_code_findbookingfortelegram",
       "asset_code_format10googlereviewstext",
-      "asset_code_formatbackupsizetext",
       "asset_code_formatbookingdetailtelegram",
       "asset_code_formatindonesiandatefull",
       "asset_code_formatindonesiandatestr",
@@ -76,10 +76,9 @@
       "asset_code_getadmintelegramchatids_addid",
       "asset_code_gettelegramconfig",
       "asset_code_handletelegramwebhookupdate",
-      "asset_code_invalidatedataset",
       "asset_code_istelegramadmin",
-      "asset_code_loghistory",
       "asset_code_notifypatienttelegram",
+      "asset_code_pruneexpiredreminderproperties",
       "asset_code_registertelegrambotcommands",
       "asset_code_reschedulebookingfromtelegram",
       "asset_code_resolvesapaanwa",
@@ -92,17 +91,17 @@
       "asset_code_sendtelegrammessage",
       "asset_code_sendtelegramremindernotification",
       "asset_code_testpatientremindernotification",
-      "asset_code_testregistertelegramcommands",
+      "asset_code_testsendgooglereviewalert",
       "asset_code_updatebookingstatusfromtelegram"
     ],
     "2": [
       "asset_code",
       "asset_code_alamat_headers",
       "asset_code_allowed_running_text_fonts",
+      "asset_code_authenticateuser",
       "asset_code_authorizedriveaccess",
       "asset_code_authorizeexternalrequests",
       "asset_code_buildpatientactioninlinekeyboard",
-      "asset_code_clearallservercaches",
       "asset_code_default_faq",
       "asset_code_default_hero_card",
       "asset_code_default_metode",
@@ -110,9 +109,12 @@
       "asset_code_default_running_text",
       "asset_code_default_slideshow",
       "asset_code_default_testimoni",
+      "asset_code_formatbackupsizetext",
       "asset_code_galeri_headers",
-      "asset_code_getalamatsheet",
       "asset_code_getgaswebappurl",
+      "asset_code_getjakartatimestamp",
+      "asset_code_getsettingssheet",
+      "asset_code_getuserssheet",
       "asset_code_google_review_recipient_emails",
       "asset_code_headers",
       "asset_code_history_headers",
@@ -120,20 +122,19 @@
       "asset_code_kunjungan_headers",
       "asset_code_migratebookingssheet",
       "asset_code_parsedatequery",
-      "asset_code_pruneexpiredreminderproperties",
-      "asset_code_readalamatoptions",
-      "asset_code_readandwarmalamatoptions",
       "asset_code_referensi_headers",
-      "asset_code_removechunkedcache",
-      "asset_code_safeputallcache",
       "asset_code_saran_headers",
+      "asset_code_sendemailgooglereviewnotification",
       "asset_code_server_cache_keys",
       "asset_code_settings_headers",
       "asset_code_telegram_config",
       "asset_code_testaftercarenotification",
+      "asset_code_testregistertelegramcommands",
       "asset_code_testsendemail",
+      "asset_code_testsendgooglereviewemail",
+      "asset_code_testsendtelegramalert",
       "asset_code_user_headers",
-      "asset_code_warmalamatprovince"
+      "asset_code_verifypassword"
     ],
     "3": [
       "agents",
@@ -166,32 +167,33 @@
       "scripts_upload_docs_to_drive_updatefilecontent"
     ],
     "4": [
-      "asset_code_authorizegmailaccess",
-      "asset_code_checkgooglereviewsandnotify",
-      "asset_code_checkgooglereviewstrigger",
-      "asset_code_checkupcomingkhitanreminders",
-      "asset_code_diagnosegooglereviews",
-      "asset_code_ensureautomatictriggers",
-      "asset_code_ensuretelegramwebhookregistered",
-      "asset_code_executedatabasebackup",
-      "asset_code_fetchgooglemapsreviewsrealtime",
-      "asset_code_getscriptuseremail",
-      "asset_code_gettelegramhooksecret",
-      "asset_code_mayberunmonthlybackup",
-      "asset_code_parsegooglereviewmessage",
-      "asset_code_pruneoldbackups",
-      "asset_code_sendemailgooglereviewnotification",
-      "asset_code_settelegramwebhookurl",
-      "asset_code_testmonthlybackupnow",
-      "asset_code_testsendgooglereviewemail",
-      "asset_prd_9_1_panduan_setup_time_driven_trigger_pengingat_jadwal_12_jam_di_google_apps_script",
-      "asset_prd_9_2_sistem_peringatan_backup_otomatis_seluruh_sheet_tanggal_01_pukul_08_00_wib",
-      "asset_prd_9_3_sistem_kuota_jam_khitan_peringatan_kapasitas_pasien",
-      "asset_prd_9_panduan_operasional_integrasi",
-      "prd_9_1_panduan_setup_time_driven_trigger_pengingat_jadwal_12_jam_di_google_apps_script",
-      "prd_9_2_sistem_peringatan_backup_otomatis_seluruh_sheet_tanggal_01_pukul_08_00_wib",
-      "prd_9_3_sistem_kuota_jam_khitan_peringatan_kapasitas_pasien",
-      "prd_9_panduan_operasional_integrasi"
+      "asset_code_computedatasetversion",
+      "asset_code_doget",
+      "asset_code_fetchsuratmerokoktemplateblob",
+      "asset_code_formatdisplayphone",
+      "asset_code_getchunkedcache",
+      "asset_code_getkuotacacheversion",
+      "asset_code_getkuotajamsummary",
+      "asset_code_getsaransheet",
+      "asset_code_getstoreddatasetversions",
+      "asset_code_getuserrole",
+      "asset_code_handlesyncadmindata",
+      "asset_code_listdatabasebackups",
+      "asset_code_maskphonenumber",
+      "asset_code_putchunkedcache",
+      "asset_code_readbookingsfromsheet",
+      "asset_code_readgalerifromsheet",
+      "asset_code_readjumatberkahfromsheet",
+      "asset_code_readkunjunganfromsheet",
+      "asset_code_readreferensioptionscached",
+      "asset_code_readsaranfromsheet",
+      "asset_code_readusersfromsheet",
+      "asset_code_recordcachetelemetry",
+      "asset_code_resetcachetelemetry",
+      "asset_code_rowtojumatberkahobject",
+      "asset_code_setupgooglereviewtrigger",
+      "asset_code_updatedatasetversionmeta",
+      "asset_code_validatesessiontoken"
     ],
     "5": [
       "asset_code_checkloginratelimit",
@@ -212,6 +214,7 @@
       "asset_code_sanitizerunningtext",
       "asset_code_sanitizeslideshow",
       "asset_code_sanitizetestimoni",
+      "asset_code_setuphourlyremindertrigger",
       "asset_code_trashgalerifile",
       "asset_code_trashremovedmetodefiles",
       "asset_code_trashremovedprogramfiles",
@@ -221,6 +224,29 @@
       "asset_code_writejumatberkahrowstosheet"
     ],
     "6": [
+      "asset_code_authorizegmailaccess",
+      "asset_code_checkgooglereviewsandnotify",
+      "asset_code_checkgooglereviewstrigger",
+      "asset_code_checkupcomingkhitanreminders",
+      "asset_code_diagnosegooglereviews",
+      "asset_code_ensureautomatictriggers",
+      "asset_code_executedatabasebackup",
+      "asset_code_fetchgooglemapsreviewsrealtime",
+      "asset_code_getscriptuseremail",
+      "asset_code_mayberunmonthlybackup",
+      "asset_code_parsegooglereviewmessage",
+      "asset_code_pruneoldbackups",
+      "asset_code_testmonthlybackupnow",
+      "asset_prd_9_1_panduan_setup_time_driven_trigger_pengingat_jadwal_12_jam_di_google_apps_script",
+      "asset_prd_9_2_sistem_peringatan_backup_otomatis_seluruh_sheet_tanggal_01_pukul_08_00_wib",
+      "asset_prd_9_3_sistem_kuota_jam_khitan_peringatan_kapasitas_pasien",
+      "asset_prd_9_panduan_operasional_integrasi",
+      "prd_9_1_panduan_setup_time_driven_trigger_pengingat_jadwal_12_jam_di_google_apps_script",
+      "prd_9_2_sistem_peringatan_backup_otomatis_seluruh_sheet_tanggal_01_pukul_08_00_wib",
+      "prd_9_3_sistem_kuota_jam_khitan_peringatan_kapasitas_pasien",
+      "prd_9_panduan_operasional_integrasi"
+    ],
+    "7": [
       "asset_prd",
       "asset_prd_1_problem_statements",
       "asset_prd_2_goals_success_metrics",
@@ -242,7 +268,7 @@
       "asset_prd_technical_constraints",
       "asset_prd_ux_design"
     ],
-    "7": [
+    "8": [
       "prd",
       "prd_1_problem_statements",
       "prd_2_goals_success_metrics",
@@ -264,44 +290,7 @@
       "prd_technical_constraints",
       "prd_ux_design"
     ],
-    "8": [
-      "asset_code_clearhistorysheet",
-      "asset_code_createjsonresponse",
-      "asset_code_doget",
-      "asset_code_fetchsuratmerokoktemplateblob",
-      "asset_code_formatdisplayphone",
-      "asset_code_gethistorysheet",
-      "asset_code_getuserrole",
-      "asset_code_getuserssheet",
-      "asset_code_handleforgotpassword",
-      "asset_code_listdatabasebackups",
-      "asset_code_maskphonenumber",
-      "asset_code_readhistoryfromsheet",
-      "asset_code_readusersfromsheet",
-      "asset_code_setupgooglereviewtrigger",
-      "asset_code_setuphourlyremindertrigger",
-      "asset_code_testsendgooglereviewalert",
-      "asset_code_unauthorizedresponse"
-    ],
     "9": [
-      "asset_code_computedatasetversion",
-      "asset_code_getchunkedcache",
-      "asset_code_getgalerisheet",
-      "asset_code_getstoreddatasetversions",
-      "asset_code_handlesyncadmindata",
-      "asset_code_putchunkedcache",
-      "asset_code_readbookingsfromsheet",
-      "asset_code_readgalerifromsheet",
-      "asset_code_readjumatberkahfromsheet",
-      "asset_code_readkunjunganfromsheet",
-      "asset_code_readsaranfromsheet",
-      "asset_code_recordcachetelemetry",
-      "asset_code_resetcachetelemetry",
-      "asset_code_rowtojumatberkahobject",
-      "asset_code_updatedatasetversionmeta",
-      "asset_code_validatesessiontoken"
-    ],
-    "10": [
       "github_workflows_review_monitor",
       "github_workflows_review_monitor_check_reviews_name",
       "github_workflows_review_monitor_check_reviews_runs_on",
@@ -319,7 +308,7 @@
       "github_workflows_review_monitor_true_workflow_dispatch",
       "github_workflows_review_monitor_with_node_version"
     ],
-    "11": [
+    "10": [
       "github_workflows_deploy",
       "github_workflows_deploy_build_and_deploy_runs_on",
       "github_workflows_deploy_build_and_deploy_steps",
@@ -336,22 +325,7 @@
       "github_workflows_deploy_with_projectid",
       "github_workflows_deploy_with_repotoken"
     ],
-    "12": [
-      "asset_code_calculateusiatahun",
-      "asset_code_dopost_deletebookingrowbyid",
-      "asset_code_ensurebookingcolumns",
-      "asset_code_findbookingfortelegram",
-      "asset_code_generateuniquebookingid",
-      "asset_code_getsheet",
-      "asset_code_getupcomingbookingsgroupedbydate",
-      "asset_code_jumatberkahobjecttorow",
-      "asset_code_kunjunganobjecttorow",
-      "asset_code_normalizeymd",
-      "asset_code_sanitizespreadsheetformula",
-      "asset_code_searchbookingsbynamefortelegram",
-      "asset_code_topropercase"
-    ],
-    "13": [
+    "11": [
       "package",
       "package_description",
       "package_devdependencies",
@@ -366,7 +340,20 @@
       "package_version",
       "ref_playwright"
     ],
-    "14": [
+    "12": [
+      "asset_code_calculateusiatahun",
+      "asset_code_ensurebookingcolumns",
+      "asset_code_generateuniquebookingid",
+      "asset_code_getsheet",
+      "asset_code_getupcomingbookingsgroupedbydate",
+      "asset_code_jumatberkahobjecttorow",
+      "asset_code_kunjunganobjecttorow",
+      "asset_code_normalizeymd",
+      "asset_code_sanitizespreadsheetformula",
+      "asset_code_searchbookingsbynamefortelegram",
+      "asset_code_topropercase"
+    ],
+    "13": [
       "ref_https",
       "scripts_poll_reviews_direct",
       "scripts_poll_reviews_direct_fetchgasprocessedids",
@@ -378,6 +365,18 @@
       "scripts_poll_reviews_direct_sendtelegramnotification",
       "scripts_poll_reviews_direct_triggergaspoll",
       "scripts_poll_reviews_direct_triggergaspoll_doget"
+    ],
+    "14": [
+      "asset_code_bumpkuotacacheversion",
+      "asset_code_clearallservercaches",
+      "asset_code_clearhistorysheet",
+      "asset_code_dopost_deletebookingrowbyid",
+      "asset_code_gethistorysheet",
+      "asset_code_invalidatedataset",
+      "asset_code_invalidatereferensicache",
+      "asset_code_loghistory",
+      "asset_code_readhistoryfromsheet",
+      "asset_code_removechunkedcache"
     ],
     "15": [
       "asset_appsscript",
@@ -392,41 +391,52 @@
     ],
     "16": [
       "asset_code_generatekunjunganregister",
+      "asset_code_getgalerisheet",
       "asset_code_getkunjungansheet",
-      "asset_code_getkuotajamsummary",
       "asset_code_getreferensisheet",
-      "asset_code_getsaransheet",
       "asset_code_getspreadsheet",
       "asset_code_readreferensioptions",
       "asset_code_writekunjunganrowstosheet"
     ],
     "17": [
-      "asset_code_authenticateuser",
-      "asset_code_getjakartatimestamp",
-      "asset_code_getsettingssheet",
-      "asset_code_testsendtelegramalert",
-      "asset_code_verifypassword"
+      "asset_code_getalamatsheet",
+      "asset_code_readalamatoptions",
+      "asset_code_readandwarmalamatoptions",
+      "asset_code_safeputallcache",
+      "asset_code_warmalamatprovince"
+    ],
+    "18": [
+      "asset_code_createjsonresponse",
+      "asset_code_handleforgotpassword",
+      "asset_code_unauthorizedresponse"
+    ],
+    "19": [
+      "asset_code_ensuretelegramwebhookregistered",
+      "asset_code_gettelegramhooksecret",
+      "asset_code_settelegramwebhookurl"
     ]
   },
   "cohesion": {
     "0": 0.08502415458937199,
-    "1": 0.14444444444444443,
-    "2": 0.06116642958748222,
+    "1": 0.14482029598308668,
+    "2": 0.05897435897435897,
     "3": 0.09523809523809523,
-    "4": 0.11384615384615385,
-    "5": 0.10666666666666667,
-    "6": 0.1,
+    "4": 0.16524216524216523,
+    "5": 0.10153846153846154,
+    "6": 0.14761904761904762,
     "7": 0.1,
-    "8": 0.15441176470588236,
-    "9": 0.24166666666666667,
-    "10": 0.125,
-    "11": 0.13333333333333333,
-    "12": 0.21794871794871795,
-    "13": 0.16666666666666666,
-    "14": 0.32727272727272727,
+    "8": 0.1,
+    "9": 0.125,
+    "10": 0.13333333333333333,
+    "11": 0.16666666666666666,
+    "12": 0.2545454545454545,
+    "13": 0.32727272727272727,
+    "14": 0.24444444444444444,
     "15": 0.2222222222222222,
-    "16": 0.25,
-    "17": 0.4
+    "16": 0.2857142857142857,
+    "17": 0.5,
+    "18": 0.6666666666666666,
+    "19": 1.0
   },
   "gods": [
     {
@@ -440,13 +450,13 @@
       "degree": 53
     },
     {
-      "id": "asset_code_handletelegramwebhookupdate",
-      "label": "handleTelegramWebhookUpdate_()",
+      "id": "ref_playwright_test",
+      "label": "@playwright/test",
       "degree": 43
     },
     {
-      "id": "ref_playwright_test",
-      "label": "@playwright/test",
+      "id": "asset_code_handletelegramwebhookupdate",
+      "label": "handleTelegramWebhookUpdate_()",
       "degree": 43
     },
     {
@@ -462,7 +472,7 @@
     {
       "id": "asset_code_handlesyncadmindata",
       "label": "handleSyncAdminData()",
-      "degree": 19
+      "degree": 20
     },
     {
       "id": "asset_code_gettelegramconfig",
@@ -504,15 +514,15 @@
       "why": "inferred connection - not explicitly stated in source; crosses file types (code \u2194 doc); connects across different repos/directories; peripheral node `Commands` unexpectedly reaches hub `main()`"
     },
     {
-      "source": "9.1 Panduan Setup Time-Driven Trigger Pengingat Jadwal (< 12 Jam) di Google Apps Script",
-      "target": "checkUpcomingKhitanReminders()",
+      "source": "Architecture",
+      "target": "doGet()",
       "source_files": [
-        "prd.md",
+        "AGENTS.md",
         "asset/Code.gs"
       ],
       "confidence": "INFERRED",
       "relation": "references",
-      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; peripheral node `9.1 Panduan Setup Time-Driven Trigger Pengingat Jadwal (< 12 Jam) di Google Apps Script` unexpectedly reaches hub `checkUpcomingKhitanReminders()`"
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; bridges separate communities"
     },
     {
       "source": "Architecture",
@@ -526,15 +536,15 @@
       "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; bridges separate communities"
     },
     {
-      "source": "Architecture",
-      "target": "doGet()",
+      "source": "9.1 Panduan Setup Time-Driven Trigger Pengingat Jadwal (< 12 Jam) di Google Apps Script",
+      "target": "checkUpcomingKhitanReminders()",
       "source_files": [
-        "AGENTS.md",
+        "prd.md",
         "asset/Code.gs"
       ],
       "confidence": "INFERRED",
       "relation": "references",
-      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; bridges separate communities"
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; peripheral node `9.1 Panduan Setup Time-Driven Trigger Pengingat Jadwal (< 12 Jam) di Google Apps Script` unexpectedly reaches hub `checkUpcomingKhitanReminders()`"
     }
   ],
   "tokens": {
