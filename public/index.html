@@ -8375,18 +8375,7 @@
                                   <span class="sr-only">Cetak Sertifikat Khitan A4</span>
                                 </button>
 
-                                <!-- 5. Salin Review Google -->
-                                <button 
-                                  type="button" 
-                                  @click="copyReviewReplyTemplate(item)"
-                                  class="btn-press p-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition shadow-2xs inline-flex items-center justify-center"
-                                  title="Salin Review Google"
-                                >
-                                  <v-icon name="star" class="text-xs"></v-icon>
-                                  <span class="sr-only">Salin Review Google</span>
-                                </button>
-
-                                <!-- 6. Hapus Data Kunjungan -->
+                                <!-- 5. Hapus Data Kunjungan -->
                                 <button 
                                   type="button" 
                                   @click="deleteKunjunganConfirm(item)"
@@ -8614,18 +8603,7 @@
                                       <span class="sr-only">Cetak Sertifikat Khitan A4</span>
                                     </button>
 
-                                    <!-- 5. Salin Review -->
-                                    <button 
-                                      type="button" 
-                                      @click="copyReviewReplyTemplate(item)"
-                                      class="btn-press p-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition shadow-2xs flex items-center justify-center"
-                                      title="Salin Review Google"
-                                    >
-                                      <v-icon name="star" class="text-xs"></v-icon>
-                                      <span class="sr-only">Salin Review Google</span>
-                                    </button>
-
-                                    <!-- 6. Hapus Data -->
+                                    <!-- 5. Hapus Data -->
                                     <button 
                                       type="button" 
                                       @click="deleteKunjunganConfirm(item)"
@@ -8933,18 +8911,7 @@
                           <span>Sertifikat</span>
                         </button>
 
-                        <!-- 5. Salin Review -->
-                        <button 
-                          type="button" 
-                          @click="copyReviewReplyTemplate(item)"
-                          class="btn-press inline-flex items-center gap-1 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg transition shadow-2xs"
-                          title="Salin Review Google"
-                        >
-                          <v-icon name="star" class="text-xs mr-0.5"></v-icon>
-                          <span>Review</span>
-                        </button>
-
-                        <!-- 6. Hapus Data Kunjungan -->
+                        <!-- 5. Hapus Data Kunjungan -->
                         <button 
                           type="button" 
                           @click="deleteKunjunganConfirm(item)"
@@ -23495,52 +23462,6 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
           }
         };
 
-        const copyReviewReplyTemplate = async (item) => {
-          if (!item || !item.register) return;
-
-          const relasi = (item.hubunganKeluarga || '').toLowerCase();
-          const sapaan = relasi.indexOf('ayah') !== -1 ? 'Ayah' : 'Bunda';
-          const namaPj = item.namaPenanggungJawab || '-';
-          const namaAnanda = item.namaAnanda || '-';
-
-          const lines = [
-            'Assalamu’alaikum Warahmatullahi Wabarakatuh.',
-            '',
-            'Terima kasih kepada ' + sapaan + ' ' + namaPj + ' dan keluarga atas kepercayaan yang telah diberikan kepada Rumah Khitan Damai untuk mendampingi proses khitan Ananda ' + namaAnanda,
-            '',
-            'Alhamdulillah, kami bersyukur dapat menjadi bagian dari momen penting bagi Ananda dan keluarga. Semoga proses pemulihan berjalan lancar, Ananda selalu diberikan kesehatan, tumbuh menjadi anak yang sholeh, berbakti kepada kedua orang tua, serta meraih cita-cita yang diimpikan.',
-            '',
-            'Terima kasih atas ulasan dan kepercayaan yang diberikan kepada Rumah Khitan Damai. Dukungan Ayah/Bunda menjadi motivasi bagi kami untuk terus memberikan pelayanan yang nyaman, aman, dan ramah anak.',
-            '',
-            'Wassalamu’alaikum Warahmatullahi Wabarakatuh.',
-            '',
-            'Admin Rumah Khitan Damai'
-          ];
-
-          const text = lines.join('\n');
-
-          try {
-            if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
-              await navigator.clipboard.writeText(text);
-            } else {
-              const textArea = document.createElement('textarea');
-              textArea.value = text;
-              textArea.style.position = 'fixed';
-              textArea.style.left = '-9999px';
-              textArea.style.top = '0';
-              document.body.appendChild(textArea);
-              textArea.focus();
-              textArea.select();
-              document.execCommand('copy');
-              document.body.removeChild(textArea);
-            }
-            showToastNotification('Template Jawaban Google Review untuk ' + (item.namaAnanda || item.register) + ' berhasil disalin ke clipboard.');
-          } catch (e) {
-            console.error('Gagal menyalin template Google Review ke clipboard:', e);
-            showToastNotification('Gagal menyalin template ke clipboard.');
-          }
-        };
-
         const exportJumatWord = cetakSuratMerokok;
 
         // ================= PAGINASI GLOBAL COMPUTED & WATCHERS =================
@@ -25724,7 +25645,6 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
           sertifikatDocxBlob,
           openCetakSertifikat,
           unduhWordSertifikat,
-          copyReviewReplyTemplate,
           showPrintPreviewModal,
           printPreviewHtml,
           printPreviewTitle,

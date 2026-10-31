@@ -204,8 +204,8 @@ test('Verify Admin Kunjungan Compact Mode and Full 30-Column Grouped Mode', asyn
   await expect(fullRow.locator('button[title="Whatsapp Ucapan"]')).toBeVisible();
   await expect(fullRow.locator('button[title="Cetak Form Word A4 (4 Hal)"]')).toBeVisible();
   await expect(fullRow.locator('button[title="Cetak Sertifikat Khitan A4"]')).toBeVisible();
-  await expect(fullRow.locator('button[title="Salin Review Google"]')).toBeVisible();
   await expect(fullRow.locator('button[title="Hapus Data Kunjungan"]')).toBeVisible();
+  await expect(fullRow.locator('button[title="Salin Review Google"]')).toHaveCount(0);
 
   // 5. Kembalikan ke mode Ringkas
   await btnCompact.click();

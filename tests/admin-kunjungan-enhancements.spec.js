@@ -198,10 +198,10 @@ test('Verify Admin Kunjungan Enhancements: Status Bayar options, Quick Status Ch
   await expect(row1.locator('button[title="Whatsapp Ucapan"]')).toBeVisible();
   await expect(row1.locator('button[title="Cetak Form Word A4 (4 Hal)"]')).toBeVisible();
   await expect(row1.locator('button[title="Cetak Sertifikat Khitan A4"]')).toBeVisible();
-  await expect(row1.locator('button[title="Salin Review Google"]')).toBeVisible();
   await expect(row1.locator('button[title="Hapus Data Kunjungan"]')).toBeVisible();
 
-  // Tombol "Lihat Booking Terkait" telah dihapus dari kolom aksi Kunjungan
+  // Tombol "Salin Review Google" dan "Lihat Booking Terkait" tidak ada di kolom aksi Kunjungan
+  await expect(row1.locator('button[title="Salin Review Google"]')).toHaveCount(0);
   await expect(row1.locator('button[title="Lihat Booking Terkait"]')).toHaveCount(0);
 
   const row2 = page.locator('tr:has-text("KD2610250002")');
