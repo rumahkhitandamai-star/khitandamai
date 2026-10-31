@@ -495,6 +495,130 @@ function sendTelegramBookingNotification_(booking, source) {
 }
 
 /**
+ * Mengirim notifikasi URGENT ke Telegram Admin ketika ada pendaftaran baru
+ * dengan jadwal tindakan < 12 jam dari waktu pendaftaran (pendaftaran dadakan).
+ * Berbeda dengan reminder trigger 1 jam (yang mendeteksi semua booking < 12 jam),
+ * fungsi ini langsung memicu saat booking dibuat agar admin segera menindaklanjuti.
+ * @param {Object} booking - Data booking yang baru disimpan
+ * @return {Object} { success: boolean, diffHours?: number, skipped?: boolean, reason?: string }
+ */
+function checkAndSendUrgentBookingAlert_(booking) {
+  try {
+    const tglKhitan = normalizeYmd_(booking.tanggalKhitan || booking.tglKhitan);
+    if (!tglKhitan || tglKhitan.length < 10) {
+      return { success: false, skipped: true, reason: "Tanggal khitan kosong/tidak valid" };
+    }
+
+    const jamStr = String(booking.jamKhitan || "").trim() || "08:00";
+    const jamClean = jamStr.replace(".", ":");
+    const jamParts = jamClean.match(/(\d{1,2}):(\d{2})/);
+    const hour = jamParts ? parseInt(jamParts[1], 10) : 8;
+    const minute = jamParts ? parseInt(jamParts[2], 10) : 0;
+    const hourPad = hour < 10 ? "0" + hour : String(hour);
+    const minPad = minute < 10 ? "0" + minute : String(minute);
+
+    // Bangun target datetime di WIB (eksplisit +07:00, konsisten dengan checkAndSendUpcomingReminders_)
+    const targetIso = tglKhitan.substring(0, 10) + "T" + hourPad + ":" + minPad + ":00+07:00";
+    const targetMs = new Date(targetIso).getTime();
+    if (isNaN(targetMs)) {
+      return { success: false, skipped: true, reason: "Jadwal tidak valid" };
+    }
+
+    const nowMs = Date.now();
+    const diffHours = (targetMs - nowMs) / (1000 * 60 * 60);
+
+    // Hanya untuk jadwal mendesak: belum lewat (> 0) dan <= 12 jam ke depan
+    if (!(diffHours > 0 && diffHours <= 12)) {
+      return { success: false, skipped: true, reason: "Di luar rentang < 12 jam", diffHours: diffHours };
+    }
+
+    const config = getTelegramConfig_();
+    if (!config.botToken || !config.chatId) {
+      Logger.log("Peringatan: Telegram Bot Token atau Chat ID belum dikonfigurasi (urgent alert).");
+      return { success: false, reason: "Token atau Chat ID kosong" };
+    }
+
+    const id = booking.idBooking || booking.id || "-";
+    const namaAnanda = booking.namaAnanda || booking.namaAnak || "-";
+    const namaPj = booking.namaPenanggungJawab || booking.namaOrtu || "-";
+    const hubungan = booking.hubunganKeluarga || "Orang Tua / Wali";
+    const noHp = booking.nomorHp || booking.noHp || "-";
+    const tglFormatted = formatIndonesianDateStr_(tglKhitan);
+    const jamDisplay = formatJamDisplay_(jamStr);
+    const metode = booking.metodeKhitan || "-";
+
+    let sisaJamText;
+    if (diffHours < 1) {
+      sisaJamText = "🔴 ± " + Math.max(1, Math.round(diffHours * 60)) + " MENIT LAGI!";
+    } else {
+      sisaJamText = "🔴 ± " + Math.round(diffHours) + " JAM LAGI!";
+    }
+
+    const text = "🚨 <b>PENDAFTARAN DADAKAN (&lt; 12 JAM)</b> 🚨\n" +
+      "━━━━━━━━━━━━━━━━━━\n" +
+      "⚠️ <b>Perhatian:</b> Pendaftaran baru dengan jadwal tindakan SANGAT DEKAT!\n" +
+      "━━━━━━━━━━━━━━━━━━\n" +
+      "📋 <b>ID Booking:</b> <code>" + escapeTelegramHtml_(id) + "</code>\n" +
+      "👦 <b>Nama Ananda:</b> " + escapeTelegramHtml_(namaAnanda) + "\n" +
+      "👨‍👩‍👦 <b>Penanggung Jawab:</b> " + escapeTelegramHtml_(namaPj) + " (" + escapeTelegramHtml_(hubungan) + ")\n" +
+      "📱 <b>WhatsApp:</b> " + escapeTelegramHtml_(noHp) + "\n" +
+      "📅 <b>Jadwal Khitan:</b> " + escapeTelegramHtml_(tglFormatted) + " • Pukul " + escapeTelegramHtml_(jamDisplay) + " WIB\n" +
+      "✨ <b>Metode:</b> " + escapeTelegramHtml_(metode) + "\n" +
+      "⏳ <b>Sisa Waktu:</b> " + sisaJamText + "\n" +
+      "━━━━━━━━━━━━━━━━━━\n" +
+      "💡 <i>Segera hubungi keluarga pasien untuk konfirmasi kehadiran & kesiapan tindakan hari ini.</i>";
+
+    // Tombol: konfirmasi ke keluarga via WhatsApp (teks sapaan reminder)
+    const inlineButtons = [];
+    const cleanPhone = cleanPhoneForWa_(noHp);
+    if (cleanPhone) {
+      const waText = buildWaReminderText_({
+        namaPenanggungJawab: namaPj,
+        namaAnanda: namaAnanda,
+        tanggalKhitan: tglKhitan,
+        jamKhitan: jamDisplay,
+        hubunganKeluarga: hubungan
+      });
+      const waUrl = "https://api.whatsapp.com/send?phone=" + cleanPhone + "&text=" + encodeURIComponent(waText);
+      inlineButtons.push([{ text: "📞 Konfirmasi ke Keluarga via WA", url: waUrl }]);
+    }
+
+    const targetChatIds = getAdminTelegramChatIds_();
+    let anySuccess = false;
+    for (let c = 0; c < targetChatIds.length; c++) {
+      const aId = targetChatIds[c];
+      if (!aId) continue;
+      const payload = {
+        chat_id: aId,
+        text: text,
+        parse_mode: "HTML",
+        disable_notification: false,
+        disable_web_page_preview: true
+      };
+      if (inlineButtons.length > 0) {
+        payload.reply_markup = { inline_keyboard: inlineButtons };
+      }
+      const res = UrlFetchApp.fetch("https://api.telegram.org/bot" + config.botToken + "/sendMessage", {
+        method: "post",
+        contentType: "application/json",
+        payload: JSON.stringify(payload),
+        muteHttpExceptions: true
+      });
+      if (res.getResponseCode() === 200) anySuccess = true;
+    }
+
+    if (anySuccess) {
+      Logger.log("Notifikasi URGENT dadakan terkirim: " + id + " (" + namaAnanda + ") jadwal " +
+        tglKhitan + " " + hourPad + ":" + minPad + " (sisa " + diffHours.toFixed(2) + " jam)");
+    }
+    return { success: anySuccess, diffHours: diffHours };
+  } catch (err) {
+    Logger.log("checkAndSendUrgentBookingAlert_ error: " + err.toString());
+    return { success: false, error: err.toString() };
+  }
+}
+
+/**
  * Fungsi utilitas untuk uji coba kirim Telegram dari Apps Script Editor
  */
 function testSendTelegramAlert() {
@@ -10651,6 +10775,13 @@ function deleteBookingRowById_(bookingId) {
 
       // Kirim notifikasi otomatis ke Telegram Admin (081222531978)
       sendTelegramBookingNotification_(savedData, payload.token ? "Panel Admin" : "Akses Publik");
+
+      // 🚨 Notifikasi URGENT: pendaftaran dadakan dengan jadwal tindakan < 12 jam
+      try {
+        checkAndSendUrgentBookingAlert_(savedData);
+      } catch (urgentErr) {
+        Logger.log("Peringatan checkAndSendUrgentBookingAlert_: " + urgentErr.toString());
+      }
 
       return createJsonResponse({
         status: "success",
