@@ -440,13 +440,13 @@
       "degree": 53
     },
     {
-      "id": "ref_playwright_test",
-      "label": "@playwright/test",
+      "id": "asset_code_handletelegramwebhookupdate",
+      "label": "handleTelegramWebhookUpdate_()",
       "degree": 43
     },
     {
-      "id": "asset_code_handletelegramwebhookupdate",
-      "label": "handleTelegramWebhookUpdate_()",
+      "id": "ref_playwright_test",
+      "label": "@playwright/test",
       "degree": 43
     },
     {
@@ -504,15 +504,15 @@
       "why": "inferred connection - not explicitly stated in source; crosses file types (code \u2194 doc); connects across different repos/directories; peripheral node `Commands` unexpectedly reaches hub `main()`"
     },
     {
-      "source": "Architecture",
-      "target": "doGet()",
+      "source": "9.1 Panduan Setup Time-Driven Trigger Pengingat Jadwal (< 12 Jam) di Google Apps Script",
+      "target": "checkUpcomingKhitanReminders()",
       "source_files": [
-        "AGENTS.md",
+        "prd.md",
         "asset/Code.gs"
       ],
       "confidence": "INFERRED",
       "relation": "references",
-      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; bridges separate communities"
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; peripheral node `9.1 Panduan Setup Time-Driven Trigger Pengingat Jadwal (< 12 Jam) di Google Apps Script` unexpectedly reaches hub `checkUpcomingKhitanReminders()`"
     },
     {
       "source": "Architecture",
@@ -526,15 +526,15 @@
       "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; bridges separate communities"
     },
     {
-      "source": "9.1 Panduan Setup Time-Driven Trigger Pengingat Jadwal (< 12 Jam) di Google Apps Script",
-      "target": "checkUpcomingKhitanReminders()",
+      "source": "Architecture",
+      "target": "doGet()",
       "source_files": [
-        "prd.md",
+        "AGENTS.md",
         "asset/Code.gs"
       ],
       "confidence": "INFERRED",
       "relation": "references",
-      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; peripheral node `9.1 Panduan Setup Time-Driven Trigger Pengingat Jadwal (< 12 Jam) di Google Apps Script` unexpectedly reaches hub `checkUpcomingKhitanReminders()`"
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; bridges separate communities"
     }
   ],
   "tokens": {
