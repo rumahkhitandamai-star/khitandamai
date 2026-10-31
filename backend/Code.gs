@@ -4850,6 +4850,48 @@ const TESTIMONI_MAX_ITEMS = 5;
 const TESTIMONI_TEXT_MAX = 200;
 const DEFAULT_TESTIMONI = [];
 
+const FAQ_MAX_ITEMS = 20;
+const FAQ_QUESTION_MAX = 200;
+const FAQ_ANSWER_MAX = 1000;
+const DEFAULT_FAQ = [
+  {
+    id: "faq-1",
+    question: "Berapa usia ideal bagi Ananda untuk melakukan khitan?",
+    answer: "Khitan dapat dilakukan sejak usia bayi, anak-anak, hingga remaja. Waktu terbaik adalah saat Ananda sudah siap secara mental, atau sedini mungkin (usia bayi beberapa minggu/bulan) jika terdapat indikasi medis seperti fimosis atau infeksi saluran kemih berulang.",
+    active: true
+  },
+  {
+    id: "faq-2",
+    question: "Apakah proses khitan terasa sakit? Bagaimana metode biusnya?",
+    answer: "Rumah Khitan Damai mengutamakan kenyamanan maksimal dengan teknik bius ramah anak (minim nyeri tanpa jarum suntik konvensional). Selama tindakan, anak tetap tenang, santai, dan bisa sambil bermain game atau menonton video favorit.",
+    active: true
+  },
+  {
+    id: "faq-3",
+    question: "Berapa lama durasi proses tindakan dan masa penyembuhannya?",
+    answer: "Proses tindakan berjalan cepat, rata-rata 15 hingga 30 menit. Masa pemulihan luka umumnya berlangsung antara 3 hingga 7 hari tergantung metode khitan yang dipilih dan kedisiplinan perawatan paska tindakan.",
+    active: true
+  },
+  {
+    id: "faq-4",
+    question: "Apakah setelah khitan Ananda bisa langsung mandi dan beraktivitas?",
+    answer: "Ya! Dengan metode modern seperti Klem atau Sealer/Lem, Ananda bisa langsung mandi seperti biasa dan beraktivitas ringan tanpa khawatir perban basah atau luka terkena air.",
+    active: true
+  },
+  {
+    id: "faq-5",
+    question: "Apakah melayani khitan untuk kondisi khusus (bayi, anak gemuk, fimosis)?",
+    answer: "Tentu saja. Tenaga praktisi medis kami sangat berpengalaman menangani kondisi khusus seperti khitan bayi, fimosis, anak gemuk (tanpa perlu terapi hormon terlebih dahulu), hingga anak berkebutuhan khusus dengan pendekatan ramah anak.",
+    active: true
+  },
+  {
+    id: "faq-6",
+    question: "Bagaimana cara melakukan pendaftaran jadwal khitan secara online?",
+    answer: "Cukup klik tombol 'Daftar Sekarang' di menu Beranda atau tab Booking. Pilih tanggal dan jam pelaksanaan yang tersedia, lalu lengkapi data singkat Ananda. Sistem kami langsung menerbitkan ID Booking resmi tanpa perlu antre lama di klinik.",
+    active: true
+  }
+];
+
 /**
  * Memastikan kolom TIMESTAMP dan STATUS tersedia di sheet BOOKING
  * jika sheet awalnya dibuat dengan skema 20 kolom
@@ -5069,6 +5111,7 @@ function readSettings(forceRefresh) {
     metode: DEFAULT_METODE.slice(),
     program: Object.assign({}, DEFAULT_PROGRAM),
     testimoni: DEFAULT_TESTIMONI.slice(),
+    faq: DEFAULT_FAQ.slice(),
     kuota_jam: DEFAULT_KUOTA_JAM
   };
 
@@ -5080,6 +5123,7 @@ function readSettings(forceRefresh) {
     let hasReadMetode = false;
     let hasReadProgram = false;
     let hasReadTestimoni = false;
+    let hasReadFaq = false;
     let hasReadKuotaJam = false;
     for (let i = 0; i < values.length; i++) {
       const key = String(values[i][0] || "").trim();
@@ -5134,6 +5178,16 @@ function readSettings(forceRefresh) {
           if (Array.isArray(parsed)) {
             settings.testimoni = sanitizeTestimoni(parsed);
             hasReadTestimoni = true;
+          }
+        } catch (e) {
+          // Abaikan error parse, pakai default
+        }
+      } else if (key === "faq" && valStr !== "" && !hasReadFaq) {
+        try {
+          const parsed = JSON.parse(valStr);
+          if (Array.isArray(parsed)) {
+            settings.faq = sanitizeFaq(parsed);
+            hasReadFaq = true;
           }
         } catch (e) {
           // Abaikan error parse, pakai default
@@ -5414,6 +5468,34 @@ function sanitizeTestimoni(input) {
     });
   }
 
+  return clean;
+}
+
+/**
+ * Validasi dan normalisasi konfigurasi Tanya Jawab / FAQ publik
+ */
+function sanitizeFaq(input) {
+  if (!Array.isArray(input)) return [];
+  const clean = [];
+  for (let i = 0; i < input.length; i++) {
+    if (clean.length >= FAQ_MAX_ITEMS) break;
+    const raw = input[i];
+    if (!raw || typeof raw !== "object") continue;
+
+    const question = String(raw.question || "").trim().substring(0, FAQ_QUESTION_MAX);
+    const answer = String(raw.answer || "").trim().substring(0, FAQ_ANSWER_MAX);
+    if (!question || !answer) continue;
+
+    const id = String(raw.id || ("faq-" + (i + 1))).trim().substring(0, 50);
+    const active = raw.active !== false && raw.active !== "false";
+
+    clean.push({
+      id: id,
+      question: question,
+      answer: answer,
+      active: active
+    });
+  }
   return clean;
 }
 
@@ -9903,6 +9985,15 @@ function deleteBookingRowById_(bookingId) {
         savedSomething = true;
       }
 
+      // Simpan Tanya Jawab (FAQ) jika disertakan
+      if (data.faq !== undefined && Array.isArray(data.faq)) {
+        const cleanFaq = sanitizeFaq(data.faq);
+        upsertSettingRow(sheet, "faq", JSON.stringify(cleanFaq), now);
+        responseData.faq = cleanFaq;
+        savedMessages.push("tanya jawab (FAQ)");
+        savedSomething = true;
+      }
+
       // Simpan Kuota Jam Khitan jika disertakan
       const kuotaJamRaw = data.kuota_jam !== undefined ? data.kuota_jam : data.kuotaJam;
       if (kuotaJamRaw !== undefined && kuotaJamRaw !== null && kuotaJamRaw !== "") {
@@ -9916,7 +10007,7 @@ function deleteBookingRowById_(bookingId) {
       if (!savedSomething) {
         return createJsonResponse({
           status: "error",
-          message: "Data pengaturan yang valid (running_text, hero_card, slideshow, metode, program, testimoni, atau kuota_jam) wajib disertakan."
+          message: "Data pengaturan yang valid (running_text, hero_card, slideshow, metode, program, testimoni, faq, atau kuota_jam) wajib disertakan."
         });
       }
 

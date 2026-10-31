@@ -13,10 +13,10 @@
     "semantic_hash": "9b5e4d4606c71e30dbf22e199a20c0a5"
   },
   "asset/Code.gs": {
-    "mtime": 1793368599.1609755,
-    "seen": 1793369294.500791,
-    "ast_hash": "d0a14ea77e30d6056ab94adac815a28d",
-    "semantic_hash": "d0a14ea77e30d6056ab94adac815a28d",
+    "mtime": 1793404110.859899,
+    "seen": 1793404936.9824479,
+    "ast_hash": "c41f0d4eddc31840308729c7fd8cabd4",
+    "semantic_hash": "c41f0d4eddc31840308729c7fd8cabd4",
     "language": "language=.js"
   },
   "asset/appsscript.json": {
@@ -435,5 +435,11 @@
     "seen": 1793336173.6948462,
     "ast_hash": "b2fb04c9ffb7d2079a94a301e4812fe0",
     "semantic_hash": "b2fb04c9ffb7d2079a94a301e4812fe0"
+  },
+  "tests/faq-beranda.spec.js": {
+    "mtime": 1793404713.7153404,
+    "seen": 1793404936.9852183,
+    "ast_hash": "30e163d9f8250c2ad8a4ef9d943bf4d6",
+    "semantic_hash": "30e163d9f8250c2ad8a4ef9d943bf4d6"
   }
 }
