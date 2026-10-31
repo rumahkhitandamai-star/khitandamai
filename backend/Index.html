@@ -19691,6 +19691,14 @@
           const text = buildWaSambutanText(b);
           const url = 'https://wa.me/' + phone + '?text=' + encodeURIComponent(text);
           window.open(url, '_blank', 'noopener,noreferrer');
+
+          // Otomatis ubah status pendaftaran ke "Confirmed" saat WhatsApp Sambutan dikirim
+          // (hanya jika status saat ini masih Pending atau belum dikonfirmasi)
+          const targetId = String(b.idBooking || b.id || '').trim();
+          const curStatus = String(b.status || 'Pending').trim().toLowerCase();
+          if (targetId && (curStatus === 'pending' || curStatus === '')) {
+            handleStatusChange(targetId, 'Confirmed');
+          }
         };
 
         const copyWaReminderText = async () => {

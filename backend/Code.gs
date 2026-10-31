@@ -255,6 +255,13 @@ function isTelegramAdmin_(chatId, senderPhone, config) {
 }
 
 /**
+ * Mengambil URL deployment web app Google Apps Script yang aktif
+ */
+function getGasWebAppUrl_() {
+  return "https://script.google.com/macros/s/AKfycbwauluf8oZX58tJl14StNtwzknkB5jY8jI4Gofk_ssmhgXrBw7V-aNjYtYdPu-6yZs/exec";
+}
+
+/**
  * Format badge status booking untuk pesan Telegram
  */
 function formatStatusBadgeTelegram_(status) {
@@ -263,6 +270,7 @@ function formatStatusBadgeTelegram_(status) {
   if (lower === "selesai") return s + " 🏁";
   if (lower === "batal") return s + " ❌";
   if (lower === "pending" || lower.includes("menunggu")) return s + " ⏳";
+  if (lower === "confirmed") return s + " ✅";
   return s + " ✅";
 }
 
@@ -459,11 +467,16 @@ function sendTelegramBookingNotification_(booking, source) {
       disable_web_page_preview: true
     };
 
-    // Tambahkan tombol interaktif WhatsApp Sambutan jika nomor HP valid
+    // Tambahkan tombol interaktif WhatsApp Sambutan (dengan redirect tracking untuk auto-Confirmed)
     const cleanPhone = cleanPhoneForWa_(noHp);
     if (cleanPhone) {
-      const sambutanText = buildWaSambutanText_(booking);
-      const waUrl = "https://api.whatsapp.com/send?phone=" + cleanPhone + "&text=" + encodeURIComponent(sambutanText);
+      let waUrl = "";
+      if (idBooking && idBooking !== "-") {
+        waUrl = getGasWebAppUrl_() + "?action=waSambutan&id=" + encodeURIComponent(idBooking);
+      } else {
+        const sambutanText = buildWaSambutanText_(booking);
+        waUrl = "https://api.whatsapp.com/send?phone=" + cleanPhone + "&text=" + encodeURIComponent(sambutanText);
+      }
       payload.reply_markup = {
         inline_keyboard: [
           [
@@ -8102,6 +8115,111 @@ function doGet(e) {
       return HtmlService.createHtmlOutputFromFile('Index')
         .setTitle('Khitan Damai — Aku Berani Khitan')
         .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no')
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    }
+
+    // 0. Redirect tracking untuk kirim WhatsApp Sambutan dari Bot Telegram
+    // Mengubah status booking dari 'Pending' menjadi 'Confirmed' secara otomatis
+    // lalu melakukan instant redirect ke URL WhatsApp pendaftar.
+    if (action === "waSambutan") {
+      const bId = String(params.id || "").trim();
+      let targetWaUrl = "https://wa.me/6281222531978"; // Fallback ke nomor klinik
+      let bookingName = "";
+      let statusUpdated = false;
+
+      if (bId) {
+        try {
+          const sheet = getSheet();
+          const lastRow = sheet.getLastRow();
+          if (lastRow > 1) {
+            const idValues = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+            let rowIndex = -1;
+            for (let i = 0; i < idValues.length; i++) {
+              if (String(idValues[i][0] || "").trim() === bId) {
+                rowIndex = i + 2;
+                break;
+              }
+            }
+
+            if (rowIndex > 1) {
+              const rowVals = sheet.getRange(rowIndex, 1, 1, HEADERS.length).getValues()[0];
+              const curStatus = String(rowVals[21] || "Pending").trim();
+              const noHp = String(rowVals[14] || "");
+              const namaAnanda = String(rowVals[1] || "");
+              bookingName = namaAnanda;
+
+              // Bangun URL WhatsApp pendaftar
+              const cleanPhone = cleanPhoneForWa_(noHp);
+              if (cleanPhone) {
+                const bookingObj = {
+                  idBooking: bId,
+                  namaAnanda: namaAnanda,
+                  namaPenanggungJawab: String(rowVals[10] || ""),
+                  hubunganKeluarga: String(rowVals[13] || ""),
+                  tanggalKhitan: rowVals[5],
+                  jamKhitan: String(rowVals[6] || ""),
+                  metodeKhitan: String(rowVals[7] || "")
+                };
+                const waText = buildWaSambutanText_(bookingObj);
+                targetWaUrl = "https://api.whatsapp.com/send?phone=" + cleanPhone + "&text=" + encodeURIComponent(waText);
+              }
+
+              // Update status menjadi 'Confirmed' jika saat ini masih 'Pending' (atau belum terkonfirmasi)
+              const lowerStatus = curStatus.toLowerCase();
+              if (lowerStatus === "pending" || lowerStatus === "" || !curStatus) {
+                const statusColIndex = HEADERS.indexOf("STATUS") + 1;
+                sheet.getRange(rowIndex, statusColIndex > 0 ? statusColIndex : 22).setValue("Confirmed");
+                invalidateDataset_(SERVER_CACHE_KEYS.BOOKINGS, "bookings");
+                logHistory_({
+                  user: "Telegram Bot (WA Sambutan)",
+                  aksi: "UBAH",
+                  dataset: "BOOKINGS",
+                  idRecord: bId,
+                  ringkasan: "Status booking " + bId + " otomatis diubah ke Confirmed saat admin membuka link WA Sambutan",
+                  sumber: "telegram-bot"
+                });
+                statusUpdated = true;
+              }
+            }
+          }
+        } catch (trackErr) {
+          Logger.log("Peringatan action waSambutan: " + trackErr.toString());
+        }
+      }
+
+      // Sajikan halaman transisi cepat yang langsung redirect ke WhatsApp
+      const safeTargetUrl = escapeTelegramHtml_(targetWaUrl).replace(/"/g, "&quot;");
+      const statusNotice = statusUpdated
+        ? "✅ Status pendaftaran (" + escapeTelegramHtml_(bId) + ") berhasil diubah menjadi <b>Confirmed</b>."
+        : "Membuka WhatsApp untuk ananda " + escapeTelegramHtml_(bookingName || bId) + "...";
+
+      const html = '<!DOCTYPE html>' +
+        '<html><head><meta charset="utf-8">' +
+        '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+        '<meta http-equiv="refresh" content="0;url=' + safeTargetUrl + '">' +
+        '<title>Membuka WhatsApp Sambutan...</title>' +
+        '<style>' +
+        'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0fdf4; color: #166534; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; padding: 16px; box-sizing: border-box; text-align: center; }' +
+        '.card { background: #ffffff; border-radius: 16px; padding: 24px 20px; max-width: 380px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); border: 1px solid #bbf7d0; }' +
+        '.icon { font-size: 40px; margin-bottom: 12px; }' +
+        'h2 { font-size: 18px; margin: 0 0 8px 0; color: #047857; }' +
+        'p { font-size: 13px; color: #374151; margin: 0 0 16px 0; line-height: 1.5; }' +
+        '.btn { display: inline-block; background: #059669; color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; font-size: 14px; }' +
+        '</style>' +
+        '<script>' +
+        'window.location.href = "' + targetWaUrl.replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '";' +
+        '</script>' +
+        '</head><body>' +
+        '<div class="card">' +
+        '<div class="icon">💬✨</div>' +
+        '<h2>Membuka WhatsApp...</h2>' +
+        '<p>' + statusNotice + '<br><small style="color:#6b7280;">Jika WhatsApp tidak terbuka otomatis, sentuh tombol di bawah:</small></p>' +
+        '<a class="btn" href="' + safeTargetUrl + '">Buka WhatsApp Sekarang</a>' +
+        '</div>' +
+        '</body></html>';
+
+      return HtmlService.createHtmlOutput(html)
+        .setTitle('Membuka WhatsApp Sambutan...')
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
     }
 
