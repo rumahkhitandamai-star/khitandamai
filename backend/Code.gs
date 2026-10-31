@@ -101,7 +101,7 @@ const GALERI_HEADERS = [
   "FOTO"
 ];
 const GALERI_FOLDER_ID = "1Gr9HCvCmC42aPSDEdqpHRb-nSNWKLHqD";
-const GALERI_MAX_BYTES = 3 * 1024 * 1024; // 3MB
+const GALERI_MAX_BYTES = 5 * 1024 * 1024; // 5MB
 
 // Konfigurasi Cache Server Google Apps Script
 const SERVER_CACHE_KEYS = {
@@ -10672,7 +10672,7 @@ function deleteBookingRowById_(bookingId) {
       if (estimatedBytes > GALERI_MAX_BYTES) {
         return createJsonResponse({
           status: "error",
-          message: "Ukuran gambar melebihi batas maksimal 3MB."
+          message: "Ukuran gambar melebihi batas maksimal 5MB."
         });
       }
 
@@ -10681,7 +10681,7 @@ function deleteBookingRowById_(bookingId) {
         if (decodedBytes.length > GALERI_MAX_BYTES) {
           return createJsonResponse({
             status: "error",
-            message: "Ukuran gambar melebihi batas maksimal 3MB."
+            message: "Ukuran gambar melebihi batas maksimal 5MB."
           });
         }
 

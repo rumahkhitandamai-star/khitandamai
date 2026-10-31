@@ -450,13 +450,13 @@
       "degree": 53
     },
     {
-      "id": "asset_code_handletelegramwebhookupdate",
-      "label": "handleTelegramWebhookUpdate_()",
+      "id": "ref_playwright_test",
+      "label": "@playwright/test",
       "degree": 43
     },
     {
-      "id": "ref_playwright_test",
-      "label": "@playwright/test",
+      "id": "asset_code_handletelegramwebhookupdate",
+      "label": "handleTelegramWebhookUpdate_()",
       "degree": 43
     },
     {
