@@ -4,7 +4,7 @@ import path from 'path';
 test('Verify Admin Kunjungan Compact Mode and Full 30-Column Grouped Mode', async ({ page }) => {
   const filePath = 'file://' + path.resolve(__dirname, '../asset/Index.html').replace(/\\/g, '/');
 
-  const todayStr = '2026-10-29';
+  const todayStr = new Date().toISOString().slice(0, 10);
   const mockKunjungan = [
     {
       register: 'KD2610260001',
@@ -117,7 +117,7 @@ test('Verify Admin Kunjungan Compact Mode and Full 30-Column Grouped Mode', asyn
   await page.waitForTimeout(600);
 
   // 2. Ke Tab Kunjungan
-  const navKunjungan = page.locator('aside nav button').filter({ hasText: 'Jadwal Tindakan' });
+  const navKunjungan = page.locator('aside nav button').filter({ has: page.locator('span:text-is("Kunjungan")') });
   await expect(navKunjungan).toBeVisible();
   await navKunjungan.click();
   await page.waitForTimeout(600);

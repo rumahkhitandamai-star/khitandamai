@@ -82,6 +82,38 @@ test('Verify WhatsApp Ucapan template, age calculation, dynamic sapaan, and UI m
   }
 
   // ================= 3. PENGUJIAN MODAL UI DI TAB KUNJUNGAN =================
+  await page.route(/script\.google\.com/, async (route) => {
+    const request = route.request();
+    if (request.method() === 'POST') {
+      let payload = {};
+      try { payload = JSON.parse(request.postData() || '{}'); } catch (e) {}
+      if (payload.action === 'login') {
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            status: 'success',
+            data: {
+              no: 1,
+              username: 'denluckyman@gmail.com',
+              nama: 'Super Admin',
+              role: 'Super Admin',
+              token: 'mock-valid-token'
+            }
+          })
+        });
+      }
+    }
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        status: 'success',
+        data: []
+      })
+    });
+  });
+
   // Login sebagai pengelola
   await page.fill('input[placeholder*="admin atau email" i]', 'denluckyman@gmail.com');
   await page.fill('input[placeholder*="kata sandi" i]', '111111111');
