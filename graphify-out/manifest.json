@@ -447,5 +447,11 @@
     "seen": 1793492219.821157,
     "ast_hash": "bd909ef7f47e41c89aabab3df2a01258",
     "semantic_hash": "bd909ef7f47e41c89aabab3df2a01258"
+  },
+  "tests/wa-evaluasi-h2-kunjungan.spec.js": {
+    "mtime": 1793503117.7755833,
+    "seen": 1793503358.896557,
+    "ast_hash": "a8b22bbaf4bbba9f3f77ffa2de05fefd",
+    "semantic_hash": "a8b22bbaf4bbba9f3f77ffa2de05fefd"
   }
 }

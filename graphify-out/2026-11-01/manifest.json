@@ -245,10 +245,10 @@
     "semantic_hash": "43fc5ae818fed5bc939e9ff7e4db0cc5"
   },
   "tests/wa-ucapan-kunjungan.spec.js": {
-    "mtime": 1792853831.06899,
-    "seen": 1793014704.7561233,
-    "ast_hash": "2994a5b52f9e1f7094c54268d0302038",
-    "semantic_hash": "2994a5b52f9e1f7094c54268d0302038"
+    "mtime": 1793492029.7491436,
+    "seen": 1793492219.821157,
+    "ast_hash": "733d72e640c25014dfc03ca09a743c2f",
+    "semantic_hash": "733d72e640c25014dfc03ca09a743c2f"
   },
   "tests/whatsapp-fab.spec.js": {
     "mtime": 1792257253.2266273,
@@ -413,10 +413,10 @@
     "semantic_hash": "118ab084133655c53495defcfa8a2094"
   },
   "tests/admin-kunjungan-view-modes.spec.js": {
-    "mtime": 1793462386.8681607,
-    "seen": 1793463098.8644722,
-    "ast_hash": "95bea8ca9c6523647717c6983642c891",
-    "semantic_hash": "95bea8ca9c6523647717c6983642c891"
+    "mtime": 1793491954.9605088,
+    "seen": 1793492219.765113,
+    "ast_hash": "73240e78c64ab80a6da4583bdaef8c56",
+    "semantic_hash": "73240e78c64ab80a6da4583bdaef8c56"
   },
   "tests/sync-history-panel.spec.js": {
     "mtime": 1793237784.1225393,
@@ -441,5 +441,11 @@
     "seen": 1793404936.9852183,
     "ast_hash": "30e163d9f8250c2ad8a4ef9d943bf4d6",
     "semantic_hash": "30e163d9f8250c2ad8a4ef9d943bf4d6"
+  },
+  "tests/wa-evaluasi-kunjungan.spec.js": {
+    "mtime": 1793491721.1498275,
+    "seen": 1793492219.821157,
+    "ast_hash": "bd909ef7f47e41c89aabab3df2a01258",
+    "semantic_hash": "bd909ef7f47e41c89aabab3df2a01258"
   }
 }

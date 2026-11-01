@@ -3977,6 +3977,83 @@
       </div>
     </div>
 
+    <!-- 5c. Modal WhatsApp Evaluasi H+2 (Panel Admin) -->
+    <div 
+      v-if="showWaEvaluasiH2Modal" 
+      @click="closeWaEvaluasiH2Modal" 
+      class="admin-panel fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 transition-opacity duration-200"
+    >
+      <div 
+        class="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]" 
+        @click.stop
+      >
+        <!-- Modal Header -->
+        <div class="bg-gradient-to-r from-emerald-800 to-teal-800 text-white px-5 py-4 flex items-center justify-between shrink-0">
+          <div class="flex items-center gap-2">
+            <span class="text-xl"><v-icon name="whatsapp"></v-icon></span>
+            <div>
+              <h3 class="font-extrabold text-sm sm:text-base">WhatsApp Evaluasi H+2</h3>
+              <p class="text-[11px] text-teal-100">Kirim pesan kesan, masukan & ajakan ulasan Google H+2 setelah khitan</p>
+            </div>
+          </div>
+          <button 
+            type="button" 
+            @click="closeWaEvaluasiH2Modal" 
+            class="text-teal-200 hover:text-white p-1 rounded-lg transition"
+          >
+            <v-icon name="xmark"></v-icon>
+          </button>
+        </div>
+
+        <!-- Modal Body -->
+        <div class="p-4 sm:p-6 overflow-y-auto space-y-3">
+          <div class="flex items-center justify-between bg-teal-50/70 border border-teal-200/70 p-3 rounded-2xl text-xs">
+            <div>
+              <span class="text-[10px] text-slate-500 block">Tujuan Pengiriman</span>
+              <span class="font-bold text-slate-900 block">{{ activeWaEvaluasiH2Data?.namaPenanggungJawab || activeWaEvaluasiH2Data?.namaOrtu }} ({{ activeWaEvaluasiH2Data?.hubunganKeluarga || '-' }})</span>
+            </div>
+            <div class="text-right">
+              <span class="text-[10px] text-slate-500 block">Nomor HP (WhatsApp)</span>
+              <span class="font-mono font-bold text-teal-800 block">{{ activeWaEvaluasiH2Data?.nomorHp || activeWaEvaluasiH2Data?.noHp }}</span>
+            </div>
+          </div>
+
+          <label class="block text-xs font-bold text-slate-700">Pratinjau Pesan Template Evaluasi H+2:</label>
+          <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs text-slate-800 whitespace-pre-line max-h-80 overflow-y-auto font-sans leading-relaxed select-all">
+            {{ buildWaEvaluasiH2Text(activeWaEvaluasiH2Data) }}
+          </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="bg-slate-50 px-5 py-3 border-t border-slate-200 flex flex-wrap items-center justify-end gap-2 shrink-0">
+          <button 
+            type="button" 
+            @click="closeWaEvaluasiH2Modal" 
+            class="btn-press px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold text-xs transition"
+          >
+            Batal
+          </button>
+          <button 
+            type="button" 
+            @click="copyWaEvaluasiH2Text" 
+            class="btn-press px-4 py-2.5 rounded-xl border border-teal-300 bg-teal-50 hover:bg-teal-100 text-teal-800 font-bold text-xs flex items-center gap-1.5 transition"
+            title="Salin Teks Pesan ke Clipboard"
+          >
+            <v-icon name="star"></v-icon>
+            <span>Salin Teks</span>
+          </button>
+          <button 
+            type="button" 
+            @click="sendWaEvaluasiH2" 
+            class="btn-press px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-sm transition"
+          >
+            <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+            <span>Buka WhatsApp (Kirim Pesan)</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Modal Tambah Galeri Baru (Panel Admin) -->
     <div 
       v-if="showGalleryAddModal" 
@@ -8363,13 +8440,13 @@
                           <!-- Baris 1: Header Nama Kolom & Sorting -->
                           <tr>
                             <!-- 1. Aksi (Sticky Left) -->
-                            <th class="sticky left-0 bg-slate-100 z-40 p-2 text-center min-w-[200px] w-[200px] border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)] whitespace-nowrap">
+                            <th class="sticky left-0 bg-slate-100 z-40 p-2 text-center min-w-[230px] w-[230px] border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)] whitespace-nowrap">
                               AKSI
                             </th>
                             <!-- 2. REGISTER (Sticky Left) -->
                             <th 
                               @click="toggleKunjunganSort('register')"
-                              class="sticky left-[200px] bg-teal-100 text-tosca-900 z-40 p-2 min-w-[130px] w-[130px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] whitespace-nowrap cursor-pointer hover:bg-teal-200 transition select-none"
+                              class="sticky left-[230px] bg-teal-100 text-tosca-900 z-40 p-2 min-w-[130px] w-[130px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] whitespace-nowrap cursor-pointer hover:bg-teal-200 transition select-none"
                               title="Klik untuk mengubah urutan REGISTER"
                             >
                               <div class="inline-flex items-center gap-1">
@@ -8397,7 +8474,7 @@
                           <!-- Baris 2: Filter di Semua Header Kolom Ringkas -->
                           <tr class="bg-slate-50 border-t border-slate-200 text-[11px] font-normal">
                             <!-- Filter AKSI (Tombol Reset Filter) -->
-                            <th class="sticky left-0 bg-slate-100 z-40 p-1.5 text-center min-w-[200px] w-[200px] border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)] whitespace-nowrap">
+                            <th class="sticky left-0 bg-slate-100 z-40 p-1.5 text-center min-w-[230px] w-[230px] border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)] whitespace-nowrap">
                               <button 
                                 type="button" 
                                 @click="clearKunjunganColFilters"
@@ -8408,7 +8485,7 @@
                               </button>
                             </th>
                             <!-- Filter REGISTER (Sticky Left) -->
-                            <th class="sticky left-[200px] bg-teal-50 z-40 p-1.5 min-w-[130px] w-[130px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] whitespace-nowrap">
+                            <th class="sticky left-[230px] bg-teal-50 z-40 p-1.5 min-w-[130px] w-[130px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] whitespace-nowrap">
                               <input 
                                 v-model.trim="kunjunganColFilters.register"
                                 type="text"
@@ -8451,7 +8528,7 @@
                             <!-- 1. Aksi (Sticky Left, Semua Tombol Tampil Langsung) -->
                             <td 
                               :class="['z-20', kunjunganRowCellTone(item)]" 
-                              class="sticky left-0 py-2 px-1.5 text-center min-w-[200px] w-[200px] whitespace-nowrap border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)]"
+                              class="sticky left-0 py-2 px-1.5 text-center min-w-[230px] w-[230px] whitespace-nowrap border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)]"
                             >
                               <div class="inline-flex items-center gap-1">
                                 <!-- 1. Tombol Edit Utama -->
@@ -8488,6 +8565,19 @@
                                 >
                                   <v-icon name="clipboard-list" class="text-xs"></v-icon>
                                   <span class="sr-only">Whatsapp Evaluasi H+1</span>
+                                </button>
+                                <span v-else class="w-6 h-6 inline-block"></span>
+
+                                <!-- 2c. Pintasan WhatsApp Evaluasi H+2 -->
+                                <button 
+                                  type="button" 
+                                  v-if="item.nomorHp"
+                                  @click="openWaEvaluasiH2Modal(item)"
+                                  class="btn-press p-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg transition shadow-2xs inline-flex items-center justify-center"
+                                  title="Whatsapp Evaluasi H+2"
+                                >
+                                  <v-icon name="star" class="text-xs"></v-icon>
+                                  <span class="sr-only">Whatsapp Evaluasi H+2</span>
                                 </button>
                                 <span v-else class="w-6 h-6 inline-block"></span>
 
@@ -8531,7 +8621,7 @@
                             </td>
 
                             <!-- 2. REGISTER (Sticky Left) -->
-                            <td class="sticky left-[200px] bg-teal-50/90 hover:bg-teal-100/90 z-20 p-2 min-w-[130px] w-[130px] font-mono font-bold text-tosca-900 border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] whitespace-nowrap">
+                            <td class="sticky left-[230px] bg-teal-50/90 hover:bg-teal-100/90 z-20 p-2 min-w-[130px] w-[130px] font-mono font-bold text-tosca-900 border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] whitespace-nowrap">
                               {{ item.register }}
                             </td>
 
@@ -8732,6 +8822,21 @@
                                     </button>
                                     <div v-else class="p-1.5 bg-slate-100 dark:bg-slate-700 text-slate-300 dark:text-slate-500 rounded-lg flex items-center justify-center cursor-not-allowed" title="Nomor HP kosong">
                                       <v-icon name="clipboard-list" class="text-xs"></v-icon>
+                                    </div>
+
+                                    <!-- 2c. WhatsApp Evaluasi H+2 -->
+                                    <button 
+                                      type="button" 
+                                      v-if="item.nomorHp"
+                                      @click="openWaEvaluasiH2Modal(item)"
+                                      class="btn-press p-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg transition shadow-2xs flex items-center justify-center"
+                                      title="Whatsapp Evaluasi H+2"
+                                    >
+                                      <v-icon name="star" class="text-xs"></v-icon>
+                                      <span class="sr-only">Whatsapp Evaluasi H+2</span>
+                                    </button>
+                                    <div v-else class="p-1.5 bg-slate-100 dark:bg-slate-700 text-slate-300 dark:text-slate-500 rounded-lg flex items-center justify-center cursor-not-allowed" title="Nomor HP kosong">
+                                      <v-icon name="star" class="text-xs"></v-icon>
                                     </div>
 
                                     <!-- 3. Cetak Form Word -->
@@ -9052,6 +9157,18 @@
                         >
                           <v-icon name="clipboard-list" class="text-xs mr-0.5"></v-icon>
                           <span>Evaluasi H+1</span>
+                        </button>
+
+                        <!-- 2c. Whatsapp Evaluasi H+2 -->
+                        <button 
+                          type="button"
+                          v-if="item.nomorHp"
+                          @click="openWaEvaluasiH2Modal(item)"
+                          class="btn-press inline-flex items-center gap-1 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg transition shadow-2xs"
+                          title="Whatsapp Evaluasi H+2"
+                        >
+                          <v-icon name="star" class="text-xs mr-0.5"></v-icon>
+                          <span>Evaluasi H+2</span>
                         </button>
 
                         <!-- 3. Cetak Form Word -->
@@ -18855,6 +18972,8 @@
               closeWaUcapanModal();
             } else if (showWaEvaluasiModal.value) {
               closeWaEvaluasiModal();
+            } else if (showWaEvaluasiH2Modal.value) {
+              closeWaEvaluasiH2Modal();
             } else if (showGalleryAddModal.value) {
               closeGalleryAddModal();
             } else if (showGalleryEditModal.value) {
@@ -19761,15 +19880,17 @@
           }
         };
 
-        // ================= WHATSAPP SAMBUTAN, REMINDER, UCAPAN & EVALUASI H+1 =================
+        // ================= WHATSAPP SAMBUTAN, REMINDER, UCAPAN & EVALUASI =================
         const showWaSambutanModal = ref(false);
         const showWaReminderModal = ref(false);
         const showWaUcapanModal = ref(false);
         const showWaEvaluasiModal = ref(false);
+        const showWaEvaluasiH2Modal = ref(false);
         const activeWaSambutanData = ref(null);
         const activeWaReminderData = ref(null);
         const activeWaUcapanData = ref(null);
         const activeWaEvaluasiData = ref(null);
+        const activeWaEvaluasiH2Data = ref(null);
 
         const resolveSapaanWa = (hubungan) => {
           const h = String(hubungan || '').trim().toLowerCase();
@@ -20155,6 +20276,74 @@
           const k = activeWaEvaluasiData.value;
           const phone = cleanPhoneForWa(k.nomorHp || k.noHp);
           const text = buildWaEvaluasiText(k);
+          const url = 'https://wa.me/' + phone + '?text=' + encodeURIComponent(text);
+          window.open(url, '_blank', 'noopener,noreferrer');
+        };
+
+        const buildWaEvaluasiH2Text = (k) => {
+          if (!k) return '';
+          const relasi = resolveHubunganKeluarga(k.hubunganKeluarga);
+          const namaPj = k.namaPenanggungJawab || k.namaOrtu || '-';
+          const namaAnanda = k.namaAnanda || k.namaAnak || '-';
+
+          const lines = [
+            'Assalamu’alaikum Warahmatullahi Wabarakatuh 🌸',
+            '',
+            relasi + ' ' + namaPj + ', apa kabar? Semoga Ananda ' + namaAnanda + ' sehat dan lukanya pulih dengan baik 🤍',
+            '',
+            'Kami ingin mendengar kesan ' + relasi + ' selama mendampingi Ananda khitan di Rumah Khitan Damai — cukup balas pesan ini dengan singkat saja, misalnya apa yang paling berkesan atau yang menurut ' + relasi + ' masih perlu kami perbaiki. Masukan ' + relasi + ' sangat berarti untuk pelayanan kami ke depannya 🙏',
+            '',
+            'Bila berkenan, ' + relasi + ' juga bisa membagikan pengalamannya lewat ulasan Google di tautan ini:',
+            'https://g.page/r/CbVAUU-xn-ylEBM/review',
+            'Ulasan dari ' + relasi + ' membantu orang tua lain yang sedang mencari tempat khitan yang aman dan ramah anak.',
+            '',
+            'Satu hal lagi: bila ' + relasi + ' mengizinkan, kesan yang ditulis boleh kami tampilkan sebagai testimoni di media sosial Rumah Khitan Damai — nama akan kami tampilkan seizin ' + relasi + ' (boleh nama lengkap, boleh inisial saja, dan foto hanya bila diizinkan). Bila tidak berkenan, tidak apa-apa sama sekali 🌿',
+            '',
+            'Terima kasih banyak atas kepercayaannya. Semoga Ananda ' + namaAnanda + ' tumbuh sehat, sholeh, dan berani ✨',
+            '',
+            '💐 Hormat kami,',
+            'Admin Rumah Khitan Damai',
+            '🏥 khitandamai.my.id'
+          ];
+          return lines.join('\n');
+        };
+
+        const openWaEvaluasiH2Modal = (item) => {
+          activeWaEvaluasiH2Data.value = item;
+          showWaEvaluasiH2Modal.value = true;
+        };
+
+        const closeWaEvaluasiH2Modal = () => {
+          showWaEvaluasiH2Modal.value = false;
+          activeWaEvaluasiH2Data.value = null;
+        };
+
+        const copyWaEvaluasiH2Text = async () => {
+          if (!activeWaEvaluasiH2Data.value) return;
+          const text = buildWaEvaluasiH2Text(activeWaEvaluasiH2Data.value);
+          try {
+            if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
+              await navigator.clipboard.writeText(text);
+              showToastNotification('Teks WhatsApp Evaluasi H+2 berhasil disalin!');
+            } else {
+              const ta = document.createElement('textarea');
+              ta.value = text;
+              document.body.appendChild(ta);
+              ta.select();
+              document.execCommand('copy');
+              document.body.removeChild(ta);
+              showToastNotification('Teks WhatsApp Evaluasi H+2 berhasil disalin!');
+            }
+          } catch (e) {
+            showToastNotification('Gagal menyalin teks');
+          }
+        };
+
+        const sendWaEvaluasiH2 = () => {
+          if (!activeWaEvaluasiH2Data.value) return;
+          const k = activeWaEvaluasiH2Data.value;
+          const phone = cleanPhoneForWa(k.nomorHp || k.noHp);
+          const text = buildWaEvaluasiH2Text(k);
           const url = 'https://wa.me/' + phone + '?text=' + encodeURIComponent(text);
           window.open(url, '_blank', 'noopener,noreferrer');
         };
@@ -25289,6 +25478,11 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
           window.__kdCloseWaEvaluasiModal = closeWaEvaluasiModal;
           window.__kdSendWaEvaluasi = sendWaEvaluasi;
           window.__kdCopyWaEvaluasiText = copyWaEvaluasiText;
+          window.__kdBuildWaEvaluasiH2Text = buildWaEvaluasiH2Text;
+          window.__kdOpenWaEvaluasiH2Modal = openWaEvaluasiH2Modal;
+          window.__kdCloseWaEvaluasiH2Modal = closeWaEvaluasiH2Modal;
+          window.__kdSendWaEvaluasiH2 = sendWaEvaluasiH2;
+          window.__kdCopyWaEvaluasiH2Text = copyWaEvaluasiH2Text;
           window.__kdOpenWaReminderModal = openWaReminderModal;
           window.__kdCloseWaReminderModal = closeWaReminderModal;
           window.__kdSendWaReminder = sendWaReminder;
@@ -25627,10 +25821,12 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
           showWaReminderModal,
           showWaUcapanModal,
           showWaEvaluasiModal,
+          showWaEvaluasiH2Modal,
           activeWaSambutanData,
           activeWaReminderData,
           activeWaUcapanData,
           activeWaEvaluasiData,
+          activeWaEvaluasiH2Data,
           resolveSapaanWa,
           resolveHubunganKeluarga,
           buildWaSambutanText,
@@ -25638,6 +25834,7 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
           formatUsiaUcapan,
           buildWaUcapanText,
           buildWaEvaluasiText,
+          buildWaEvaluasiH2Text,
           openWaSambutanModal,
           closeWaSambutanModal,
           openWaReminderModal,
@@ -25646,14 +25843,18 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
           closeWaUcapanModal,
           openWaEvaluasiModal,
           closeWaEvaluasiModal,
+          openWaEvaluasiH2Modal,
+          closeWaEvaluasiH2Modal,
           copyWaSambutanText,
           copyWaReminderText,
           copyWaUcapanText,
           copyWaEvaluasiText,
+          copyWaEvaluasiH2Text,
           sendWaSambutan,
           sendWaReminder,
           sendWaUcapan,
           sendWaEvaluasi,
+          sendWaEvaluasiH2,
           lastSyncTime,
           lastKunjunganSyncTime,
           // History & Cache Kredensial
