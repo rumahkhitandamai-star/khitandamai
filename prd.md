@@ -258,7 +258,7 @@ Sistem pemantauan ulasan pelanggan baru di Google Business Profile / Google Revi
 1. **Pendaftaran Menu Perintah Telegram API (`setMyCommands`)**:
    - Mendukung registrasi menu shortcut terpisah melalui `registerTelegramBotCommands_()`:
      - **Scope Default (Pasien/Umum)**: `/start`, `/jadwal`, `/hariini`, `/besok`, `/cek`, `/bantuan`.
-     - **Scope Chat Khusus Admin**: `/jadwal`, `/hariini`, `/besok`, `/cekreminder`, `/cari`, `/statistik`, `/selesai`, `/konfirmasi`, `/batal`, `/10review`, `/statusbot`, `/backup`.
+     - **Scope Chat Khusus Admin**: `/jadwal`, `/hariini`, `/besok`, `/evaluasih1`, `/evaluasih2`, `/evaluasi`, `/cekreminder`, `/cari`, `/statistik`, `/selesai`, `/konfirmasi`, `/batal`, `/10review`, `/statusbot`, `/backup`.
    - Admin dapat memperbarui menu sewaktu-waktu dengan mengetik `/setcommands`.
 2. **Pencarian Pasien by Nama (`/cari <nama>`)**:
    - Admin dapat mencari riwayat pendaftaran berdasarkan substring nama anak atau penanggung jawab (`searchBookingsByNameForTelegram_`).
@@ -279,6 +279,12 @@ Sistem pemantauan ulasan pelanggan baru di Google Business Profile / Google Revi
      - **Reschedule (`cb_rs_*`)**: Memilih tanggal baru (7 hari ke depan), melihat ketersediaan slot jam & sisa kuota real-time via `getKuotaJamSummary_`, konfirmasi perubahan, dan sinkronisasi ke database Sheets. Dibatasi minimal H-24 sebelum jadwal semula.
      - **Batal Mandiri (`cb_cancel_*`)**: Membatalkan pendaftaran dengan konfirmasi ganda, melepaskan slot kuota untuk pasien lain, dan mengirimkan notifikasi instan ke Admin klinik.
    - Dilengkapi validasi otorisasi kepemilikan nomor WhatsApp terverifikasi dan `LockService` untuk integritas data.
+7. **Pengingat Evaluasi Pasca-Khitan H+1 & H+2 di Bot Telegram**:
+   - **Evaluasi H+1 (Khitan Kemarin)**: Perintah `/evaluasih1` memindai pasien dari sheet `KUNJUNGAN` yang melakukan tindakan khitan pada H-1. Menyajikan data pasien (Nama, Register, Penanggung Jawab, No WhatsApp, Metode Khitan) dan tombol *Inline Keyboard* langsung membuka WhatsApp (`https://wa.me/<noHp>?text=...`) dengan template evaluasi kondisi (nyeri/bengkak, keluhan perdarahan/demam, kelancaran BAK, dan kepatuhan obat).
+   - **Evaluasi H+2 (Khitan 2 Hari Lalu)**: Perintah `/evaluasih2` memindai pasien khitan pada H-2. Menyajikan daftar pasien dan tombol WhatsApp dengan template pesan kesan, masukan, ajakan memberikan ulasan Google (`https://g.page/r/CbVAUU-xn-ylEBM/review`), serta permohonan izin testimoni media sosial.
+   - **Rekap Gabungan (`/evaluasi`)**: Menampilkan ringkasan kedua kelompok pasien evaluasi H+1 dan H+2 dalam satu pesan dengan tombol akses cepat.
+   - **Pengingat Otomatis Pagi Hari (`maybeSendDailyEvaluasiReminder_`)**: Terintegrasi pada trigger 1 jam `checkUpcomingKhitanReminders`. Setiap pukul 08:00 - 10:00 WIB, bot otomatis mengirimkan ringkasan pasien evaluasi H+1 & H+2 beserta tombol WhatsApp ke chat Admin (idempoten per hari dengan key `KD_LAST_DAILY_EVALUASI_DATE`).
+   - Sapaan keluarga dinamis (`Ayah`, `Bunda`, `Kakek`, `Wali`, dll.) menggunakan fungsi `resolveHubunganKeluarga_` yang konsisten 100% dengan modal Kunjungan web panel.
    - Fungsi Editor Apps Script:
      - uthorizeGmailAccess(): Fungsi verifikasi otorisasi scope Gmail dan triggers, otomatis mengaktifkan pemicu 10 menit, mereset cache ulasan, dan langsung memindai serta mengirim ulasan yang ada.
      - sendEmailGoogleReviewNotification_(review, targetEmail): Fungsi pengiriman email notifikasi ulasan baru ke email terdaftar (denluckyman@gmail.com).

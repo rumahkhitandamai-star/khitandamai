@@ -1707,6 +1707,416 @@ function buildWaReminderText_(b) {
 }
 
 /**
+ * Menentukan panggilan relasi orang tua / penanggung jawab untuk pesan WhatsApp Evaluasi
+ * (Identik dengan resolveHubunganKeluarga di Panel Admin Web)
+ */
+function resolveHubunganKeluarga_(hubungan) {
+  const h = String(hubungan || "").trim();
+  if (!h) return "Ayah/Bunda";
+  const lower = h.toLowerCase();
+  if (["ayah", "bapak", "papa", "abi"].indexOf(lower) !== -1) return "Ayah";
+  if (["ibu", "bunda", "mama", "umi"].indexOf(lower) !== -1) return "Bunda";
+  if (["kakek", "nenek", "paman", "bibi", "wali"].indexOf(lower) !== -1) {
+    return h.charAt(0).toUpperCase() + h.slice(1).toLowerCase();
+  }
+  return h;
+}
+
+/**
+ * Menyusun template teks WhatsApp Evaluasi H+1 (identik dengan Panel Admin Kunjungan)
+ */
+function buildWaEvaluasiText_(k) {
+  if (!k) return "";
+  const relasi = resolveHubunganKeluarga_(k.hubunganKeluarga);
+  const namaPj = k.namaPenanggungJawab || k.namaOrtu || "-";
+  const namaAnanda = k.namaAnanda || k.namaAnak || "-";
+
+  const lines = [
+    "Assalamu'alaikum Warahmatullahi Wabarakatuh 🌸",
+    "",
+    relasi + " " + namaPj + ", bagaimana kabar Ananda " + namaAnanda + " hari ini? Semoga ananda lekas pulih, tetap nyaman, dan proses penyembuhannya berjalan lancar 🤍",
+    "",
+    "Kami dari Rumah Khitan Damai ingin menanyakan perkembangan kondisi ananda setelah tindakan khitan kemarin:",
+    "1. Apakah ananda masih merasakan nyeri atau bengkak pada area khitan?",
+    "2. Apakah ada keluhan lain seperti perdarahan atau demam?",
+    "3. Bagaimana dengan buang air kecilnya, apakah sudah lancar?",
+    "",
+    "Mohon dipastikan obat yang diberikan diminum secara teratur sesuai petunjuk ya " + relasi + ". Jika ada keluhan yang dirasa tidak biasa atau butuh konsultasi lebih lanjut, silakan langsung hubungi kami 🙏",
+    "",
+    "Semoga ananda segera sembuh total dan bisa kembali beraktivitas dengan ceria ✨",
+    "",
+    "💐 Salam hangat,",
+    "Admin Rumah Khitan Damai",
+    "🏥 khitandamai.my.id"
+  ];
+  return lines.join("\n");
+}
+
+/**
+ * Menyusun template teks WhatsApp Evaluasi H+2 (identik dengan Panel Admin Kunjungan)
+ */
+function buildWaEvaluasiH2Text_(k) {
+  if (!k) return "";
+  const relasi = resolveHubunganKeluarga_(k.hubunganKeluarga);
+  const namaPj = k.namaPenanggungJawab || k.namaOrtu || "-";
+  const namaAnanda = k.namaAnanda || k.namaAnak || "-";
+
+  const lines = [
+    "Assalamu’alaikum Warahmatullahi Wabarakatuh 🌸",
+    "",
+    relasi + " " + namaPj + ", apa kabar? Semoga Ananda " + namaAnanda + " sehat dan lukanya pulih dengan baik 🤍",
+    "",
+    "Kami ingin mendengar kesan " + relasi + " selama mendampingi Ananda khitan di Rumah Khitan Damai — cukup balas pesan ini dengan singkat saja, misalnya apa yang paling berkesan atau yang menurut " + relasi + " masih perlu kami perbaiki. Masukan " + relasi + " sangat berarti untuk pelayanan kami ke depannya 🙏",
+    "",
+    "Bila berkenan, " + relasi + " juga bisa membagikan pengalamannya lewat ulasan Google di tautan ini:",
+    "https://g.page/r/CbVAUU-xn-ylEBM/review",
+    "Ulasan dari " + relasi + " membantu orang tua lain yang sedang mencari tempat khitan yang aman dan ramah anak.",
+    "",
+    "Satu hal lagi: bila " + relasi + " mengizinkan, kesan yang ditulis boleh kami tampilkan sebagai testimoni di media sosial Rumah Khitan Damai — nama akan kami tampilkan seizin " + relasi + " (boleh nama lengkap, boleh inisial saja, dan foto hanya bila diizinkan). Bila tidak berkenan, tidak apa-apa sama sekali 🌿",
+    "",
+    "Terima kasih banyak atas kepercayaannya. Semoga Ananda " + namaAnanda + " tumbuh sehat, sholeh, dan berani ✨",
+    "",
+    "💐 Hormat kami,",
+    "Admin Rumah Khitan Damai",
+    "🏥 khitandamai.my.id"
+  ];
+  return lines.join("\n");
+}
+
+/**
+ * Mengambil daftar pasien dari sheet KUNJUNGAN berdasarkan selisih hari tanggal khitan (WIB)
+ * offsetDays = -1 untuk Evaluasi H+1 (khitan kemarin)
+ * offsetDays = -2 untuk Evaluasi H+2 (khitan 2 hari lalu)
+ */
+function getKunjunganEvaluasiItems_(offsetDays) {
+  offsetDays = typeof offsetDays === "number" ? offsetDays : -1;
+  const now = new Date();
+  const nowWibStr = Utilities.formatDate(now, "Asia/Jakarta", "yyyy-MM-dd'T'HH:mm:ss");
+  const datePart = nowWibStr.split("T")[0];
+  const parts = datePart.split("-");
+  const y = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10);
+  const d = parseInt(parts[2], 10);
+
+  const targetDateUtc = new Date(Date.UTC(y, m - 1, d + offsetDays, 12, 0, 0));
+  const targetYmd = Utilities.formatDate(targetDateUtc, "UTC", "yyyy-MM-dd");
+
+  let allKunjungan = [];
+  try {
+    allKunjungan = readKunjunganFromSheet(null, false) || [];
+  } catch (err) {
+    Logger.log("getKunjunganEvaluasiItems_ error reading sheet: " + err.toString());
+  }
+
+  const matched = [];
+  for (let i = 0; i < allKunjungan.length; i++) {
+    const k = allKunjungan[i];
+    if (k && k.tanggalKhitan === targetYmd) {
+      matched.push(k);
+    }
+  }
+
+  matched.sort(function(a, b) {
+    const jamA = String(a.jamKhitan || "").trim();
+    const jamB = String(b.jamKhitan || "").trim();
+    if (jamA && jamB && jamA !== jamB) {
+      return jamA.localeCompare(jamB);
+    }
+    return String(a.register || "").localeCompare(String(b.register || ""));
+  });
+
+  return {
+    targetYmd: targetYmd,
+    targetDateDisplay: formatIndonesianDateFull_(targetYmd),
+    items: matched
+  };
+}
+
+/**
+ * Membangun pesan & keyboard inline WhatsApp Evaluasi H+1 untuk Telegram Bot
+ */
+function buildTelegramEvaluasiH1Response_() {
+  const data = getKunjunganEvaluasiItems_(-1);
+  const items = data.items || [];
+  let text = "🌿 <b>DAFTAR EVALUASI H+1 (KHITAN KEMARIN)</b> 📋\n" +
+    "━━━━━━━━━━━━━━━━━━\n" +
+    "📅 <b>Tanggal Khitan:</b> " + escapeTelegramHtml_(data.targetDateDisplay) + "\n" +
+    "👥 <b>Total Pasien:</b> " + items.length + " pasien\n" +
+    "━━━━━━━━━━━━━━━━━━\n\n";
+
+  const buttons = [];
+  if (items.length > 0) {
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      const relasi = resolveHubunganKeluarga_(it.hubunganKeluarga);
+      const namaPj = it.namaPenanggungJawab || it.namaOrtu || "-";
+      const hp = it.nomorHp || "-";
+      const metode = it.metodeKhitan || "-";
+      const jamDisplay = (it.jamKhitan && it.jamKhitan !== "-") ? it.jamKhitan : "";
+
+      text += (i + 1) + ". 👦 <b>" + escapeTelegramHtml_(it.namaAnanda) + "</b> (<code>" + escapeTelegramHtml_(it.register) + "</code>)\n" +
+        "   👨‍👩‍👦 " + escapeTelegramHtml_(relasi) + " " + escapeTelegramHtml_(namaPj) + " (" + escapeTelegramHtml_(it.hubunganKeluarga || "-") + ")\n" +
+        "   📱 <code>" + escapeTelegramHtml_(hp) + "</code>" + (jamDisplay ? (" • 🕒 " + escapeTelegramHtml_(jamDisplay)) : "") + " • " + escapeTelegramHtml_(metode) + "\n\n";
+
+      const cleanPhone = cleanPhoneForWa_(it.nomorHp);
+      if (cleanPhone) {
+        const waText = buildWaEvaluasiText_(it);
+        const waUrl = "https://wa.me/" + cleanPhone + "?text=" + encodeURIComponent(waText);
+        buttons.push([
+          {
+            text: "🌿 WA Evaluasi H+1 • " + it.namaAnanda,
+            url: waUrl
+          }
+        ]);
+      }
+    }
+    text += "💡 <i>Sentuh tombol di bawah untuk membuka WhatsApp & mengirim pesan evaluasi kondisi H+1 langsung ke keluarga pasien.</i>";
+  } else {
+    text += "ℹ️ <i>Tidak ada data kunjungan khitan kemarin (" + escapeTelegramHtml_(data.targetDateDisplay) + ").</i>";
+  }
+
+  buttons.push([
+    { text: "⭐ Buka Evaluasi H+2", callback_data: "cb_evaluasi_h2" },
+    { text: "🔄 Muat Ulang", callback_data: "cb_evaluasi_h1" }
+  ]);
+
+  return {
+    text: text,
+    keyboard: { inline_keyboard: buttons }
+  };
+}
+
+/**
+ * Membangun pesan & keyboard inline WhatsApp Evaluasi H+2 untuk Telegram Bot
+ */
+function buildTelegramEvaluasiH2Response_() {
+  const data = getKunjunganEvaluasiItems_(-2);
+  const items = data.items || [];
+  let text = "⭐ <b>DAFTAR EVALUASI H+2 (KHITAN 2 HARI LALU)</b> 🌟\n" +
+    "━━━━━━━━━━━━━━━━━━\n" +
+    "📅 <b>Tanggal Khitan:</b> " + escapeTelegramHtml_(data.targetDateDisplay) + "\n" +
+    "👥 <b>Total Pasien:</b> " + items.length + " pasien\n" +
+    "━━━━━━━━━━━━━━━━━━\n\n";
+
+  const buttons = [];
+  if (items.length > 0) {
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      const relasi = resolveHubunganKeluarga_(it.hubunganKeluarga);
+      const namaPj = it.namaPenanggungJawab || it.namaOrtu || "-";
+      const hp = it.nomorHp || "-";
+      const metode = it.metodeKhitan || "-";
+      const jamDisplay = (it.jamKhitan && it.jamKhitan !== "-") ? it.jamKhitan : "";
+
+      text += (i + 1) + ". 👦 <b>" + escapeTelegramHtml_(it.namaAnanda) + "</b> (<code>" + escapeTelegramHtml_(it.register) + "</code>)\n" +
+        "   👨‍👩‍👦 " + escapeTelegramHtml_(relasi) + " " + escapeTelegramHtml_(namaPj) + " (" + escapeTelegramHtml_(it.hubunganKeluarga || "-") + ")\n" +
+        "   📱 <code>" + escapeTelegramHtml_(hp) + "</code>" + (jamDisplay ? (" • 🕒 " + escapeTelegramHtml_(jamDisplay)) : "") + " • " + escapeTelegramHtml_(metode) + "\n\n";
+
+      const cleanPhone = cleanPhoneForWa_(it.nomorHp);
+      if (cleanPhone) {
+        const waText = buildWaEvaluasiH2Text_(it);
+        const waUrl = "https://wa.me/" + cleanPhone + "?text=" + encodeURIComponent(waText);
+        buttons.push([
+          {
+            text: "⭐ WA Evaluasi H+2 • " + it.namaAnanda,
+            url: waUrl
+          }
+        ]);
+      }
+    }
+    text += "💡 <i>Sentuh tombol di bawah untuk membuka WhatsApp & mengirim pesan kesan, masukan & ajakan ulasan Google H+2 ke keluarga pasien.</i>";
+  } else {
+    text += "ℹ️ <i>Tidak ada data kunjungan khitan 2 hari lalu (" + escapeTelegramHtml_(data.targetDateDisplay) + ").</i>";
+  }
+
+  buttons.push([
+    { text: "🌿 Buka Evaluasi H+1", callback_data: "cb_evaluasi_h1" },
+    { text: "🔄 Muat Ulang", callback_data: "cb_evaluasi_h2" }
+  ]);
+
+  return {
+    text: text,
+    keyboard: { inline_keyboard: buttons }
+  };
+}
+
+/**
+ * Membangun ringkasan gabungan Evaluasi H+1 dan H+2 untuk Telegram Bot
+ */
+function buildTelegramEvaluasiCombinedResponse_() {
+  const h1Data = getKunjunganEvaluasiItems_(-1);
+  const h2Data = getKunjunganEvaluasiItems_(-2);
+  const h1Items = h1Data.items || [];
+  const h2Items = h2Data.items || [];
+
+  let text = "📋 <b>REKAP PENGINGAT EVALUASI PASIEN KHITAN</b> 🏥\n" +
+    "━━━━━━━━━━━━━━━━━━\n" +
+    "🌿 <b>Evaluasi H+1 (Khitan Kemarin):</b> " + h1Items.length + " pasien\n" +
+    "⭐ <b>Evaluasi H+2 (Khitan 2 Hari Lalu):</b> " + h2Items.length + " pasien\n" +
+    "━━━━━━━━━━━━━━━━━━\n\n";
+
+  const buttons = [];
+
+  text += "🌿 <b>EVALUASI H+1</b> (" + escapeTelegramHtml_(h1Data.targetDateDisplay) + "):\n";
+  if (h1Items.length > 0) {
+    for (let i = 0; i < h1Items.length; i++) {
+      const it = h1Items[i];
+      text += (i + 1) + ". 👦 <b>" + escapeTelegramHtml_(it.namaAnanda) + "</b> (<code>" + escapeTelegramHtml_(it.register) + "</code>)\n" +
+        "   📱 <code>" + escapeTelegramHtml_(it.nomorHp || "-") + "</code>\n";
+      const cleanPhone = cleanPhoneForWa_(it.nomorHp);
+      if (cleanPhone) {
+        buttons.push([{
+          text: "🌿 WA H+1 • " + it.namaAnanda,
+          url: "https://wa.me/" + cleanPhone + "?text=" + encodeURIComponent(buildWaEvaluasiText_(it))
+        }]);
+      }
+    }
+  } else {
+    text += "<i>Tidak ada pasien khitan kemarin.</i>\n";
+  }
+
+  text += "\n⭐ <b>EVALUASI H+2</b> (" + escapeTelegramHtml_(h2Data.targetDateDisplay) + "):\n";
+  if (h2Items.length > 0) {
+    for (let j = 0; j < h2Items.length; j++) {
+      const it = h2Items[j];
+      text += (j + 1) + ". 👦 <b>" + escapeTelegramHtml_(it.namaAnanda) + "</b> (<code>" + escapeTelegramHtml_(it.register) + "</code>)\n" +
+        "   📱 <code>" + escapeTelegramHtml_(it.nomorHp || "-") + "</code>\n";
+      const cleanPhone = cleanPhoneForWa_(it.nomorHp);
+      if (cleanPhone) {
+        buttons.push([{
+          text: "⭐ WA H+2 • " + it.namaAnanda,
+          url: "https://wa.me/" + cleanPhone + "?text=" + encodeURIComponent(buildWaEvaluasiH2Text_(it))
+        }]);
+      }
+    }
+  } else {
+    text += "<i>Tidak ada pasien khitan 2 hari lalu.</i>\n";
+  }
+
+  text += "\n💡 <i>Pilih tombol di bawah untuk membuka WhatsApp atau menampilkan detail per kategori:</i>";
+
+  buttons.push([
+    { text: "🌿 Tampilan Khusus H+1", callback_data: "cb_evaluasi_h1" },
+    { text: "⭐ Tampilan Khusus H+2", callback_data: "cb_evaluasi_h2" }
+  ]);
+
+  return {
+    text: text,
+    keyboard: { inline_keyboard: buttons }
+  };
+}
+
+/**
+ * Membangun pesan daily digest pengingat evaluasi pagi hari untuk Telegram Admin
+ */
+function buildTelegramEvaluasiDailyDigest_(h1Data, h2Data) {
+  const h1Items = (h1Data && h1Data.items) ? h1Data.items : [];
+  const h2Items = (h2Data && h2Data.items) ? h2Data.items : [];
+
+  let text = "☀️ <b>PENGINGAT PAGI EVALUASI PASIEN PASCA KHITAN</b> 🏥\n" +
+    "━━━━━━━━━━━━━━━━━━\n" +
+    "Selamat pagi Admin! Berikut daftar pasien yang siap dihubungi untuk evaluasi hari ini:\n\n";
+
+  const buttons = [];
+
+  if (h1Items.length > 0) {
+    text += "🌿 <b>EVALUASI H+1 (" + h1Items.length + " Pasien)</b>\n" +
+      "<i>Tanyakan pemulihan, nyeri/bengkak, BAK & ingatkan minum obat:</i>\n";
+    for (let i = 0; i < h1Items.length; i++) {
+      const it = h1Items[i];
+      text += (i + 1) + ". 👦 <b>" + escapeTelegramHtml_(it.namaAnanda) + "</b> (" + escapeTelegramHtml_(it.nomorHp || "-") + ")\n";
+      const cleanPhone = cleanPhoneForWa_(it.nomorHp);
+      if (cleanPhone) {
+        buttons.push([{
+          text: "🌿 WA H+1 • " + it.namaAnanda,
+          url: "https://wa.me/" + cleanPhone + "?text=" + encodeURIComponent(buildWaEvaluasiText_(it))
+        }]);
+      }
+    }
+    text += "\n";
+  }
+
+  if (h2Items.length > 0) {
+    text += "⭐ <b>EVALUASI H+2 (" + h2Items.length + " Pasien)</b>\n" +
+      "<i>Minta kesan, masukan & ajak memberikan ulasan Google:</i>\n";
+    for (let j = 0; j < h2Items.length; j++) {
+      const it = h2Items[j];
+      text += (j + 1) + ". 👦 <b>" + escapeTelegramHtml_(it.namaAnanda) + "</b> (" + escapeTelegramHtml_(it.nomorHp || "-") + ")\n";
+      const cleanPhone = cleanPhoneForWa_(it.nomorHp);
+      if (cleanPhone) {
+        buttons.push([{
+          text: "⭐ WA H+2 • " + it.namaAnanda,
+          url: "https://wa.me/" + cleanPhone + "?text=" + encodeURIComponent(buildWaEvaluasiH2Text_(it))
+        }]);
+      }
+    }
+    text += "\n";
+  }
+
+  text += "━━━━━━━━━━━━━━━━━━\n" +
+    "💡 <i>Sentuh tombol di bawah untuk langsung membuka WhatsApp dengan template pesan resmi.</i>";
+
+  buttons.push([
+    { text: "🌿 Menu H+1", callback_data: "cb_evaluasi_h1" },
+    { text: "⭐ Menu H+2", callback_data: "cb_evaluasi_h2" }
+  ]);
+
+  return {
+    text: text,
+    keyboard: { inline_keyboard: buttons }
+  };
+}
+
+/**
+ * Pengecekan otomatis harian pengingat evaluasi pagi (pukul 08:00 - 10:00 WIB)
+ * Dipanggil secara berkala oleh checkUpcomingKhitanReminders (setiap 1 jam)
+ */
+function maybeSendDailyEvaluasiReminder_() {
+  const now = new Date();
+  const nowWibStr = Utilities.formatDate(now, "Asia/Jakarta", "yyyy-MM-dd'T'HH:mm:ss");
+  const hour = parseInt(nowWibStr.split("T")[1].split(":")[0], 10);
+  const todayYmd = nowWibStr.split("T")[0];
+
+  // Hanya jalankan di pagi hari antara pukul 08:00 sampai 10:00 WIB
+  if (hour < 8 || hour >= 10) return;
+
+  const props = PropertiesService.getScriptProperties();
+  const lastSent = props ? props.getProperty("KD_LAST_DAILY_EVALUASI_DATE") : null;
+  if (lastSent === todayYmd) {
+    return; // Sudah diperiksa/dikirim hari ini
+  }
+
+  const h1Data = getKunjunganEvaluasiItems_(-1);
+  const h2Data = getKunjunganEvaluasiItems_(-2);
+
+  const totalH1 = (h1Data && h1Data.items) ? h1Data.items.length : 0;
+  const totalH2 = (h2Data && h2Data.items) ? h2Data.items.length : 0;
+
+  // Catat tanggal hari ini agar tidak berulang
+  if (props) {
+    props.setProperty("KD_LAST_DAILY_EVALUASI_DATE", todayYmd);
+  }
+
+  if (totalH1 === 0 && totalH2 === 0) {
+    return;
+  }
+
+  const adminChatIds = getAdminTelegramChatIds_();
+  if (!adminChatIds || adminChatIds.length === 0) return;
+
+  const notif = buildTelegramEvaluasiDailyDigest_(h1Data, h2Data);
+  for (let a = 0; a < adminChatIds.length; a++) {
+    const adminChatId = adminChatIds[a];
+    if (!adminChatId) continue;
+    try {
+      sendTelegramMessage_(adminChatId, notif.text, notif.keyboard);
+    } catch (e) {
+      Logger.log("Gagal mengirim daily evaluasi reminder ke admin " + adminChatId + ": " + e.toString());
+    }
+  }
+}
+
+/**
  * Mengirim pesan notifikasi peringatan jadwal < 12 Jam ke Telegram Admin
  */
 function sendTelegramReminderNotification_(item, diffHours) {
@@ -2030,6 +2440,11 @@ function checkUpcomingKhitanReminders() {
   } catch (revErr) {
     Logger.log("Peringatan: Gagal memeriksa Google Reviews: " + revErr.toString());
   }
+  try {
+    maybeSendDailyEvaluasiReminder_();
+  } catch (evalErr) {
+    Logger.log("Peringatan: Gagal memeriksa daily evaluasi reminder: " + evalErr.toString());
+  }
   return checkAndSendUpcomingReminders_();
 }
 
@@ -2181,6 +2596,9 @@ function registerTelegramBotCommands_() {
       { command: "jadwal", description: "Jadwal khitan mendatang" },
       { command: "hariini", description: "Jadwal khitan hari ini" },
       { command: "besok", description: "Jadwal khitan besok" },
+      { command: "evaluasih1", description: "Pasien H+1 & tombol WA Evaluasi" },
+      { command: "evaluasih2", description: "Pasien H+2 & tombol WA Evaluasi" },
+      { command: "evaluasi", description: "Rekap evaluasi H+1 & H+2" },
       { command: "cekreminder", description: "Pindai jadwal < 12 jam & tombol WA" },
       { command: "cari", description: "Cari data pasien berdasarkan nama" },
       { command: "statistik", description: "Ringkasan statistik pasien" },
@@ -3481,6 +3899,60 @@ function handleTelegramWebhookUpdate_(update) {
         sendTelegramMessage_(cbChatId, resText);
         return HtmlService.createHtmlOutput("OK");
       }
+      if (cbData === "cb_evaluasi_h1") {
+        if (!isAdmin) {
+          answerTelegramCallbackQuery_(cbId, "Khusus akun Admin.", true);
+          return HtmlService.createHtmlOutput("OK");
+        }
+        answerTelegramCallbackQuery_(cbId, "Memuat Evaluasi H+1...");
+        const resp = buildTelegramEvaluasiH1Response_();
+        const messageId = cb.message ? cb.message.message_id : null;
+        if (messageId) {
+          const editRes = editTelegramMessage_(cbChatId, messageId, resp.text, resp.keyboard);
+          if (!editRes || !editRes.success) {
+            sendTelegramMessage_(cbChatId, resp.text, resp.keyboard);
+          }
+        } else {
+          sendTelegramMessage_(cbChatId, resp.text, resp.keyboard);
+        }
+        return HtmlService.createHtmlOutput("OK");
+      }
+      if (cbData === "cb_evaluasi_h2") {
+        if (!isAdmin) {
+          answerTelegramCallbackQuery_(cbId, "Khusus akun Admin.", true);
+          return HtmlService.createHtmlOutput("OK");
+        }
+        answerTelegramCallbackQuery_(cbId, "Memuat Evaluasi H+2...");
+        const resp = buildTelegramEvaluasiH2Response_();
+        const messageId = cb.message ? cb.message.message_id : null;
+        if (messageId) {
+          const editRes = editTelegramMessage_(cbChatId, messageId, resp.text, resp.keyboard);
+          if (!editRes || !editRes.success) {
+            sendTelegramMessage_(cbChatId, resp.text, resp.keyboard);
+          }
+        } else {
+          sendTelegramMessage_(cbChatId, resp.text, resp.keyboard);
+        }
+        return HtmlService.createHtmlOutput("OK");
+      }
+      if (cbData === "cb_evaluasi_all") {
+        if (!isAdmin) {
+          answerTelegramCallbackQuery_(cbId, "Khusus akun Admin.", true);
+          return HtmlService.createHtmlOutput("OK");
+        }
+        answerTelegramCallbackQuery_(cbId, "Memuat Rekap Evaluasi...");
+        const resp = buildTelegramEvaluasiCombinedResponse_();
+        const messageId = cb.message ? cb.message.message_id : null;
+        if (messageId) {
+          const editRes = editTelegramMessage_(cbChatId, messageId, resp.text, resp.keyboard);
+          if (!editRes || !editRes.success) {
+            sendTelegramMessage_(cbChatId, resp.text, resp.keyboard);
+          }
+        } else {
+          sendTelegramMessage_(cbChatId, resp.text, resp.keyboard);
+        }
+        return HtmlService.createHtmlOutput("OK");
+      }
       if (cbData.startsWith("cb_status:")) {
         const bId = cbData.replace("cb_status:", "").trim();
         answerTelegramCallbackQuery_(cbId, "Mencari " + bId + "...");
@@ -3823,6 +4295,7 @@ function handleTelegramWebhookUpdate_(update) {
       keyboard: [
         [{ text: "📅 Jadwal Mendatang" }, { text: "🔍 Cek Status Booking" }],
         [{ text: "📅 Hari Ini" }, { text: "⚡ Jadwal Besok" }],
+        [{ text: "🌿 Evaluasi H+1" }, { text: "⭐ Evaluasi H+2" }],
         [{ text: "⭐ 10 Google Review Terbaru" }, { text: "⏰ Cek Reminder (< 12 Jam)" }],
         [{ text: "📊 Statistik Khitan" }, { text: "💾 Backup Database" }],
         [{ text: "ℹ️ Bantuan & Info" }]
@@ -3954,6 +4427,9 @@ function handleTelegramWebhookUpdate_(update) {
           "📅 <b>/jadwal</b> — Lihat Jadwal Khitan Mendatang\n" +
           "📅 <b>/hariini</b> — Lihat Jadwal Khitan Hari Ini\n" +
           "⚡ <b>/besok</b> — Lihat Jadwal Khitan Besok (Lengkap dengan Tombol WhatsApp Reminder)\n" +
+          "🌿 <b>/evaluasih1</b> — Pasien H+1 & Tombol WhatsApp Evaluasi Kondisi\n" +
+          "⭐ <b>/evaluasih2</b> — Pasien H+2 & Tombol WhatsApp Evaluasi & Google Review\n" +
+          "📋 <b>/evaluasi</b> — Rekap Pasien Evaluasi H+1 & H+2\n" +
           "⏰ <b>/cekreminder</b> — Pindai jadwal khitan &lt; 12 jam\n" +
           "🔎 <b>/cari &lt;nama&gt;</b> — Cari pasien berdasarkan nama\n" +
           "📊 <b>/statistik</b> — Ringkasan total & status pasien\n" +
@@ -3980,14 +4456,30 @@ function handleTelegramWebhookUpdate_(update) {
       }
 
       welcomeText += "\n📞 <i>Pusat Bantuan WhatsApp: 081222531978</i>";
-      const startInlineButtons = isAuthorized ? {
-        inline_keyboard: [
-          [
-            { text: "📅 Jadwal Hari Ini", callback_data: "cb_jadwal_today" },
-            { text: "⚡ Jadwal Besok", callback_data: "cb_jadwal_besok" }
+      let startInlineButtons = null;
+      if (isAdmin) {
+        startInlineButtons = {
+          inline_keyboard: [
+            [
+              { text: "📅 Jadwal Hari Ini", callback_data: "cb_jadwal_today" },
+              { text: "⚡ Jadwal Besok", callback_data: "cb_jadwal_besok" }
+            ],
+            [
+              { text: "🌿 Evaluasi H+1", callback_data: "cb_evaluasi_h1" },
+              { text: "⭐ Evaluasi H+2", callback_data: "cb_evaluasi_h2" }
+            ]
           ]
-        ]
-      } : null;
+        };
+      } else if (isAuthorized) {
+        startInlineButtons = {
+          inline_keyboard: [
+            [
+              { text: "📅 Jadwal Hari Ini", callback_data: "cb_jadwal_today" },
+              { text: "⚡ Jadwal Besok", callback_data: "cb_jadwal_besok" }
+            ]
+          ]
+        };
+      }
       sendTelegramMessage_(chatId, welcomeText, startInlineButtons || mainKeyboard);
       return HtmlService.createHtmlOutput("OK");
     }
@@ -4114,6 +4606,44 @@ function handleTelegramWebhookUpdate_(update) {
       }
 
       sendTelegramMessage_(chatId, resText, inlineButtons || mainKeyboard);
+      return HtmlService.createHtmlOutput("OK");
+    }
+
+    // 1b-2. Perintah Evaluasi H+1 (Khusus Admin)
+    if (lowerText === "/evaluasih1" || lowerText === "/evaluasi1" || lowerText === "evaluasih1" || lowerText === "evaluasi1" ||
+        lowerText === "🌿 evaluasi h+1" || lowerText === "evaluasi h+1" || lowerText === "evaluasi h1" || lowerText === "/evaluasi_h1") {
+      if (!isAdmin) {
+        sendTelegramMessage_(chatId, "⛔ <b>Akses Khusus Admin</b>\nPerintah evaluasi pasien khitan hanya dapat diakses oleh akun pengelola / Admin Khitan Damai.", mainKeyboard);
+        return HtmlService.createHtmlOutput("OK");
+      }
+
+      const resp = buildTelegramEvaluasiH1Response_();
+      sendTelegramMessage_(chatId, resp.text, resp.keyboard || mainKeyboard);
+      return HtmlService.createHtmlOutput("OK");
+    }
+
+    // 1b-3. Perintah Evaluasi H+2 (Khusus Admin)
+    if (lowerText === "/evaluasih2" || lowerText === "/evaluasi2" || lowerText === "evaluasih2" || lowerText === "evaluasi2" ||
+        lowerText === "⭐ evaluasi h+2" || lowerText === "evaluasi h+2" || lowerText === "evaluasi h2" || lowerText === "/evaluasi_h2") {
+      if (!isAdmin) {
+        sendTelegramMessage_(chatId, "⛔ <b>Akses Khusus Admin</b>\nPerintah evaluasi pasien khitan hanya dapat diakses oleh akun pengelola / Admin Khitan Damai.", mainKeyboard);
+        return HtmlService.createHtmlOutput("OK");
+      }
+
+      const resp = buildTelegramEvaluasiH2Response_();
+      sendTelegramMessage_(chatId, resp.text, resp.keyboard || mainKeyboard);
+      return HtmlService.createHtmlOutput("OK");
+    }
+
+    // 1b-4. Perintah Rekap Evaluasi Pasien Khitan (Khusus Admin)
+    if (lowerText === "/evaluasi" || lowerText === "evaluasi" || lowerText === "📋 evaluasi" || lowerText === "pengingat evaluasi") {
+      if (!isAdmin) {
+        sendTelegramMessage_(chatId, "⛔ <b>Akses Khusus Admin</b>\nPerintah evaluasi pasien khitan hanya dapat diakses oleh akun pengelola / Admin Khitan Damai.", mainKeyboard);
+        return HtmlService.createHtmlOutput("OK");
+      }
+
+      const resp = buildTelegramEvaluasiCombinedResponse_();
+      sendTelegramMessage_(chatId, resp.text, resp.keyboard || mainKeyboard);
       return HtmlService.createHtmlOutput("OK");
     }
 
@@ -8567,6 +9097,39 @@ function doGet(e) {
       return createJsonResponse({
         status: "success",
         message: res
+      });
+    }
+
+    if (action === "getEvaluasiH1") {
+      if (!validateSessionToken(params.token)) {
+        return unauthorizedResponse();
+      }
+      const data = getKunjunganEvaluasiItems_(-1);
+      return createJsonResponse({
+        status: "success",
+        data: data
+      });
+    }
+
+    if (action === "getEvaluasiH2") {
+      if (!validateSessionToken(params.token)) {
+        return unauthorizedResponse();
+      }
+      const data = getKunjunganEvaluasiItems_(-2);
+      return createJsonResponse({
+        status: "success",
+        data: data
+      });
+    }
+
+    if (action === "testEvaluasiReminder") {
+      if (!validateSessionToken(params.token)) {
+        return unauthorizedResponse();
+      }
+      maybeSendDailyEvaluasiReminder_();
+      return createJsonResponse({
+        status: "success",
+        message: "Trigger daily evaluasi reminder berhasil dijalankan"
       });
     }
 
