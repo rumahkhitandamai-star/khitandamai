@@ -67,6 +67,17 @@ test('Verify Kontak menu on bottom nav: position, logo, address, whatsapp, email
   await expect(emailLink).toBeVisible();
   await expect(page.locator('text=rumahkhitandamai@gmail.com')).toBeVisible();
 
+  // 9b. Verifikasi Instagram & Facebook Links (Media Sosial Resmi)
+  const igLink = page.locator('a[href="https://www.instagram.com/rumahkhitandamai"]');
+  await expect(igLink).toBeVisible();
+  await expect(igLink).toContainText('@rumahkhitandamai');
+  await expect(igLink.locator('svg')).toBeVisible();
+
+  const fbLink = page.locator('a[href="https://www.facebook.com/RumahKhitanDamai"]');
+  await expect(fbLink).toBeVisible();
+  await expect(fbLink).toContainText('Rumah Khitan Damai');
+  await expect(fbLink.locator('svg')).toBeVisible();
+
   // 10. Verifikasi Embed Google Maps iframe & link resmi baru
   const mapIframe = page.locator('iframe[title*="Peta Lokasi Rumah Khitan Damai"]');
   await expect(mapIframe).toBeVisible();

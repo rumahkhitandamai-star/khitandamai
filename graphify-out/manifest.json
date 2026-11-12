@@ -179,10 +179,10 @@
     "semantic_hash": "e2f10cd3b8e096074a555611f44627bf"
   },
   "tests/kontak-menu.spec.js": {
-    "mtime": 1792748898.3506923,
-    "seen": 1793014704.7539053,
-    "ast_hash": "eb3324d89f492ef7a50d1240a1ebd402",
-    "semantic_hash": "eb3324d89f492ef7a50d1240a1ebd402"
+    "mtime": 1794512391.0335412,
+    "seen": 1794513144.7326002,
+    "ast_hash": "1bccd8cdab87d2e136267d630557fa62",
+    "semantic_hash": "1bccd8cdab87d2e136267d630557fa62"
   },
   "tests/metode-slider.spec.js": {
     "mtime": 1794507762.6569421,
