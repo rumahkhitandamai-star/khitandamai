@@ -4434,12 +4434,12 @@
         <!-- Foto Slideshow Keunggulan Layanan -->
         <div class="space-y-3">
           <!-- Slideshow Keunggulan Layanan -->
-          <div v-if="keunggulanSlides.length > 0" class="relative overflow-hidden rounded-2xl shadow-lg aspect-square bg-slate-100">
+          <div v-if="keunggulanSlides.length > 0" class="relative overflow-hidden rounded-2xl shadow-lg bg-slate-100 grid min-h-[200px]">
             <!-- Slide Images with Crossfade -->
             <div 
               v-for="(slide, idx) in keunggulanSlides" 
               :key="idx" 
-              class="absolute inset-0 transition-opacity duration-700 ease-in-out cursor-zoom-in flex items-center justify-center"
+              class="col-start-1 row-start-1 w-full transition-opacity duration-700 ease-in-out cursor-zoom-in flex items-center justify-center"
               :class="currentKeunggulanIndex === idx ? 'opacity-100 z-10 pointer-events-auto' : 'opacity-0 z-0 pointer-events-none'"
               @click="openKeunggulanLightbox(idx)"
               title="Klik untuk memperbesar gambar"
@@ -4447,7 +4447,7 @@
               <img 
                 :src="slide.src" 
                 :alt="slide.alt" 
-                class="w-full h-full object-contain"
+                class="w-full h-auto block object-contain"
                 :loading="idx === 0 ? 'eager' : 'lazy'"
               >
             </div>

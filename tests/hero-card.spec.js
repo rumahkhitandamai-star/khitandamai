@@ -35,10 +35,16 @@ test('Verify Hero Card is positioned above Slideshow and functions correctly', a
   expect(daftarBox.height).toBe(44);
 
   // Verify Slideshow functionality on second child
-  // 0. Verify slide images use object-contain (not cropped by object-cover)
+  // 0. Verify slide images fill width and adjust height naturally (not cropped by aspect-square/object-cover)
+  const slideContainer = secondChild.locator('> div').first();
+  if (await slideContainer.count() > 0) {
+    await expect(slideContainer).not.toHaveClass(/aspect-square/);
+  }
   const slideImg = secondChild.locator('img').first();
   if (await slideImg.count() > 0) {
     await expect(slideImg).toHaveClass(/object-contain/);
+    await expect(slideImg).toHaveClass(/w-full/);
+    await expect(slideImg).toHaveClass(/h-auto/);
     await expect(slideImg).not.toHaveClass(/object-cover/);
   }
 
