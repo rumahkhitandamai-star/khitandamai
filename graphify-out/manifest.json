@@ -185,10 +185,10 @@
     "semantic_hash": "eb3324d89f492ef7a50d1240a1ebd402"
   },
   "tests/metode-slider.spec.js": {
-    "mtime": 1792243373.8230748,
-    "seen": 1793014704.7551143,
-    "ast_hash": "f3bd29143c2a094a97bb82327dd02550",
-    "semantic_hash": "f3bd29143c2a094a97bb82327dd02550"
+    "mtime": 1794507762.6569421,
+    "seen": 1794508588.6246595,
+    "ast_hash": "a275f1760a348f9fae00d41c62f588cb",
+    "semantic_hash": "a275f1760a348f9fae00d41c62f588cb"
   },
   "tests/prioritas1-ux.spec.js": {
     "mtime": 1792286222.769702,

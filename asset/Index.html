@@ -4574,22 +4574,22 @@
 
           <!-- Card 1 Foto Full-Width (Tampil Utuh 100% Tanpa Terpotong) -->
           <div v-if="activeMetodeList.length > 0" class="rounded-2xl overflow-hidden shadow-md bg-white border border-slate-200/80 transition-shadow hover:shadow-lg">
-            <!-- Container Gambar Aspek Rasio Persegi Utuh -->
-            <div class="relative w-full aspect-square bg-slate-50 overflow-hidden">
+            <!-- Container Gambar (Lebar Penuh & Tinggi Menyesuaikan Aspek Rasio Asli) -->
+            <div class="relative w-full bg-slate-50 overflow-hidden grid min-h-[200px]">
               <!-- Slide Images dengan Crossfade -->
               <div 
                 v-for="(metode, idx) in activeMetodeList" 
                 :key="'metode-full-' + idx"
-                class="absolute inset-0 transition-opacity duration-500 ease-in-out cursor-zoom-in flex items-center justify-center"
+                class="col-start-1 row-start-1 w-full transition-opacity duration-500 ease-in-out cursor-zoom-in flex items-center justify-center"
                 :class="currentMetodeCarouselIndex === idx ? 'opacity-100 z-10 pointer-events-auto' : 'opacity-0 z-0 pointer-events-none'"
                 @click="openMetodeLightbox(metode.originalSlotIndex)"
                 :title="metode.alt ? metode.alt + ' (Klik untuk memperbesar)' : 'Klik untuk memperbesar foto'"
               >
-                <!-- object-contain memastikan gambar infografis tidak pernah terpotong 1 piksel pun -->
+                <!-- w-full h-auto block object-contain memastikan foto pas bingkai, tinggi proporsional & utuh 100% -->
                 <img 
                   :src="metode.src" 
                   :alt="metode.alt" 
-                  class="w-full h-full object-contain"
+                  class="w-full h-auto block object-contain"
                   :loading="idx === 0 ? 'eager' : 'lazy'"
                 >
               </div>
@@ -10388,8 +10388,8 @@
 
                       <!-- Konten Slot Terisi -->
                       <template v-if="slot && slot.src">
-                        <div class="aspect-square rounded-xl overflow-hidden bg-slate-100 relative group mb-2 border border-slate-200/60">
-                          <img :src="slot.src" :alt="slot.alt" class="w-full h-full object-cover">
+                        <div class="aspect-square rounded-xl overflow-hidden bg-slate-100 relative group mb-2 border border-slate-200/60 flex items-center justify-center">
+                          <img :src="slot.src" :alt="slot.alt" class="w-full h-full object-contain">
                           <!-- Overlay Aksi di Hover / Mobile -->
                           <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
                             <button 

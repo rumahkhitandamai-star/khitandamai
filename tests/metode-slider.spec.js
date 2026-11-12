@@ -17,18 +17,21 @@ test('Verify Metode Khitan 1 Foto Full-Width Carousel without image crop', async
   await expect(backBtn).toBeVisible();
   await expect(nextBtn).toBeVisible();
 
-  // 3. Verifikasi Card 1 Foto Full-Width (aspect-square & object-contain)
-  const fullWidthCard = page.locator('.aspect-square.bg-slate-50').first();
+  // 3. Verifikasi Card 1 Foto Full-Width (grid & responsive h-auto object-contain, non aspect-square)
+  const fullWidthCard = metodeSection.locator('.bg-slate-50').first();
   await expect(fullWidthCard).toBeVisible();
+  await expect(fullWidthCard).not.toHaveClass(/aspect-square/);
 
   const cardBox = await fullWidthCard.boundingBox();
   console.log('Full-Width Card Box:', cardBox);
   expect(cardBox.width).toBeGreaterThanOrEqual(350);
 
-  // Verifikasi gambar aktif menggunakan object-contain
+  // Verifikasi gambar aktif menggunakan w-full, h-auto dan object-contain
   const activeImg = fullWidthCard.locator('.opacity-100 img').first();
   await expect(activeImg).toBeVisible();
   await expect(activeImg).toHaveClass(/object-contain/);
+  await expect(activeImg).toHaveClass(/w-full/);
+  await expect(activeImg).toHaveClass(/h-auto/);
 
   // 4. Verifikasi Counter aktif (misal "1 / 6")
   const counterBadge = page.locator('span:has-text("1 /")').first();
