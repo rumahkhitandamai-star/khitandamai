@@ -35,6 +35,13 @@ test('Verify Hero Card is positioned above Slideshow and functions correctly', a
   expect(daftarBox.height).toBe(44);
 
   // Verify Slideshow functionality on second child
+  // 0. Verify slide images use object-contain (not cropped by object-cover)
+  const slideImg = secondChild.locator('img').first();
+  if (await slideImg.count() > 0) {
+    await expect(slideImg).toHaveClass(/object-contain/);
+    await expect(slideImg).not.toHaveClass(/object-cover/);
+  }
+
   // 1. Check dot indicators exist if slides exist
   const dotButtons = secondChild.locator('button[aria-label^="Pilih keunggulan"]');
   const dotCount = await dotButtons.count();
