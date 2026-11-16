@@ -103,6 +103,10 @@ const GALERI_HEADERS = [
 const GALERI_FOLDER_ID = "1Gr9HCvCmC42aPSDEdqpHRb-nSNWKLHqD";
 const GALERI_MAX_BYTES = 5 * 1024 * 1024; // 5MB
 
+// Konfigurasi Folder & Ukuran Foto Jagoan Khitan (Google Drive)
+const FOTO_JAGOAN_FOLDER_ID = "1XdUvWNvwTeORb3ZOnKKE-9PORXQCH0FS";
+const FOTO_JAGOAN_MAX_BYTES = 5 * 1024 * 1024; // 5MB
+
 // Konfigurasi Cache Server Google Apps Script
 const SERVER_CACHE_KEYS = {
   BOOKINGS: "kd_server_bookings_cache",
@@ -5393,7 +5397,8 @@ const KUNJUNGAN_HEADERS = [
   "FEE",
   "TOTAL",
   "STATUS WA",
-  "KETERANGAN"
+  "KETERANGAN",
+  "FOTO JAGOAN KHITAN"
 ];
 
 const JUMAT_BERKAH_SHEET_NAME = "JUMAT BERKAH";
@@ -7563,6 +7568,30 @@ function invalidateReferensiCache_() {
 }
 
 /**
+ * Memastikan sheet KUNJUNGAN memiliki seluruh kolom sesuai KUNJUNGAN_HEADERS
+ */
+function ensureKunjunganColumns_(sheet) {
+  if (!sheet || sheet.getLastRow() === 0) return;
+  const lastCol = sheet.getLastColumn();
+  if (lastCol < KUNJUNGAN_HEADERS.length) {
+    const maxCols = sheet.getMaxColumns();
+    if (maxCols < KUNJUNGAN_HEADERS.length) {
+      sheet.insertColumnsAfter(maxCols, KUNJUNGAN_HEADERS.length - maxCols);
+    }
+    const missingHeaders = KUNJUNGAN_HEADERS.slice(lastCol);
+    const range = sheet.getRange(1, lastCol + 1, 1, missingHeaders.length);
+    range.setValues([missingHeaders]);
+    range.setFontWeight("bold");
+    range.setBackground("#008080");
+    range.setFontColor("#FFFFFF");
+    range.setHorizontalAlignment("center");
+    for (let i = 0; i < missingHeaders.length; i++) {
+      sheet.autoResizeColumn(lastCol + 1 + i);
+    }
+  }
+}
+
+/**
  * Mendapatkan atau membuat sheet KUNJUNGAN
  */
 function getKunjunganSheet() {
@@ -7582,6 +7611,8 @@ function getKunjunganSheet() {
     for (let col = 1; col <= KUNJUNGAN_HEADERS.length; col++) {
       sheet.autoResizeColumn(col);
     }
+  } else {
+    ensureKunjunganColumns_(sheet);
   }
   return sheet;
 }
@@ -7689,7 +7720,8 @@ function kunjunganObjectToRow_(item, registerCode) {
     String(feeNum),
     String(totalNum),
     sanitizeSpreadsheetFormula(item.statusWa),
-    sanitizeSpreadsheetFormula(item.keterangan)
+    sanitizeSpreadsheetFormula(item.keterangan),
+    sanitizeSpreadsheetFormula(item.fotoJagoanKhitan || item.foto || "")
   ];
 }
 
@@ -7792,7 +7824,8 @@ function readKunjunganFromSheet(sheet, forceRefresh) {
       fee: String(row[28] || "0").trim(),
       total: String(row[29] || "0").trim(),
       statusWa: String(row[30] || "").trim(),
-      keterangan: String(row[31] || "").trim()
+      keterangan: String(row[31] || "").trim(),
+      fotoJagoanKhitan: String(row[32] || "").trim()
     });
   }
 
@@ -9582,7 +9615,8 @@ function doGet(e) {
             provinsi: String(row[17] || "").trim(),
             kabupaten: String(row[18] || "").trim(),
             kecamatan: String(row[19] || "").trim(),
-            kelurahan: String(row[20] || "").trim()
+            kelurahan: String(row[20] || "").trim(),
+            fotoJagoanKhitan: String(row[32] || "").trim()
           };
           break;
         }
@@ -10853,7 +10887,8 @@ function deleteBookingRowById_(bookingId) {
             provinsi: String(row[17] || "").trim(),
             kabupaten: String(row[18] || "").trim(),
             kecamatan: String(row[19] || "").trim(),
-            kelurahan: String(row[20] || "").trim()
+            kelurahan: String(row[20] || "").trim(),
+            fotoJagoanKhitan: String(row[32] || "").trim()
           };
           break;
         }
@@ -11280,6 +11315,81 @@ function deleteBookingRowById_(bookingId) {
         });
       } catch (err) {
         Logger.log("Upload galeri error: " + err.message);
+        return createJsonResponse({
+          status: "error",
+          message: "Gagal mengunggah foto ke Google Drive: " + err.message
+        });
+      }
+    }
+
+    // 3i2. Aksi UPLOAD FOTO JAGOAN KHITAN (Folder Google Drive FOTO_JAGOAN_FOLDER_ID)
+    if (action === "uploadFotoJagoanKhitan" || action === "uploadFotoJagoan") {
+      const token = payload.token || (payload.data && payload.data.token);
+      const authUsername = validateSessionToken(token);
+      if (!authUsername) {
+        return unauthorizedResponse();
+      }
+
+      const fileName = String(payload.fileName || "foto_jagoan_" + Date.now() + ".jpg").trim();
+      const mimeType = String(payload.mimeType || "image/jpeg").toLowerCase().trim();
+      const base64Data = String(payload.dataBase64 || payload.base64 || "").trim();
+
+      if (!base64Data) {
+        return createJsonResponse({
+          status: "error",
+          message: "Data gambar (base64) wajib disertakan."
+        });
+      }
+
+      const allowedMimes = ["image/jpeg", "image/png", "image/jpg"];
+      if (!allowedMimes.includes(mimeType)) {
+        return createJsonResponse({
+          status: "error",
+          message: "Format gambar tidak didukung. Harap unggah format JPG, JPEG, atau PNG."
+        });
+      }
+
+      const estimatedBytes = Math.ceil(base64Data.length * 3 / 4);
+      if (estimatedBytes > FOTO_JAGOAN_MAX_BYTES) {
+        return createJsonResponse({
+          status: "error",
+          message: "Ukuran gambar melebihi batas maksimal 5MB."
+        });
+      }
+
+      try {
+        const decodedBytes = Utilities.base64Decode(base64Data);
+        if (decodedBytes.length > FOTO_JAGOAN_MAX_BYTES) {
+          return createJsonResponse({
+            status: "error",
+            message: "Ukuran gambar melebihi batas maksimal 5MB."
+          });
+        }
+
+        const blob = Utilities.newBlob(decodedBytes, mimeType, fileName);
+        const folder = DriveApp.getFolderById(FOTO_JAGOAN_FOLDER_ID);
+        const file = folder.createFile(blob);
+
+        try {
+          file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        } catch (shareErr) {
+          Logger.log("Peringatan: Gagal setSharing foto jagoan khitan: " + shareErr.message);
+        }
+
+        const fileId = file.getId();
+        const url = "https://lh3.googleusercontent.com/d/" + fileId + "=w1200";
+
+        return createJsonResponse({
+          status: "success",
+          message: "Foto jagoan khitan berhasil diunggah ke Google Drive.",
+          data: {
+            fileId: fileId,
+            src: url,
+            fileName: fileName
+          }
+        });
+      } catch (err) {
+        Logger.log("Upload foto jagoan error: " + err.message);
         return createJsonResponse({
           status: "error",
           message: "Gagal mengunggah foto ke Google Drive: " + err.message

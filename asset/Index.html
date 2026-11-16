@@ -2119,7 +2119,7 @@
             </button>
             <button 
               type="submit" 
-              :disabled="isSavingKunjungan"
+              :disabled="isSavingKunjungan || isUploadingFotoJagoan"
               class="btn-press bg-amber-400 hover:bg-amber-300 text-slate-900 font-extrabold px-3 py-1 sm:py-1.5 rounded-lg text-xs shadow-md transition flex items-center gap-1.5 disabled:opacity-50"
             >
               <svg v-if="isSavingKunjungan" class="animate-spin h-3.5 w-3.5 text-slate-900" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
@@ -2333,6 +2333,89 @@
                     <option value="">-- Pilih Ukuran --</option>
                     <option v-for="u in (referensiOptionsCache?.ukuranCelana || ['S', 'M', 'L', 'XL', 'XXL'])" :key="u" :value="u">{{ u }}</option>
                   </select>
+                </div>
+
+                <!-- FOTO JAGOAN KHITAN (Maks 5 MB - JPG, JPEG, PNG) -->
+                <div class="sm:col-span-2 pt-1.5 border-t border-slate-100">
+                  <label class="block font-bold text-slate-700 mb-1 text-[10px] flex items-center justify-between">
+                    <span class="flex items-center gap-1">
+                      <v-icon name="camera" class="text-tosca-700 text-xs"></v-icon>
+                      <span>FOTO JAGOAN KHITAN</span>
+                    </span>
+                    <span class="text-[9px] text-slate-500 font-medium">Maks. 5 MB · JPG, JPEG, PNG</span>
+                  </label>
+
+                  <!-- Preview Jika Foto Sudah Ada -->
+                  <div v-if="kunjunganForm.fotoJagoanKhitan" class="p-2 rounded-xl bg-teal-50/60 border border-teal-200 flex items-center gap-2.5">
+                    <div class="relative w-14 h-14 shrink-0 rounded-lg overflow-hidden border border-teal-300 bg-white shadow-2xs">
+                      <img :src="kunjunganForm.fotoJagoanKhitan" alt="Foto Jagoan Khitan" class="w-full h-full object-cover">
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center gap-1 text-[11px] font-bold text-teal-800">
+                        <v-icon name="circle-check" class="text-xs text-emerald-600"></v-icon>
+                        <span class="truncate">Foto Tersimpan</span>
+                      </div>
+                      <p class="text-[10px] text-slate-500 truncate mt-0.5">Tersimpan di Google Drive</p>
+                      <div class="flex items-center gap-1.5 mt-1">
+                        <a 
+                          :href="kunjunganForm.fotoJagoanKhitan" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white border border-teal-300 text-tosca-800 hover:bg-teal-50 text-[10px] font-bold transition shadow-2xs"
+                        >
+                          <v-icon name="magnifying-glass" class="text-[9px]"></v-icon>
+                          <span>Buka</span>
+                        </a>
+                        <button 
+                          type="button" 
+                          @click="$refs.fileInputFotoJagoanRef && $refs.fileInputFotoJagoanRef.click()"
+                          :disabled="isUploadingFotoJagoan"
+                          class="btn-press px-2 py-0.5 rounded-md bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 text-[10px] font-bold transition shadow-2xs"
+                        >
+                          Ganti
+                        </button>
+                        <button 
+                          type="button" 
+                          @click="removeFotoJagoan"
+                          :disabled="isUploadingFotoJagoan"
+                          class="btn-press px-2 py-0.5 rounded-md bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 text-[10px] font-bold transition shadow-2xs"
+                        >
+                          Hapus
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Upload Dropzone Jika Belum Ada Foto -->
+                  <div 
+                    v-else 
+                    @click="!isUploadingFotoJagoan && $refs.fileInputFotoJagoanRef && $refs.fileInputFotoJagoanRef.click()"
+                    class="border border-dashed border-teal-300 hover:border-tosca-600 rounded-xl p-2.5 text-center cursor-pointer transition bg-teal-50/30 hover:bg-teal-50/70"
+                  >
+                    <div v-if="isUploadingFotoJagoan" class="space-y-1 py-1">
+                      <div class="inline-block animate-spin text-sm text-tosca-700"><v-icon name="rotate"></v-icon></div>
+                      <p class="text-[11px] font-bold text-slate-700">{{ fotoJagoanUploadStatusText || 'Mengunggah ke Google Drive...' }}</p>
+                      <p class="text-[9px] text-slate-400">Menyimpan berkas di folder Google Drive</p>
+                    </div>
+                    <div v-else class="flex items-center justify-center gap-2 py-0.5">
+                      <div class="w-7 h-7 rounded-lg bg-teal-100/80 text-tosca-700 flex items-center justify-center shrink-0">
+                        <v-icon name="camera" class="text-xs"></v-icon>
+                      </div>
+                      <div class="text-left">
+                        <p class="text-[11px] font-bold text-slate-700">Pilih Foto Jagoan Khitan</p>
+                        <p class="text-[9px] text-slate-400">JPG, JPEG, PNG (Maksimal 5 MB)</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Input File Tersembunyi -->
+                  <input 
+                    ref="fileInputFotoJagoanRef"
+                    type="file"
+                    accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+                    @change="handleFotoJagoanSelected"
+                    class="hidden"
+                  >
                 </div>
               </div>
             </section>
@@ -2758,7 +2841,7 @@
               <!-- Tombol Submit Simpan Utama -->
               <button 
                 type="submit" 
-                :disabled="isSavingKunjungan"
+                :disabled="isSavingKunjungan || isUploadingFotoJagoan"
                 class="btn-press px-3.5 sm:px-5 py-1.5 bg-tosca-700 hover:bg-tosca-800 text-white rounded-xl text-xs font-extrabold transition shadow-md flex items-center gap-1.5 disabled:opacity-50"
               >
                 <svg v-if="isSavingKunjungan" class="animate-spin h-3.5 w-3.5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
@@ -8727,6 +8810,21 @@
                             <td v-if="isKunjunganColVisible('lem')" class="p-2 text-right font-mono text-slate-500">{{ formatAngkaRibuan(item.lem) || '0' }}</td>
                             <td v-if="isKunjunganColVisible('fee')" class="p-2 text-right font-mono text-slate-500">{{ formatAngkaRibuan(item.fee) || '0' }}</td>
                             <td v-if="isKunjunganColVisible('total')" class="p-2 text-right font-mono font-bold text-tosca-800">{{ formatAngkaRibuan(item.total) || '0' }}</td>
+                            <td v-if="isKunjunganColVisible('fotoJagoanKhitan')" class="p-2 text-center whitespace-nowrap">
+                              <div v-if="item.fotoJagoanKhitan" class="inline-flex items-center justify-center">
+                                <a 
+                                  :href="item.fotoJagoanKhitan" 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-teal-50 hover:bg-teal-100 text-tosca-800 border border-teal-200 text-[11px] font-bold transition shadow-2xs"
+                                  title="Buka Foto Jagoan Khitan"
+                                >
+                                  <img :src="item.fotoJagoanKhitan" alt="Foto" class="w-5 h-5 rounded object-cover border border-teal-300">
+                                  <span>Lihat Foto</span>
+                                </a>
+                              </div>
+                              <span v-else class="text-slate-400 font-medium">-</span>
+                            </td>
                           </tr>
                         </tbody>
                       </table>
@@ -8946,6 +9044,13 @@
                                         <span class="text-slate-600 dark:text-slate-300 font-medium">Ukuran Celana:</span>
                                         <span class="text-slate-800 dark:text-slate-100 font-semibold ml-1">{{ item.ukuranCelana || '-' }}</span>
                                       </div>
+                                      <div v-if="item.fotoJagoanKhitan">
+                                        <span class="text-slate-600 dark:text-slate-300 font-medium">Foto:</span>
+                                        <a :href="item.fotoJagoanKhitan" target="_blank" rel="noopener noreferrer" class="text-teal-700 dark:text-teal-300 font-bold ml-1 hover:underline inline-flex items-center gap-1">
+                                          <img :src="item.fotoJagoanKhitan" alt="Foto Jagoan" class="w-4 h-4 rounded object-cover inline-block border border-teal-300">
+                                          <span>Lihat Foto Jagoan</span>
+                                        </a>
+                                      </div>
                                     </div>
                                   </div>
 
@@ -9155,6 +9260,18 @@
                         <div class="col-span-2">
                           <span class="text-slate-500 block text-xs font-bold uppercase tracking-wider">Total Bayar</span>
                           <strong class="font-mono font-black text-sm sm:text-base text-tosca-900 mt-0.5 block">Rp {{ formatAngkaRibuan(item.total) || '0' }}</strong>
+                        </div>
+                        <div v-if="item.fotoJagoanKhitan" class="col-span-2 flex items-center justify-between pt-1 border-t border-slate-100">
+                          <span class="text-slate-500 text-xs font-bold uppercase tracking-wider">Foto Jagoan Khitan</span>
+                          <a 
+                            :href="item.fotoJagoanKhitan" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-teal-50 hover:bg-teal-100 text-tosca-800 border border-teal-200 text-xs font-bold transition shadow-2xs"
+                          >
+                            <img :src="item.fotoJagoanKhitan" alt="Foto Jagoan" class="w-4 h-4 rounded object-cover border border-teal-300">
+                            <span>Buka Foto</span>
+                          </a>
                         </div>
                       </div>
 
@@ -13247,7 +13364,8 @@
         fee: "50000",
         total: "1020000",
         statusWa: "SUDAH",
-        keterangan: "Lancar tanpa kendala"
+        keterangan: "Lancar tanpa kendala",
+        fotoJagoanKhitan: ""
       },
       {
         register: "KD2607170041",
@@ -13281,7 +13399,8 @@
         fee: "50000",
         total: "200000",
         statusWa: "SUDAH",
-        keterangan: "Peserta Khitan Berkah"
+        keterangan: "Peserta Khitan Berkah",
+        fotoJagoanKhitan: ""
       }
     ];
 
@@ -21882,7 +22001,8 @@
           { key: 'bmhpObat', label: 'BMHP OBAT', min: 'min-w-[90px]', align: 'text-right' },
           { key: 'lem', label: 'LEM', min: 'min-w-[80px]', align: 'text-right' },
           { key: 'fee', label: 'FEE', min: 'min-w-[80px]', align: 'text-right' },
-          { key: 'total', label: 'TOTAL', min: 'min-w-[95px]', align: 'text-right' }
+          { key: 'total', label: 'TOTAL', min: 'min-w-[95px]', align: 'text-right' },
+          { key: 'fotoJagoanKhitan', label: 'FOTO JAGOAN KHITAN', min: 'min-w-[130px]', align: 'text-center' }
         ];
 
         // Mode Tampilan Kolom Kunjungan (Compact 10 Kolom Esensial vs Full 30 Kolom Bertumpuk)
@@ -21996,7 +22116,8 @@
           bmhpObat: '',
           lem: '',
           fee: '',
-          total: ''
+          total: '',
+          fotoJagoanKhitan: ''
         });
 
         const clearKunjunganColFilters = () => {
@@ -22025,6 +22146,9 @@
 
         const showKunjunganModal = ref(false);
         const kunjunganModalMode = ref('create'); // 'create' | 'edit'
+        const fileInputFotoJagoanRef = ref(null);
+        const isUploadingFotoJagoan = ref(false);
+        const fotoJagoanUploadStatusText = ref('');
         const kunjunganForm = reactive({
           register: '',
           idBooking: '',
@@ -22057,7 +22181,8 @@
           fee: '0',
           total: '0',
           statusWa: '',
-          keterangan: ''
+          keterangan: '',
+          fotoJagoanKhitan: ''
         });
 
         // Hitung Otomatis Zakat (2.5%) & Total Bersih
@@ -22092,6 +22217,103 @@
             }
           }
         );
+
+        const removeFotoJagoan = () => {
+          kunjunganForm.fotoJagoanKhitan = '';
+          if (fileInputFotoJagoanRef.value) {
+            fileInputFotoJagoanRef.value.value = '';
+          }
+        };
+
+        const handleFotoJagoanSelected = async (e) => {
+          const file = e.target.files && e.target.files[0];
+          if (!file) return;
+
+          const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+          const fileExt = (file.name || '').split('.').pop().toLowerCase();
+          const isAllowedExt = ['jpg', 'jpeg', 'png'].includes(fileExt);
+          const isAllowedMime = allowedTypes.includes((file.type || '').toLowerCase());
+
+          if (!isAllowedExt && !isAllowedMime) {
+            openAlertDialog({
+              type: 'warning',
+              title: 'Format Tidak Didukung',
+              message: 'Format foto harus berupa JPG, JPEG, atau PNG.'
+            });
+            e.target.value = '';
+            return;
+          }
+
+          const MAX_FOTO_BYTES = 5 * 1024 * 1024; // 5 MB
+
+          isUploadingFotoJagoan.value = true;
+          if (file.size > MAX_FOTO_BYTES) {
+            fotoJagoanUploadStatusText.value = 'Mengompresi foto...';
+          } else {
+            fotoJagoanUploadStatusText.value = 'Mengunggah ke Google Drive...';
+          }
+
+          try {
+            const processed = await compressImageIfNeeded(file, MAX_FOTO_BYTES);
+
+            fotoJagoanUploadStatusText.value = 'Mengunggah ke Google Drive...';
+
+            const cleanBase64 = String(processed.dataUrl).replace(/^data:image\/[a-zA-Z+]+;base64,/, '');
+
+            if (USE_MOCK) {
+              kunjunganForm.fotoJagoanKhitan = processed.dataUrl;
+              const sizeMsg = processed.wasCompressed 
+                ? 'Foto (' + (file.size / (1024 * 1024)).toFixed(1) + 'MB) berhasil dikompresi menjadi ' + (processed.finalSize / (1024 * 1024)).toFixed(1) + 'MB (Mock).'
+                : 'Foto jagoan khitan berhasil dipilih (Mock).';
+              showToastNotification(sizeMsg);
+              return;
+            }
+
+            const payload = {
+              action: 'uploadFotoJagoanKhitan',
+              token: adminUser.value ? adminUser.value.token : '',
+              fileName: processed.fileName || ('foto_jagoan_' + Date.now() + '.' + (fileExt || 'jpg')),
+              mimeType: processed.mimeType || 'image/jpeg',
+              dataBase64: cleanBase64
+            };
+
+            const res = await fetch(GAS_ENDPOINT_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+              body: JSON.stringify(payload),
+              redirect: 'follow'
+            });
+
+            const json = await res.json();
+            if (json.code === 'unauthorized') {
+              forceRelogin();
+              return;
+            }
+
+            if (json.status === 'success' && json.data) {
+              kunjunganForm.fotoJagoanKhitan = json.data.src || json.data.url || '';
+              const successMsg = processed.wasCompressed 
+                ? 'Foto (' + (file.size / (1024 * 1024)).toFixed(1) + 'MB) berhasil dikompresi menjadi ' + (processed.finalSize / (1024 * 1024)).toFixed(1) + 'MB & diunggah ke Google Drive.'
+                : 'Foto jagoan khitan berhasil diunggah ke Google Drive.';
+              showToastNotification(successMsg);
+            } else {
+              throw new Error(json.message || 'Gagal mengunggah foto ke Google Drive.');
+            }
+          } catch (err) {
+            console.error('Upload foto jagoan khitan gagal:', err);
+            openAlertDialog({
+              type: 'warning',
+              title: 'Gagal Mengunggah Foto',
+              message: 'Terjadi kesalahan saat memproses atau mengunggah foto: ' + (err.message || 'Koneksi terputus')
+            });
+          } finally {
+            isUploadingFotoJagoan.value = false;
+            fotoJagoanUploadStatusText.value = '';
+            if (e.target) {
+              e.target.value = '';
+            }
+          }
+        };
 
         const formatAngkaRibuan = (val) => {
           if (val === null || val === undefined || val === '') return '';
@@ -22379,6 +22601,7 @@
           kunjunganForm.kabupaten = String(data.kabupaten || '').trim();
           kunjunganForm.kecamatan = String(data.kecamatan || '').trim();
           kunjunganForm.kelurahan = String(data.kelurahan || '').trim();
+          kunjunganForm.fotoJagoanKhitan = '';
         };
 
         // Mengirim seluruh data pendaftaran dari menu Booking ke form Tambah Kunjungan
@@ -22481,7 +22704,8 @@
             parseFloat(String(item.bmhpObat || '0').replace(/[^\d.-]/g, '')) || 0,
             parseFloat(String(item.lem || '0').replace(/[^\d.-]/g, '')) || 0,
             parseFloat(String(item.fee || '0').replace(/[^\d.-]/g, '')) || 0,
-            parseFloat(String(item.total || '0').replace(/[^\d.-]/g, '')) || 0
+            parseFloat(String(item.total || '0').replace(/[^\d.-]/g, '')) || 0,
+            String(item.fotoJagoanKhitan || '')
           ]);
 
           const wsData = [headers, ...dataRows];
@@ -22518,7 +22742,8 @@
             { wch: 14 }, // BMHP OBAT
             { wch: 12 }, // LEM
             { wch: 12 }, // FEE
-            { wch: 16 }  // TOTAL
+            { wch: 16 }, // TOTAL
+            { wch: 30 }  // FOTO JAGOAN KHITAN
           ];
 
           const wb = XLSX.utils.book_new();
@@ -22538,6 +22763,12 @@
           if (!referensiOptionsCache.value) {
             loadReferensi();
           }
+
+          if (fileInputFotoJagoanRef.value) {
+            fileInputFotoJagoanRef.value.value = '';
+          }
+          isUploadingFotoJagoan.value = false;
+          fotoJagoanUploadStatusText.value = '';
 
           if (mode === 'edit' && item) {
             Object.assign(kunjunganForm, {
@@ -22572,7 +22803,8 @@
               fee: item.fee || '0',
               total: item.total || '0',
               statusWa: item.statusWa || '',
-              keterangan: item.keterangan || ''
+              keterangan: item.keterangan || '',
+              fotoJagoanKhitan: item.fotoJagoanKhitan || item.foto || ''
             });
           } else {
             kunjunganSourceMode.value = 'booking';
@@ -22610,7 +22842,8 @@
               fee: '0',
               total: '0',
               statusWa: '',
-              keterangan: ''
+              keterangan: '',
+              fotoJagoanKhitan: ''
             });
           }
           kunjunganModalTab.value = 'all';
@@ -22619,6 +22852,11 @@
 
         const closeKunjunganModal = () => {
           showKunjunganModal.value = false;
+          if (fileInputFotoJagoanRef.value) {
+            fileInputFotoJagoanRef.value.value = '';
+          }
+          isUploadingFotoJagoan.value = false;
+          fotoJagoanUploadStatusText.value = '';
         };
 
         const saveKunjungan = async () => {
@@ -26196,6 +26434,11 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
           showKunjunganModal,
           kunjunganModalMode,
           kunjunganForm,
+          fileInputFotoJagoanRef,
+          isUploadingFotoJagoan,
+          fotoJagoanUploadStatusText,
+          handleFotoJagoanSelected,
+          removeFotoJagoan,
           kunjunganAlamatModel,
           filteredAdminKunjungan,
           fetchAdminKunjungan,

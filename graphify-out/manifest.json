@@ -13,10 +13,10 @@
     "semantic_hash": "9b5e4d4606c71e30dbf22e199a20c0a5"
   },
   "asset/Code.gs": {
-    "mtime": 1793504317.626224,
-    "seen": 1793504766.9418054,
-    "ast_hash": "a3986d7da375e2021f5c867427d1cd89",
-    "semantic_hash": "a3986d7da375e2021f5c867427d1cd89",
+    "mtime": 1794723560.7382872,
+    "seen": 1794724424.2000194,
+    "ast_hash": "acbf97f34d02aafe0703f0caf0fdf5c0",
+    "semantic_hash": "acbf97f34d02aafe0703f0caf0fdf5c0",
     "language": "language=.js"
   },
   "asset/appsscript.json": {
@@ -459,5 +459,11 @@
     "seen": 1793504766.9660861,
     "ast_hash": "fc62f0144560842fc72fb83d0076dbbd",
     "semantic_hash": "fc62f0144560842fc72fb83d0076dbbd"
+  },
+  "tests/admin-kunjungan-foto-jagoan.spec.js": {
+    "mtime": 1794724118.5852227,
+    "seen": 1794724424.2020283,
+    "ast_hash": "e1a1eec0ee84b22b20a060e7bf00e372",
+    "semantic_hash": "e1a1eec0ee84b22b20a060e7bf00e372"
   }
 }
