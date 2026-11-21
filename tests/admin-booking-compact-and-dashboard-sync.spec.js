@@ -13,6 +13,122 @@ test('Verify Booking Compact/Full View Mode Switcher and Dashboard Sub-view Simp
     }
   });
 
+  // ================= MOCK GOOGLE APPS SCRIPT (OFFLINE & DETERMINISTIK) =================
+  // Tanggal memakai waktu LOKAL (bukan UTC) agar selalu lolos filter jadwal
+  // "Mendatang" (diff hari <= 0) terlepas dari jam server dijalankan.
+  const pad2 = (n) => String(n).padStart(2, '0');
+  const fmtLocalDate = (dt) => dt.getFullYear() + '-' + pad2(dt.getMonth() + 1) + '-' + pad2(dt.getDate());
+  const todayStr = fmtLocalDate(new Date());
+  const futureStr = fmtLocalDate(new Date(Date.now() + 86400000 * 2));
+
+  const mockBookings = [
+    {
+      id: 'KD26001',
+      idBooking: 'KD26001',
+      timestamp: '2026-11-20 09:30:00',
+      namaAnak: 'Adit Septiawan',
+      namaAnanda: 'Adit Septiawan',
+      tempatLahir: 'Subang',
+      tanggalLahir: '2018-05-12',
+      beratBadan: '25',
+      tglKhitan: todayStr,
+      tanggalKhitan: todayStr,
+      jamKhitan: '05:00 WIB',
+      metodeKhitan: 'Thermocauter Lem',
+      ukuranCelana: 'M',
+      obat: 'Syrup',
+      namaOrtu: 'Budi Santoso',
+      namaPenanggungJawab: 'Budi Santoso',
+      usiaPenanggungJawab: '38',
+      pekerjaan: 'Karyawan Swasta',
+      hubunganKeluarga: 'Ayah',
+      noHp: '081234567890',
+      nomorHp: '+6281234567890',
+      alamat: 'Jl. Otista No. 45 RT 02/RW 04',
+      provinsi: 'Jawa Barat',
+      kabupaten: 'Subang',
+      kecamatan: 'Subang',
+      kelurahan: 'Karanganyar',
+      status: 'Pending'
+    },
+    {
+      id: 'KD26002',
+      idBooking: 'KD26002',
+      timestamp: '2026-11-21 14:15:00',
+      namaAnak: 'Abil Shidqi Arsalaan',
+      namaAnanda: 'Abil Shidqi Arsalaan',
+      tempatLahir: 'Bandung',
+      tanggalLahir: '2019-08-20',
+      beratBadan: '22',
+      tglKhitan: futureStr,
+      tanggalKhitan: futureStr,
+      jamKhitan: '05:20 WIB',
+      metodeKhitan: 'Thermocauter Jahit',
+      ukuranCelana: 'S',
+      obat: 'Syrup',
+      namaOrtu: 'Siti Rahma',
+      namaPenanggungJawab: 'Siti Rahma',
+      usiaPenanggungJawab: '34',
+      pekerjaan: 'Guru',
+      hubunganKeluarga: 'Ibu',
+      noHp: '081987654321',
+      nomorHp: '+6281987654321',
+      alamat: 'Perum Subang Asri Blok C-12',
+      provinsi: 'Jawa Barat',
+      kabupaten: 'Subang',
+      kecamatan: 'Cibogo',
+      kelurahan: 'Cibogo',
+      status: 'Confirmed'
+    }
+  ];
+
+  // Intercept seluruh request ke Google Apps Script
+  await page.route(/script\.google\.com/, async (route) => {
+    const request = route.request();
+    const url = request.url();
+    const fulfill = (obj) => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(obj)
+    });
+
+    if (request.method() === 'POST') {
+      let payload = {};
+      try { payload = JSON.parse(request.postData() || '{}'); } catch (e) {}
+
+      if (payload.action === 'login') {
+        return fulfill({
+          status: 'success',
+          data: {
+            no: 1,
+            username: 'denluckyman@gmail.com',
+            nama: 'Super Admin',
+            role: 'Super Admin',
+            token: 'mock-valid-token'
+          }
+        });
+      }
+    }
+
+    // Sinkronisasi terpadu (GET) dipakai tombol "Perbarui Data"
+    if (url.includes('action=syncAdminData')) {
+      return fulfill({
+        status: 'success',
+        data: {
+          bookings: mockBookings,
+          kunjungan: []
+        }
+      });
+    }
+
+    if (url.includes('action=getAllBookings') || url.includes('action=getBookings')) {
+      return fulfill({ status: 'success', data: mockBookings });
+    }
+
+    // Endpoint lain (getKunjungan, getSettings, getUsers, getReferensi, ...)
+    return fulfill({ status: 'success', data: [] });
+  });
+
   // 1. Masuk ke halaman admin dan login
   await page.goto(filePath + '#/admin', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(600);
