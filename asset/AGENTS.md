@@ -67,9 +67,14 @@
   - Custom domain `khitandamai.my.id` (A `199.36.158.100`, NS `ns1/ns2.idwebhost.id`) is **LIVE** on the
     main site since 2026-11-21: apex HTTPS serves the SPA (MD5-identical to `public/index.html`),
     `http://` → `301` HTTPS, TXT `hosting-site=khitandamai-9f3a9` at the apex marks the claim, and a
-    `www` CNAME → `khitandamai-9f3a9.web.app` exists (its TLS cert may lag up to 24 h).
-    Custom domains are **console-only** — no CLI command. If the edge starts answering
-    **404 "Site Not Found"** again (stale per-PoP cache), just re-run
+    `www` CNAME → `khitandamai-9f3a9.web.app` exists. `www.khitandamai.my.id` is **LIVE** too since
+    2026-11-21 (second custom domain, `CERT_ACTIVE`/`DNS_MATCH`, MD5-identical to the apex).
+    Custom domains have **no CLI command**, but the REST API works: Hosting v1beta1
+    `projects.sites.domains` (`POST {site: "<siteId>", domainName: "<host>"}`) with a user access token
+    from the Firebase CLI refresh token in `~/.config/configstore/firebase-tools.json` — the SA JSON key
+    gets rejected with "Invalid JWT Signature". Provisioning takes ~15 min
+    (`CERT_PENDING` → `CERT_PROPAGATING` → `CERT_ACTIVE`; poll the domain resource). If the edge starts
+    answering **404 "Site Not Found"** again (stale per-PoP cache), just re-run
     `firebase deploy --only hosting`: a new release purges the CDN cache.
   - A push to `main` also auto-deploys live via `.github/workflows/deploy.yml`, whose secret
     `FIREBASE_SERVICE_ACCOUNT_KHITANDAMAI` is the JSON key of
