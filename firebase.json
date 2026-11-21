@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "site": "rumahkhitandamai",
+    "site": "khitandamai-9f3a9",
     "public": "public",
     "ignore": [
       "firebase.json",

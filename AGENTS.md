@@ -16,8 +16,11 @@
   `../public/index.html` while the other 28 load `../asset/Index.html`.
 - Root `AGENTS.md` is the master; `sync:docs` uploads **`asset/AGENTS.md`** and `asset/prd.md`, so copy
   root `AGENTS.md` → `asset/AGENTS.md` before syncing docs. Root `prd.md` must stay identical to `asset/prd.md`.
-- `wrapper/index.html` + `firebase.wrapper.json`: separate loader page that iframes the GAS `/exec` URL
-  for the custom domain, deployed with its own Firebase config.
+- `wrapper/index.html` + `firebase.wrapper.json`: separate loader page that iframes the GAS `/exec` URL,
+  deployed with its own Firebase config. ⚠️ `firebase.wrapper.json` has **no `site` field**, so it targets
+  the project's default site — which is now the MAIN site (`khitandamai-9f3a9`). Deploying the wrapper
+  as-is would **overwrite the SPA**. The custom domain `khitandamai.my.id` is wired straight to the main
+  site (direct, no iframe), so the wrapper is currently unused; give it its own site before reviving it.
 
 ## Architecture
 - Single-file SPA: HTML5 + Vue 3 CDN + Tailwind CDN; all templates, styles, components, routing and
@@ -55,9 +58,23 @@
   - **Mandatory**: SETIAP KALI `clasp push` / `clasp deploy`, WAJIB jalankan `npm run sync:docs` untuk
     mengunggah `asset/AGENTS.md` dan `asset/prd.md` ke folder Drive `1uYsc5PERl_KHx5SJaiUyUxt09Ozsxb_0`.
     Script reads `~/.clasprc.json` — run `npx @google/clasp login` if missing.
-- Firebase: `firebase deploy --only hosting` (site `rumahkhitandamai`, project `khitandamai-9c7bf`).
-  A push to `main` also auto-deploys live via `.github/workflows/deploy.yml`, and CI runs **no tests** —
-  run Playwright locally before pushing.
+- Firebase: `firebase deploy --only hosting` (site `khitandamai-9f3a9`, project `khitandamai-9f3a9`) →
+  **https://khitandamai-9f3a9.web.app**. Live since 2026-11-20.
+  - **Old project `khitandamai-9c7bf`** (site `rumahkhitandamai`, `rumahkhitandamai.web.app`) is retired:
+    its free-tier bandwidth quota is exhausted, so it answers **HTTP 509 "Quota Exceeded"**. Never point
+    anything at it. CLI login: `khitandamai01@gmail.com` (owner of the new project);
+    `rumahkhitandamai@gmail.com` only owns the old one.
+  - Custom domain `khitandamai.my.id` (A `199.36.158.100`, NS `ns1/ns2.idwebhost.id`) is **LIVE** on the
+    main site since 2026-11-21: apex HTTPS serves the SPA (MD5-identical to `public/index.html`),
+    `http://` → `301` HTTPS, TXT `hosting-site=khitandamai-9f3a9` at the apex marks the claim, and a
+    `www` CNAME → `khitandamai-9f3a9.web.app` exists (its TLS cert may lag up to 24 h).
+    Custom domains are **console-only** — no CLI command. If the edge starts answering
+    **404 "Site Not Found"** again (stale per-PoP cache), just re-run
+    `firebase deploy --only hosting`: a new release purges the CDN cache.
+  - A push to `main` also auto-deploys live via `.github/workflows/deploy.yml`, whose secret
+    `FIREBASE_SERVICE_ACCOUNT_KHITANDAMAI` is the JSON key of
+    `firebase-hosting-deployer@khitandamai-9f3a9` (role `roles/firebasehosting.admin`), and CI runs
+    **no tests** — run Playwright locally before pushing.
 
 ## API & network quirks (Google Apps Script)
 - **Native `fetch()` only**: never Axios or jQuery.
