@@ -5640,7 +5640,7 @@ const DEFAULT_HERO_CARD = {
 
 const SLIDESHOW_FOLDER_ID = "1mWB837id7QPGcU1ZyYcsX3C1_sxnsA40";
 const SLIDESHOW_MAX_IMAGES = 8;
-const SLIDESHOW_MAX_BYTES = 2 * 1024 * 1024; // 2MB
+const SLIDESHOW_MAX_BYTES = 3 * 1024 * 1024; // 3MB (Foto Slideshow / Metode / Program)
 const DEFAULT_SLIDESHOW = [
   { fileId: "1D8EGx8zgJm6Iu_VYcO2C6oV9dcVvrYse", src: "https://lh3.googleusercontent.com/d/1D8EGx8zgJm6Iu_VYcO2C6oV9dcVvrYse=w1200", alt: "Booking Praktis - Khitan Damai" },
   { fileId: "18rfxkZz9kZj9ZrUc91Kgc7rNAMnhcbiI", src: "https://lh3.googleusercontent.com/d/18rfxkZz9kZj9ZrUc91Kgc7rNAMnhcbiI=w1200", alt: "Metode Modern - Khitan Damai" },
@@ -11195,7 +11195,7 @@ function deleteBookingRowById_(bookingId) {
       if (estimatedBytes > SLIDESHOW_MAX_BYTES) {
         return createJsonResponse({
           status: "error",
-          message: "Ukuran gambar melebihi batas maksimal 2MB."
+          message: "Ukuran gambar melebihi batas maksimal 3MB."
         });
       }
 
@@ -11204,7 +11204,7 @@ function deleteBookingRowById_(bookingId) {
         if (decodedBytes.length > SLIDESHOW_MAX_BYTES) {
           return createJsonResponse({
             status: "error",
-            message: "Ukuran gambar melebihi batas maksimal 2MB."
+            message: "Ukuran gambar melebihi batas maksimal 3MB."
           });
         }
 

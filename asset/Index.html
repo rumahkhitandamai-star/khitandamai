@@ -10290,7 +10290,7 @@
                           Pengaturan Foto Slideshow (Beranda)
                         </h4>
                         <p class="text-[11px] text-slate-400">
-                          Maksimal {{ SLIDESHOW_MAX }} foto • Maksimal {{ SLIDESHOW_MAX_MB }}MB per foto • File tersimpan di Google Drive
+                          Maksimal {{ SLIDESHOW_MAX }} foto • Maksimal {{ SLIDESHOW_MAX_MB }}MB per foto • Otomatis dikonversi ke format WEBP • File tersimpan di Google Drive
                         </p>
                       </div>
                     </div>
@@ -10343,7 +10343,7 @@
                       <input 
                         type="file" 
                         ref="fileInputSlideshowRef" 
-                        accept="image/jpeg,image/png,image/webp,image/gif" 
+                        accept="image/jpeg,image/png,image/webp" 
                         multiple 
                         @change="handleSlideshowFilesSelected" 
                         class="hidden"
@@ -10446,7 +10446,7 @@
                         Foto Metode Beranda (6 Slot)
                       </h4>
                       <p class="text-[11px] text-slate-500 mt-0.5">
-                        Kelola 6 kartu metode khitan di halaman Beranda. Slot kosong menampilkan placeholder. File tersimpan di Google Drive.
+                        Kelola 6 kartu metode khitan di halaman Beranda. Slot kosong menampilkan placeholder. Maksimal {{ METODE_MAX_MB }}MB per foto, otomatis dikonversi ke format WEBP. File tersimpan di Google Drive.
                       </p>
                     </div>
 
@@ -10497,7 +10497,7 @@
                     <input 
                       type="file" 
                       ref="fileInputMetodeRef" 
-                      accept="image/jpeg,image/png,image/webp,image/gif" 
+                      accept="image/jpeg,image/png,image/webp" 
                       @change="handleMetodeFileSelected" 
                       class="hidden" 
                     >
@@ -10627,7 +10627,7 @@
                           Foto Card Program (Beranda Publik)
                         </h4>
                         <p class="text-[11px] text-slate-400">
-                          Kelola foto pada card Program di halaman Beranda. File disimpan ke Google Drive. Maksimal {{ PROGRAM_MAX_MB }}MB.
+                          Kelola foto pada card Program di halaman Beranda. File disimpan ke Google Drive. Maksimal {{ PROGRAM_MAX_MB }}MB per foto, otomatis dikonversi ke format WEBP.
                         </p>
                       </div>
                     </div>
@@ -10678,7 +10678,7 @@
                     <input 
                       type="file" 
                       ref="fileInputProgramRef" 
-                      accept="image/jpeg,image/png,image/webp,image/gif" 
+                      accept="image/jpeg,image/png,image/webp" 
                       @change="handleProgramFileSelected" 
                       class="hidden" 
                     >
@@ -15326,7 +15326,7 @@
         ];
 
         const SLIDESHOW_MAX = 8;
-        const SLIDESHOW_MAX_MB = 2;
+        const SLIDESHOW_MAX_MB = 3;
         const slideshowConfig = ref(DEFAULT_SLIDESHOW.slice());
         const slideshowDraft = ref(DEFAULT_SLIDESHOW.slice());
         const isUploadingSlides = ref(false);
@@ -15453,22 +15453,18 @@
           const errors = [];
 
           for (const file of filesToProcess) {
-            if (!file.type.startsWith('image/')) {
+            if (!file.type || !file.type.startsWith('image/')) {
               errors.push((file.name) + ": format bukan gambar.");
-              continue;
-            }
-            if (file.size > SLIDESHOW_MAX_MB * 1024 * 1024) {
-              errors.push((file.name) + ": ukuran melebihi " + (SLIDESHOW_MAX_MB) + "MB.");
               continue;
             }
 
             try {
-              const dataUrl = await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = () => reject(new Error('Gagal membaca file lokal'));
-                reader.readAsDataURL(file);
-              });
+              const converted = await convertImageToWebp(file, { maxBytes: SLIDESHOW_MAX_MB * 1024 * 1024 });
+              if (!converted.ok) {
+                errors.push((file.name) + ": " + converted.message);
+                continue;
+              }
+              const dataUrl = converted.dataUrl;
 
               if (USE_MOCK) {
                 await new Promise(resolve => setTimeout(resolve, 300));
@@ -15480,13 +15476,13 @@
                 });
                 successCount++;
               } else {
-                const base64Data = String(dataUrl).split(',')[1] || '';
+                const base64Data = converted.base64;
                 const token = (adminUser.value && adminUser.value.token) ? adminUser.value.token : '';
                 const payload = {
                   action: 'uploadSlideshowImage',
                   token: token,
-                  fileName: file.name,
-                  mimeType: file.type || 'image/jpeg',
+                  fileName: converted.fileName,
+                  mimeType: converted.mimeType,
                   dataBase64: base64Data
                 };
 
@@ -15523,7 +15519,7 @@
           if (event.target) event.target.value = '';
 
           if (successCount > 0) {
-            showToastNotification("Berhasil mengunggah " + (successCount) + " foto.");
+            showToastNotification("Berhasil mengunggah " + (successCount) + " foto (format WEBP).");
           }
           if (errors.length > 0) {
             openAlertDialog({
@@ -15683,7 +15679,7 @@
         ];
 
         const METODE_SLOTS = 6;
-        const METODE_MAX_MB = 2;
+        const METODE_MAX_MB = 3;
         const metodeConfig = ref(JSON.parse(JSON.stringify(DEFAULT_METODE)));
         const metodeDraft = ref(JSON.parse(JSON.stringify(DEFAULT_METODE)));
         const isUploadingMetode = ref(false);
@@ -15835,26 +15831,20 @@
           if (!files || files.length === 0) return;
           const file = files[0];
 
-          if (file.size > METODE_MAX_MB * 1024 * 1024) {
-            openAlertDialog({
-              type: 'warning',
-              title: 'Ukuran File Terlalu Besar',
-              message: "Ukuran file \"" + (file.name) + "\" melebihi batas maksimal " + (METODE_MAX_MB) + "MB."
-            });
-            return;
-          }
-
           isUploadingMetode.value = true;
           try {
-            const dataUrl = await new Promise((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onload = () => resolve(reader.result);
-              reader.onerror = reject;
-              reader.readAsDataURL(file);
-            });
+            const converted = await convertImageToWebp(file, { maxBytes: METODE_MAX_MB * 1024 * 1024 });
+            if (!converted.ok) {
+              openAlertDialog({
+                type: 'warning',
+                title: converted.reason === 'format' ? 'Format Tidak Didukung' : 'File Tidak Lolos',
+                message: "\"" + (file.name) + "\": " + converted.message
+              });
+              return;
+            }
 
-            const commaIdx = dataUrl.indexOf(',');
-            const base64Data = commaIdx >= 0 ? dataUrl.substring(commaIdx + 1) : dataUrl;
+            const dataUrl = converted.dataUrl;
+            const base64Data = converted.base64;
 
             if (USE_MOCK) {
               await new Promise(r => setTimeout(r, 600));
@@ -15866,14 +15856,14 @@
                 src: dataUrl,
                 alt: currentAlt
               };
-              showToastNotification("Foto Slot #" + (targetIdx + 1) + " berhasil diunggah (Mock).");
+              showToastNotification("Foto Slot #" + (targetIdx + 1) + " berhasil diunggah (Mock, format WEBP).");
             } else {
               const token = (adminUser.value && adminUser.value.token) ? adminUser.value.token : '';
               const payload = {
                 action: 'uploadSlideshowImage',
                 token,
-                fileName: file.name,
-                mimeType: file.type || 'image/jpeg',
+                fileName: converted.fileName,
+                mimeType: converted.mimeType,
                 dataBase64: base64Data
               };
 
@@ -15894,7 +15884,7 @@
                   src: json.data.src,
                   alt: currentAlt
                 };
-                showToastNotification("Foto Slot #" + (targetIdx + 1) + " berhasil diunggah.");
+                showToastNotification("Foto Slot #" + (targetIdx + 1) + " berhasil diunggah (format WEBP).");
               } else if (json.code === 'unauthorized') {
                 openAlertDialog({
                   type: 'warning',
@@ -16049,7 +16039,7 @@
           alt: "Program Jumat Khitan Berkah"
         };
 
-        const PROGRAM_MAX_MB = 2;
+        const PROGRAM_MAX_MB = 3;
         const programConfig = ref(JSON.parse(JSON.stringify(DEFAULT_PROGRAM)));
         const programDraft = ref(JSON.parse(JSON.stringify(DEFAULT_PROGRAM)));
         const isUploadingProgram = ref(false);
@@ -16103,26 +16093,20 @@
           if (!files || files.length === 0) return;
           const file = files[0];
 
-          if (file.size > PROGRAM_MAX_MB * 1024 * 1024) {
-            openAlertDialog({
-              type: 'warning',
-              title: 'Ukuran File Terlalu Besar',
-              message: "Ukuran file \"" + (file.name) + "\" melebihi batas maksimal " + (PROGRAM_MAX_MB) + "MB."
-            });
-            return;
-          }
-
           isUploadingProgram.value = true;
           try {
-            const dataUrl = await new Promise((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onload = () => resolve(reader.result);
-              reader.onerror = reject;
-              reader.readAsDataURL(file);
-            });
+            const converted = await convertImageToWebp(file, { maxBytes: PROGRAM_MAX_MB * 1024 * 1024 });
+            if (!converted.ok) {
+              openAlertDialog({
+                type: 'warning',
+                title: converted.reason === 'format' ? 'Format Tidak Didukung' : 'File Tidak Lolos',
+                message: "\"" + (file.name) + "\": " + converted.message
+              });
+              return;
+            }
 
-            const commaIdx = dataUrl.indexOf(',');
-            const base64Data = commaIdx >= 0 ? dataUrl.substring(commaIdx + 1) : dataUrl;
+            const dataUrl = converted.dataUrl;
+            const base64Data = converted.base64;
 
             if (USE_MOCK) {
               await new Promise(r => setTimeout(r, 600));
@@ -16134,14 +16118,14 @@
                 src: dataUrl,
                 alt: currentAlt
               };
-              showToastNotification('Foto Program berhasil diunggah (Mock).');
+              showToastNotification('Foto Program berhasil diunggah (Mock, format WEBP).');
             } else {
               const token = (adminUser.value && adminUser.value.token) ? adminUser.value.token : '';
               const payload = {
                 action: 'uploadSlideshowImage',
                 token,
-                fileName: file.name,
-                mimeType: file.type || 'image/jpeg',
+                fileName: converted.fileName,
+                mimeType: converted.mimeType,
                 dataBase64: base64Data
               };
 
@@ -16162,7 +16146,7 @@
                   src: json.data.src,
                   alt: currentAlt
                 };
-                showToastNotification('Foto Program berhasil diunggah ke Google Drive.');
+                showToastNotification('Foto Program berhasil diunggah ke Google Drive (format WEBP).');
               } else if (json.code === 'unauthorized') {
                 openAlertDialog({
                   type: 'warning',
@@ -21143,6 +21127,134 @@
           showGalleryEditModal.value = false;
           galleryEditForm.value = { id: '', nama: '', foto: null };
           if (fileInputGalleryEditRef.value) fileInputGalleryEditRef.value.value = '';
+        };
+
+        // ===== Konversi foto Setting (Slideshow / Metode / Program) ke format WEBP =====
+        const PHOTO_SETTING_ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+        const PHOTO_SETTING_MAX_DIMENSION = 1600;
+
+        const supportsWebpEncoding = () => {
+          try {
+            const probe = document.createElement('canvas');
+            probe.width = 1;
+            probe.height = 1;
+            return String(probe.toDataURL('image/webp')).indexOf('data:image/webp') === 0;
+          } catch (err) {
+            return false;
+          }
+        };
+
+        /**
+         * Validasi + resize + re-encode file foto menjadi WEBP.
+         * Selalu mengembalikan object (tidak melempar error) agar mudah ditangani tiap handler:
+         *   { ok: true,  dataUrl, base64, bytes, fileName, mimeType, originalSize, finalSize }
+         *   { ok: false, reason: 'format'|'size'|'encoder'|'decode', message }
+         */
+        const convertImageToWebp = async (file, options = {}) => {
+          const maxBytes = options.maxBytes || 3 * 1024 * 1024;
+          const maxDimension = options.maxDimension || PHOTO_SETTING_MAX_DIMENSION;
+          const maxMbLabel = (maxBytes / (1024 * 1024));
+          let quality = options.quality || 0.82;
+
+          if (!file || typeof file.type !== 'string' || !PHOTO_SETTING_ALLOWED_TYPES.includes(file.type.toLowerCase())) {
+            return { ok: false, reason: 'format', message: 'Format file harus JPG, PNG, atau WEBP.' };
+          }
+          if (file.size > maxBytes) {
+            return { ok: false, reason: 'size', message: 'Ukuran file melebihi batas maksimal ' + maxMbLabel + 'MB.' };
+          }
+          if (!supportsWebpEncoding()) {
+            return { ok: false, reason: 'encoder', message: 'Peramban ini belum mendukung konversi ke format WEBP. Gunakan Chrome, Edge, atau Firefox versi terbaru.' };
+          }
+
+          let img = null;
+          try {
+            img = await new Promise((resolve, reject) => {
+              const objectUrl = URL.createObjectURL(file);
+              const el = new Image();
+              el.onload = () => { URL.revokeObjectURL(objectUrl); resolve(el); };
+              el.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('decode')); };
+              el.src = objectUrl;
+            });
+          } catch (err) {
+            return { ok: false, reason: 'decode', message: 'File tidak dapat dibaca sebagai gambar.' };
+          }
+
+          try {
+            let width = img.naturalWidth || img.width;
+            let height = img.naturalHeight || img.height;
+            if (!width || !height) {
+              return { ok: false, reason: 'decode', message: 'File tidak dapat dibaca sebagai gambar.' };
+            }
+
+            // Batasi dimensi agar ukuran file kecil namun tetap tajam untuk tampilan web
+            if (width > maxDimension || height > maxDimension) {
+              if (width > height) {
+                height = Math.round((height * maxDimension) / width);
+                width = maxDimension;
+              } else {
+                width = Math.round((width * maxDimension) / height);
+                height = maxDimension;
+              }
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, width, height);
+            ctx.drawImage(img, 0, 0, width, height);
+
+            const encode = (q) => {
+              const dataUrl = canvas.toDataURL('image/webp', q);
+              const base64 = String(dataUrl).split(',')[1] || '';
+              return {
+                dataUrl: dataUrl,
+                base64: base64,
+                bytes: Math.ceil(base64.length * 3 / 4)
+              };
+            };
+
+            let out = encode(quality);
+            if (String(out.dataUrl).indexOf('data:image/webp') !== 0) {
+              return { ok: false, reason: 'encoder', message: 'Peramban ini belum mendukung konversi ke format WEBP. Gunakan Chrome, Edge, atau Firefox versi terbaru.' };
+            }
+
+            // Turunkan kualitas dulu, lalu dimensi, sampai muat di bawah batas maksimal
+            while (out.bytes > maxBytes && quality > 0.55) {
+              quality = Math.round((quality - 0.1) * 100) / 100;
+              out = encode(quality);
+            }
+            while (out.bytes > maxBytes && width > 800) {
+              width = Math.round(width * 0.85);
+              height = Math.round(height * 0.85);
+              canvas.width = width;
+              canvas.height = height;
+              ctx.fillStyle = '#ffffff';
+              ctx.fillRect(0, 0, width, height);
+              ctx.drawImage(img, 0, 0, width, height);
+              out = encode(Math.max(quality, 0.7));
+            }
+
+            if (out.bytes > maxBytes || String(out.dataUrl).indexOf('data:image/webp') !== 0) {
+              return { ok: false, reason: 'size', message: 'Foto terlalu besar meski sudah dikonversi ke WEBP. Silakan pilih foto lain.' };
+            }
+
+            const baseName = (String(file.name || 'foto').replace(/\.[^/.]+$/, '') || 'foto');
+            return {
+              ok: true,
+              dataUrl: out.dataUrl,
+              base64: out.base64,
+              bytes: out.bytes,
+              fileName: baseName + '.webp',
+              mimeType: 'image/webp',
+              originalSize: file.size,
+              finalSize: out.bytes
+            };
+          } catch (err) {
+            console.error('Konversi WebP error:', err);
+            return { ok: false, reason: 'decode', message: 'Gagal memproses foto menjadi format WEBP.' };
+          }
         };
 
         const compressImageIfNeeded = async (file, maxBytes = 5 * 1024 * 1024) => {
@@ -27023,4 +27135,6 @@ const TEMPLATE_SERTIFIKAT_HTML = '<style>@page { size: A4 landscape !important; 
     app.mount('#app');
   </script>
 </body>
+</html>
+
 </html>

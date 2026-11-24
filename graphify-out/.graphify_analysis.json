@@ -497,13 +497,13 @@
       "degree": 18
     },
     {
-      "id": "asset_code_getsheet",
-      "label": "getSheet()",
+      "id": "asset_code_reschedulebookingfromtelegram",
+      "label": "rescheduleBookingFromTelegram_()",
       "degree": 16
     },
     {
-      "id": "asset_code_reschedulebookingfromtelegram",
-      "label": "rescheduleBookingFromTelegram_()",
+      "id": "asset_code_getsheet",
+      "label": "getSheet()",
       "degree": 16
     }
   ],
@@ -532,6 +532,17 @@
     },
     {
       "source": "Architecture",
+      "target": "doGet()",
+      "source_files": [
+        "AGENTS.md",
+        "asset/Code.gs"
+      ],
+      "confidence": "INFERRED",
+      "relation": "references",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; bridges separate communities"
+    },
+    {
+      "source": "Architecture",
       "target": "doPost()",
       "source_files": [
         "AGENTS.md",
@@ -551,17 +562,6 @@
       "confidence": "INFERRED",
       "relation": "references",
       "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; peripheral node `9.1 Panduan Setup Time-Driven Trigger Pengingat Jadwal (< 12 Jam) di Google Apps Script` unexpectedly reaches hub `checkUpcomingKhitanReminders()`"
-    },
-    {
-      "source": "Architecture",
-      "target": "doGet()",
-      "source_files": [
-        "AGENTS.md",
-        "asset/Code.gs"
-      ],
-      "confidence": "INFERRED",
-      "relation": "references",
-      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; bridges separate communities"
     }
   ],
   "tokens": {
