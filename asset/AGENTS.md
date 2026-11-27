@@ -120,6 +120,33 @@
 - Antigravity hanya menjawab bila aplikasinya terbuka. Kalau `hub_*.json` ada tapi proses/port
   mati, buka ulang Antigravity dulu.
 
+## Muse → Opencode relay (opsional)
+- `relay-opencode-v6.ps1` (root repo) — jembatan HTTP antara aplikasi **Muse** di perangkat lain dan
+  server Opencode lokal. Sama seperti Antigravity bridge: alat bantu dev, **bukan** bagian deploy situs.
+- Alur: Muse → `http://100.99.226.94:5000` (IP Tailscale komputer ini) → relay meneruskan ke
+  `http://localhost:4096` (`opencode serve --hostname 0.0.0.0 --port 4096`, v2.4.2) dengan header
+  Basic Auth yang dihitung dari `$env:OPENCODE_SERVER_PASSWORD`. **Password tidak pernah keluar dari
+  komputer ini**, jadi jangan pernah menaruhnya di klien Muse / perangkat lain.
+- Config Muse: base URL `http://100.99.226.94:5000`, API key **kosong**, project
+  `D:\@aiagent\khitandamai.my.id`. Jangan pakai `:4096` langsung (butuh Basic Auth).
+- Relay hanya menempel di IP tailnet (`100.99.226.94`) + `localhost` — tidak tersentuh internet umum.
+- **SSE tidak didukung**: relay membalas `501` untuk `/api/event`, jadi Muse harus polling
+  `GET /api/session/<id>/message`. Kalau ada error SSE/streaming di Muse, matikan opsi streaming-nya.
+- Cek sehat (dari perangkat yang sama tailnet):
+  ```bash
+  curl http://100.99.226.94:5000/api/info     # {"version":..., "pid":...}
+  curl http://100.99.226.94:5000/api/session  # daftar session
+  ```
+- Relay mati → jalankan ulang (PowerShell **Administrator**), *stop relay lama dulu*, karena script
+  **berhenti sendiri kalau port 5000 sudah dipakai** (arti: relay lama masih hidup, jangan start dua):
+  ```powershell
+  Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+  $env:OPENCODE_SERVER_PASSWORD = "KATA_SANDI"
+  .\relay-opencode-v6.ps1
+  ```
+  Biarkan jendelanya terbuka; semua log transcript tersimpan di `$HOME\Downloads\relay-opencode.log`
+  (berisi baris `TERIMA <METHOD> <path> -> <status>` — dipakai untuk diagnosis).
+
 ## Design & product constraints
 - Mobile-first 360–430 px, Primary Tosca `#008080` (`tailwind.config` `tosca.700`), sticky bottom navigation.
 - Phone numbers in booking lookup results must be masked (`0812****1234`).
