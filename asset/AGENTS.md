@@ -92,6 +92,34 @@
 - **Offline mocking**: `const USE_MOCK = false;` in `asset/Index.html` (~line 11641); set `true` to test
   against `LOCAL_MOCK_DATABASE` without network.
 
+## Antigravity bridge (opsional)
+- Helper: `scripts/antigravity.ps1` — menembak agent Antigravity IDE yang sedang login di mesin ini
+  lewat subcommand bawaan `language_server.exe agentapi`. **Bukan** bagian dari deploy situs ini;
+  alat bantu dev saja.
+- Koneksi TIDAK bisa ditebak: port + CSRF token di `%USERPROFILE%\.gemini\antigravity\daemon\hub_*.json`
+  dan **berubah setiap Antigravity restart**. Wajib dibaca ulang, jangan di-hardcode:
+  ```powershell
+  $env:ANTIGRAVITY_LS_ADDRESS = "127.0.0.1:<httpPort>"   # host:port, TANPA http://
+  $env:ANTIGRAVITY_CSRF_TOKEN = "<csrfToken>"
+  ```
+- Perintah: `status` | `ask [-Raw|-Json] "prompt"` | `transcript <id>` | `convos` |
+  `metadata <id>` | `send <id> "pesan"`. Exit code: `0` ok, `1` argumen/id hilang,
+  `2` error sisi server (mis. HTTP 503 no capacity), `3` tidak ada jawaban MODEL.
+- Jalur termudah lewat npm (argumen setelah `--`): `npm run agy -- status`,
+  `npm run agy -- ask -Raw "prompt"`. Pakai `--silent` kalau mau keluaran `-Json`
+  bersih — banner npm ikut tercetak ke stdout dan merusak parse:
+  `npm run --silent agy -- transcript <id> -Json`.
+- `ask` **memanggil model Gemini sungguhan dan memakan kuota akun login**
+  (`rumahkhitandamai@gmail.com`). Default `-Model flash_lite` (termurah); hindari `pro`.
+  `transcript` membaca file lokal saja → gratis.
+- Balasan dibaca dari
+  `%USERPROFILE%\.gemini\antigravity\brain\<conversationId>\.system_generated\logs\transcript.jsonl`.
+  Selesai ditandai langkah terakhir `status=DONE` yang diam `-StableSec` (default 3 dtk).
+- `ERROR_MESSAGE` yang **lebih awal** daripada langkah `source=MODEL` terakhir = retry berhasil →
+  bukan kegagalan; script sudah menanganinya.
+- Antigravity hanya menjawab bila aplikasinya terbuka. Kalau `hub_*.json` ada tapi proses/port
+  mati, buka ulang Antigravity dulu.
+
 ## Design & product constraints
 - Mobile-first 360–430 px, Primary Tosca `#008080` (`tailwind.config` `tosca.700`), sticky bottom navigation.
 - Phone numbers in booking lookup results must be masked (`0812****1234`).

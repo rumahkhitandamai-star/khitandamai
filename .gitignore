@@ -27,4 +27,6 @@ Thumbs.db
 
 # Graphify cache
 graphify-out/cache/
+# Antrean penamaan community yang menunggu LLM (transient, dibuat ulang tiap run)
+graphify-out/*.pending.json
 

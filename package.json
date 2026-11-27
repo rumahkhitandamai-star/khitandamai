@@ -6,7 +6,8 @@
     "serve": "npx serve public",
     "serve:asset": "npx serve asset",
     "test:qc": "npx playwright test qc-test.spec.js",
-    "sync:docs": "node scripts/upload-docs-to-drive.js"
+    "sync:docs": "node scripts/upload-docs-to-drive.js",
+    "agy": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/antigravity.ps1"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.0",

@@ -40,10 +40,10 @@
     "ast_empty": true
   },
   "package.json": {
-    "mtime": 1791890804.1899414,
-    "seen": 1793014704.7513568,
-    "ast_hash": "957e16ede18bd166c38f7f1667f2ee72",
-    "semantic_hash": "957e16ede18bd166c38f7f1667f2ee72"
+    "mtime": 1795784859.7284875,
+    "seen": 1795785034.5461862,
+    "ast_hash": "b20403e6cade16f5229fe8bd8d5c35b2",
+    "semantic_hash": ""
   },
   "playwright.config.js": {
     "mtime": 1792247507.770749,
@@ -257,33 +257,33 @@
     "semantic_hash": "ba46d2d1087f8d3d0de1e6f923524d13"
   },
   "AGENTS.md": {
-    "mtime": 1793018621.2262802,
-    "seen": 1793018885.5514216,
-    "ast_hash": "1d33bcb64dbff7e135cbbf48bcb78d5c",
+    "mtime": 1795784983.790723,
+    "seen": 1795785034.548306,
+    "ast_hash": "196428f9b9eeb2b45e9381767dc586c2",
     "semantic_hash": ""
   },
   "asset/AGENTS.md": {
-    "mtime": 1793018628.535231,
-    "seen": 1793018885.5514216,
-    "ast_hash": "1d33bcb64dbff7e135cbbf48bcb78d5c",
+    "mtime": 1795784983.790723,
+    "seen": 1795785034.548306,
+    "ast_hash": "196428f9b9eeb2b45e9381767dc586c2",
     "semantic_hash": ""
   },
   "asset/Index.html": {
-    "mtime": 1793029015.560995,
-    "seen": 1793029371.9647899,
-    "ast_hash": "af9ded84c533649735445d5ed5b94f96",
+    "mtime": 1795533626.2883904,
+    "seen": 1795784766.8428595,
+    "ast_hash": "b6611397ad1da332e550aee10d68034c",
     "semantic_hash": ""
   },
   "asset/prd.md": {
-    "mtime": 1792941221.8449595,
-    "seen": 1793014784.098874,
-    "ast_hash": "7c5eda09d3c1a25179e5c44cb5aeb8e7",
+    "mtime": 1794828770.8683305,
+    "seen": 1795784766.8428595,
+    "ast_hash": "f12a292549b1a421b8f2c1736fa5a2cc",
     "semantic_hash": ""
   },
   "prd.md": {
-    "mtime": 1792941221.8449595,
-    "seen": 1793014784.098874,
-    "ast_hash": "7c5eda09d3c1a25179e5c44cb5aeb8e7",
+    "mtime": 1794828770.9256935,
+    "seen": 1795784766.8428595,
+    "ast_hash": "f12a292549b1a421b8f2c1736fa5a2cc",
     "semantic_hash": ""
   },
   "wrapper/index.html": {
@@ -465,5 +465,17 @@
     "seen": 1795534731.2846513,
     "ast_hash": "3a2b7a3b2584e7b040bb1728b819e09b",
     "semantic_hash": "3a2b7a3b2584e7b040bb1728b819e09b"
+  },
+  "scripts/antigravity.ps1": {
+    "mtime": 1795784570.6981294,
+    "seen": 1795784766.8428595,
+    "ast_hash": "a900aa4f28ef8b4cb4b872599f25b3e0",
+    "semantic_hash": ""
+  },
+  "asset/robots.txt": {
+    "mtime": 1793485831.7917392,
+    "seen": 1795784766.8428595,
+    "ast_hash": "6e0fc3ddca29ce269d561263d088b3b3",
+    "semantic_hash": ""
   }
 }
