@@ -20,5 +20,7 @@ jobs:
           node-version: '20'
 
       - name: Poll Google Reviews Directly & Notify
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         run: |
           node scripts/poll-reviews-direct.js

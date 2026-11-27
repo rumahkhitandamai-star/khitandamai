@@ -135,7 +135,16 @@ const KUOTA_SUMMARY_CACHE_TTL = 60; // 60 Detik
 // KONFIGURASI NOTIFIKASI TELEGRAM ADMIN
 // ==========================================
 const TELEGRAM_CONFIG = {
-  BOT_TOKEN: "8582652009:AAHoB81ErIc_oN4e6Kr7a3sdx2c7z029bpA",
+  // ⚠️ JANGAN menulis token bot di kode. Nilai diambil dari Script Properties
+  //    (Apps Script → Project Settings → Script Properties → TELEGRAM_BOT_TOKEN).
+  //    Sifat getter: dibaca lazy, jadi kegagalan PropertiesService tidak merusak load file.
+  get BOT_TOKEN() {
+    try {
+      return PropertiesService.getScriptProperties().getProperty('TELEGRAM_BOT_TOKEN') || '';
+    } catch (e) {
+      return '';
+    }
+  },
   ADMIN_CHAT_ID: "8746493929",
   ADMIN_PHONE: "081222531978"
 };

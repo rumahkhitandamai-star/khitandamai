@@ -2,7 +2,8 @@ const https = require('https');
 
 const GOOGLE_MAPS_FEATURE_ID = "0x2e693c78f4580f35:0xa5ec9fb14f5140b5";
 const GOOGLE_REVIEW_PAGE_URL = "https://www.google.co.id/search?sca_esv=47d3a503fd7b42d7&output=search&q=Rumah+Khitan+Damai&ludocid=11956106694650577077&lsig=AB86z5VxZiMPhsIh3gsUvrMYbXGw&sa=X&ved=2ahUKEwiv5syJga6UAxXtd2wGHZtNK40Qj9IGegQIExAG#ebo=0";
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "8582652009:AAHoB81ErIc_oN4e6Kr7a3sdx2c7z029bpA";
+// Token WAJIB dari environment (GitHub Secrets → workflow env). Jangan hardcode.
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || "8746493929";
 
 function fetchReviews(limit = 20) {
@@ -70,6 +71,10 @@ function fetchReviews(limit = 20) {
 
 function sendTelegramNotification(review) {
   return new Promise((resolve) => {
+    if (!TELEGRAM_BOT_TOKEN) {
+      console.error('TELEGRAM_BOT_TOKEN belum di-set di environment — notifikasi Telegram dilewati.');
+      return resolve({ ok: false, error: 'TELEGRAM_BOT_TOKEN missing' });
+    }
     const starsNum = Math.max(1, Math.min(5, parseInt(review.rating || 5, 10)));
     const starsIcon = "⭐".repeat(starsNum) + "☆".repeat(5 - starsNum);
     const ratingDisplay = starsIcon + " (" + starsNum + "/5 Bintang)";
